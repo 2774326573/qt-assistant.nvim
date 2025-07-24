@@ -1,0 +1,28 @@
+{
+    "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+    "Lua.runtime.version": "LuaJIT",
+    "Lua.runtime.special": {
+        "vim.notify": "function",
+        "vim.api": "table",
+        "vim.fn": "table",
+        "vim.cmd": "function",
+        "vim.ui": "table",
+        "vim.loop": "table",
+        "vim.log": "table",
+        "vim.o": "table"
+    },
+    "Lua.workspace.library": [
+        "${3rd}/luv/library",
+        "${3rd}/busted/library"
+    ],
+    "Lua.workspace.checkThirdParty": false,
+    "Lua.diagnostics.disable": [
+        "undefined-global",
+        "lowercase-global"
+    ],
+    "Lua.diagnostics.globals": [
+        "vim"
+    ],
+    "Lua.format.enable": true,
+    "Lua.telemetry.enable": false
+}

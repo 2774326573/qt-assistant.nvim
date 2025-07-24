@@ -1,0 +1,36 @@
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+
+# 测试输出
+test_output/
+coverage/
+
+# 临时文件
+tmp/
+temp/
+
+# Lua字节码
+*.luac
+
+# 调试文件
+debug.lua
+
+# 本地配置
+local_config.lua
+EOF < /dev/null
