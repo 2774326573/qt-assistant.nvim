@@ -17,6 +17,16 @@ Qt Assistant v1.0.0是一个重大版本发布，完全解决了插件的循环�
 
 **影响**: 插件现在更稳定、加载更快，用户界面响应更迅速。
 
+### Init.lua模块冲突修复 (v1.0.0-hotfix)
+**问题**: `lua/qt-assistant/init.lua` 文件与主模块冲突，导致 `setup` 函数不可用。
+
+**解决方案**:
+- 移除冲突的 `init.lua` 文件
+- 确保 `require('qt-assistant')` 正确加载主模块
+- 更新缓存清除指南
+
+**影响**: 彻底解决了 "attempt to call field 'setup' (a nil value)" 错误。
+
 ## 📋 配置说明
 
 ### 保持向后兼容

@@ -12,6 +12,11 @@
   - 更新所有子模块，使用新的配置管理器
   - **保持配置接口兼容**: 主模块的 `setup()` 函数保持可用，配置选项完全兼容
 
+- **Init.lua模块冲突修复**: 解决了导致setup函数不可用的关键问题
+  - 移除冲突的 `lua/qt-assistant/init.lua` 文件
+  - 确保 `require('qt-assistant')` 正确加载主模块
+  - 彻底解决 "attempt to call field 'setup' (a nil value)" 错误
+
 ### ⚠️ 配置变更说明 / Configuration Changes
 - **推荐配置方式**: 继续使用 `require('qt-assistant').setup({})` 进行配置
 - **配置选项**: 所有配置选项保持不变，完全向后兼容

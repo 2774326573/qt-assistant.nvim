@@ -10,9 +10,27 @@ Failed to run `config` for qt-assistant.nvim
 attempt to call field 'setup' (a nil value)
 ```
 
+### 根本原因
+这个问题是由于 `lua/qt-assistant/init.lua` 文件与主模块 `lua/qt-assistant.lua` 冲突造成的。当执行 `require('qt-assistant')` 时，Lua模块系统会优先加载 `qt-assistant/init.lua` 而不是 `qt-assistant.lua`，而 `init.lua` 没有导出 `setup` 函数。
+
 ### 解决方案
 
-#### 1. 确认正确的配置方式
+#### 1. 删除冲突的init.lua文件（已修复）
+如果您在使用最新版本，这个问题已经被修复。冲突的 `init.lua` 文件已被移除。
+
+#### 2. 清除lazy.nvim缓存
+如果仍然遇到问题，请清除插件缓存：
+
+```bash
+# 清除lazy.nvim缓存
+rm -rf ~/.local/share/nvim/lazy/qt-assistant.nvim
+
+# 清除Lua编译缓存
+rm -rf ~/.cache/nvim/luac
+rm -rf ~/.local/state/nvim/lazy/cache
+```
+
+#### 3. 确认正确的配置方式
 请确保使用正确的模块路径：
 
 ```lua
@@ -25,7 +43,7 @@ require('qt-assistant').setup({
 require('qt-assistant.config').setup({})  -- 这是内部模块
 ```
 
-#### 2. 检查插件安装
+#### 4. 检查插件安装
 确保插件已正确安装：
 
 **lazy.nvim:**
@@ -50,12 +68,12 @@ use {
 }
 ```
 
-#### 3. 检查Neovim版本
+#### 5. 检查Neovim版本
 确保使用支持的Neovim版本：
 - 最低版本：0.8+
 - 推荐版本：0.9+
 
-#### 4. 清除缓存
+#### 6. 清除缓存
 如果仍有问题，请清除Lua模块缓存：
 
 ```vim
@@ -64,7 +82,7 @@ use {
 :lua require('qt-assistant').setup()
 ```
 
-#### 5. 检查错误日志
+#### 7. 检查错误日志
 启用详细错误信息：
 
 ```lua
