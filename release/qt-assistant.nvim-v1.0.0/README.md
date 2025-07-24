@@ -369,31 +369,41 @@ project/
 
 ### 常见问题
 
-1. **CMakeLists.txt未更新**
+1. **配置函数不存在错误** (v1.0.0新增)
+   ```
+   Failed to run `config` for qt-assistant.nvim
+   attempt to call field 'setup' (a nil value)
+   ```
+   - 确保使用正确的配置方式：`require('qt-assistant').setup({})`
+   - 检查插件是否正确安装和加载
+   - 清除Lua模块缓存：`:lua package.loaded['qt-assistant'] = nil`
+   - 查看详细故障排除：[配置故障排除指南](docs/CONFIGURATION_TROUBLESHOOTING.md)
+
+2. **CMakeLists.txt未更新**
    - 确保 `auto_update_cmake = true`
    - 检查CMakeLists.txt文件权限
 
-2. **脚本无法执行**
+3. **脚本无法执行**
    - 运行 `:QtInitScripts` 创建默认脚本
    - 检查脚本文件执行权限
 
-3. **UI设计师无法启动**
+4. **UI设计师无法启动**
    - 检查Qt Designer是否已安装
    - 配置正确的 `designer_path`
    - 使用 `:QtDesignerManager` 检查编辑器状态
    - Windows用户确保Qt bin目录在PATH中
 
-4. **项目检测失败**
+5. **项目检测失败**
    - 确保项目包含CMakeLists.txt或.pro文件
    - 使用 `:QtOpenProject` 手动指定项目路径
 
-5. **构建失败**
+6. **构建失败**
    - 检查构建依赖是否安装
    - 使用 `:QtBuildStatus` 查看详细状态
    - 启用调试日志查看错误信息
    - Windows用户确保已安装MSVC或MinGW编译器
 
-6. **跨平台问题**
+7. **跨平台问题**
    - 使用 `:QtSystemInfo` 查看系统检测结果
    - 检查路径分隔符是否正确适配
    - 确认脚本文件格式正确（Unix使用.sh，Windows使用.bat）
