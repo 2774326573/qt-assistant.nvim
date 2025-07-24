@@ -85,7 +85,7 @@ Qt Assistant 支持跨平台使用，提供对以下操作系统的完整支持�
 
 ```lua
 {
-    'onewu867/qt-assistant.nvim',
+    '2774326573/qt-assistant.nvim',
     config = function()
         require('qt-assistant').setup({
             -- 配置选项
@@ -102,7 +102,7 @@ Qt Assistant 支持跨平台使用，提供对以下操作系统的完整支持�
 
 ```lua
 use {
-    'onewu867/qt-assistant.nvim',
+    '2774326573/qt-assistant.nvim',
     config = function()
         require('qt-assistant').setup()
     end

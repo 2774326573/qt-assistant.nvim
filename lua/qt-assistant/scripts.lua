@@ -5,7 +5,7 @@ local M = {}
 
 -- 获取插件配置
 local function get_config()
-    return require('qt-assistant').config
+    return require('qt-assistant.config').get()
 end
 
 -- 脚本配置

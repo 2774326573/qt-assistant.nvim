@@ -6,7 +6,7 @@ local file_manager = require('qt-assistant.file_manager')
 
 -- 获取插件配置
 local function get_config()
-    return require('qt-assistant').config
+    return require('qt-assistant.config').get()
 end
 
 -- 项目类型检测
@@ -153,8 +153,8 @@ function M.open_project(project_path)
     vim.notify(string.format("Opened %s: %s", primary_type.name, project_path), vim.log.levels.INFO)
     
     -- 更新配置
-    local qt_assistant = require('qt-assistant')
-    qt_assistant.config.project_root = project_path
+    local config_manager = require('qt-assistant.config')
+    config_manager.set_value('project_root', project_path)
     
     -- 分析项目结构
     M.analyze_project_structure(project_path, primary_type.type)

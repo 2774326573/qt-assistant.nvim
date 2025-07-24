@@ -7,7 +7,7 @@ local project_manager = require('qt-assistant.project_manager')
 
 -- 获取插件配置
 local function get_config()
-    return require('qt-assistant').config
+    return require('qt-assistant.config').get()
 end
 
 -- 构建系统配置

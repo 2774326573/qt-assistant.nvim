@@ -5,7 +5,7 @@ local M = {}
 
 -- 获取插件配置
 local function get_config()
-    return require('qt-assistant').config
+    return require('qt-assistant.config').get()
 end
 
 -- 浮动窗口配置
@@ -226,11 +226,11 @@ end
 
 -- 使用选项创建类
 function M.create_class_with_options(class_name, class_type, options)
-    local qt_assistant = require('qt-assistant')
+    local core = require('qt-assistant.core')
     
     vim.notify("Creating " .. class_type .. " class: " .. class_name, vim.log.levels.INFO)
     
-    local success, error_msg = qt_assistant.core.create_qt_class(class_name, class_type, options)
+    local success, error_msg = core.create_qt_class(class_name, class_type, options)
     
     if success then
         vim.notify("Class created successfully!", vim.log.levels.INFO)

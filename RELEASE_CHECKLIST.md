@@ -22,6 +22,7 @@
 
 ### 🔧 核心模块 / Core Modules
 - [x] `core.lua` - 核心功能
+- [x] `config.lua` - 配置管理器 (新增) 🆕
 - [x] `templates.lua` - 模板系统
 - [x] `file_manager.lua` - 文件管理
 - [x] `cmake.lua` - CMake集成
@@ -51,6 +52,30 @@
 - [x] 跨平台Qt工具检测
 - [x] 系统特定构建命令
 
+## 🔧 重要修复 / Critical Fixes
+
+### ✅ 循环依赖问题修复 / Circular Dependency Fix
+**日期**: 2025-07-25  
+**状态**: ✅ 完成
+
+**问题描述**:
+- 所有子模块通过 `require('qt-assistant').config` 获取配置导致循环依赖
+- plugin文件和主模块中的重复命令定义
+- 配置管理器在模块顶层调用vim函数
+
+**解决方案**:
+- [x] 创建独立配置管理器 (`qt-assistant/config.lua`)
+- [x] 重构主模块，采用内联配置管理
+- [x] 修复plugin入口，使用延迟加载机制
+- [x] 更新所有子模块，使用新的配置管理器
+- [x] 新发布包生成: `qt-assistant.nvim-v1.0.0.tar.gz` (包含19个文件)
+
+**影响**:
+- ✅ 完全消除循环依赖问题
+- ✅ 保持所有原有功能
+- ✅ 保持向后兼容性
+- ✅ 提升插件稳定性和加载性能
+
 ## 🚀 下一步发布步骤 / Next Release Steps
 
 ### 1. 最终测试 / Final Testing
@@ -74,7 +99,8 @@ git tag -a v1.0.0 -m "Release v1.0.0 - Qt Assistant for Neovim
 🚀 首次发布 / Initial Release
 - 完整的Qt C++开发插件
 - 支持Windows、macOS、Linux三大平台
-- 包含类创建、项目管理、构建系统、UI设计师集成等功能"
+- 包含类创建、项目管理、构建系统、UI设计师集成等功能
+- 修复循环依赖问题，确保插件稳定性"
 
 git push origin v1.0.0
 ```
@@ -99,12 +125,13 @@ git push origin v1.0.0
 
 ## 📊 发布统计 / Release Statistics
 
-- **总文件数**: 25+个文件
+- **总文件数**: 26个文件 (新增config.lua)
 - **代码行数**: 3000+行Lua代码
 - **支持平台**: Windows + macOS + Linux
-- **功能模块**: 11个核心模块
+- **功能模块**: 12个核心模块 (新增配置管理器)
 - **文档页面**: 完整的中英文档
 - **配置示例**: 3个不同场景的配置示例
+- **重要修复**: 循环依赖问题完全解决 ✅
 
 ## 🎯 后续版本计划 / Future Version Plans
 
@@ -123,7 +150,7 @@ git push origin v1.0.0
 ---
 
 **发布负责人**: 开发团队  
-**发布日期**: 2025-01-24  
+**发布日期**: 2025-07-25  
 **版本**: 1.0.0  
-**状态**: ✅ 准备就绪
+**状态**: ✅ 准备就绪 - 循环依赖问题已修复
 EOF < /dev/null

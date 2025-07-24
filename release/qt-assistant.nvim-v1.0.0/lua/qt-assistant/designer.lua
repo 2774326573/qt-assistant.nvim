@@ -6,7 +6,7 @@ local file_manager = require('qt-assistant.file_manager')
 
 -- 获取插件配置
 local function get_config()
-    return require('qt-assistant').config
+    return require('qt-assistant.config').get()
 end
 
 -- 检测系统中可用的UI编辑器

@@ -1,110 +1,57 @@
--- Neovim Qt Assistant Plugin - Main Module
--- Qt项目辅助插件主模块
+-- Neovim Qt Assistant Plugin - Final Main Module
+-- Qt项目辅助插件主模块（最终版）
 
 local M = {}
 
--- 默认配置
-local default_config = {
-    -- 项目根目录
-    project_root = vim.fn.getcwd(),
-    
-    -- 默认目录结构
-    directories = {
-        source = "src",
-        include = "include", 
-        ui = "ui",
-        resource = "resource",
-        scripts = "scripts"
-    },
-    
-    -- 文件命名规范 snake_case 或 camelCase
-    naming_convention = "snake_case",
-    
-    -- 自动更新CMakeLists.txt
-    auto_update_cmake = true,
-    
-    -- 生成注释
-    generate_comments = true,
-    
-    -- 模板路径
-    template_path = vim.fn.stdpath('config') .. '/qt-templates',
-    
-    -- Qt项目配置
-    qt_project = {
-        -- 自动检测项目类型
-        auto_detect = true,
-        
-        -- 构建配置
-        build_type = "Debug", -- Debug, Release, RelWithDebInfo, MinSizeRel
-        
-        -- 构建目录
-        build_dir = "build",
-        
-        -- 并行构建
-        parallel_build = true,
-        
-        -- 构建线程数
-        build_jobs = 4
-    },
-    
-    -- UI设计师配置
-    designer = {
-        -- Qt Designer路径
-        designer_path = "designer",
-        
-        -- Qt Creator路径
-        creator_path = "qtcreator",
-        
-        -- 默认UI编辑器
-        default_editor = "designer", -- designer, creator, custom
-        
-        -- 自定义UI编辑器
-        custom_editor = {
-            command = "",
-            args = {"--file", "{file}"}
-        },
-        
-        -- 自动同步UI文件
-        auto_sync = true,
-        
-        -- UI文件预览
-        enable_preview = true
-    },
-    
-    -- 调试配置
-    debug = {
-        -- 启用调试模式
-        enabled = false,
-        
-        -- 调试日志级别
-        log_level = "INFO", -- DEBUG, INFO, WARN, ERROR
-        
-        -- 调试输出文件
-        log_file = vim.fn.stdpath('data') .. '/qt-assistant.log'
-    }
-}
-
--- 插件配置
-M.config = {}
+-- 内联配置管理，避免循环依赖
+M._config = nil
 
 -- 初始化插件
 function M.setup(user_config)
-    M.config = vim.tbl_deep_extend('force', default_config, user_config or {})
+    -- 默认配置
+    local default_config = {
+        project_root = vim.fn.getcwd(),
+        directories = {
+            source = "src",
+            include = "include", 
+            ui = "ui",
+            resource = "resource",
+            scripts = "scripts"
+        },
+        naming_convention = "snake_case",
+        auto_update_cmake = true,
+        generate_comments = true,
+        template_path = vim.fn.stdpath('config') .. '/qt-templates',
+        qt_project = {
+            auto_detect = true,
+            build_type = "Debug",
+            build_dir = "build",
+            parallel_build = true,
+            build_jobs = 4
+        },
+        designer = {
+            designer_path = "designer",
+            creator_path = "qtcreator",
+            default_editor = "designer",
+            custom_editor = { command = "", args = {"--file", "{file}"} },
+            auto_sync = true,
+            enable_preview = true
+        },
+        debug = {
+            enabled = false,
+            log_level = "INFO",
+            log_file = vim.fn.stdpath('data') .. '/qt-assistant.log'
+        },
+        enable_default_keymaps = false
+    }
     
-    -- 导入子模块
-    M.system = require('qt-assistant.system')
-    M.core = require('qt-assistant.core')
-    M.templates = require('qt-assistant.templates')
-    M.file_manager = require('qt-assistant.file_manager')
-    M.ui = require('qt-assistant.ui')
-    M.cmake = require('qt-assistant.cmake')
-    M.scripts = require('qt-assistant.scripts')
-    M.project_manager = require('qt-assistant.project_manager')
-    M.designer = require('qt-assistant.designer')
-    M.build_manager = require('qt-assistant.build_manager')
+    M._config = vim.tbl_deep_extend('force', default_config, user_config or {})
     
-    -- 初始化模板目录
-    M.templates.init(M.config.template_path)
+    -- 更新外部config模块的配置（如果存在）
+    local ok, config_module = pcall(require, 'qt-assistant.config')
+    if ok then
+        config_module.setup(user_config)
+    end
     
     -- 设置快捷键（如果用户配置了）
     M.setup_keymaps()
@@ -112,10 +59,14 @@ function M.setup(user_config)
     vim.notify("Qt Assistant Plugin loaded successfully!", vim.log.levels.INFO)
 end
 
+-- 获取配置
+function M.get_config()
+    return M._config or {}
+end
+
 -- 设置快捷键映射
 function M.setup_keymaps()
-    -- 用户可以在配置中启用默认快捷键
-    if M.config.enable_default_keymaps then
+    if M._config and M._config.enable_default_keymaps then
         local map = vim.keymap.set
         
         -- 基础操作
@@ -147,6 +98,9 @@ function M.setup_keymaps()
     end
 end
 
+-- ==================== 接口函数 ====================
+-- 以下函数使用延迟加载避免循环依赖
+
 -- 创建Qt类的主函数
 function M.create_class(class_name, class_type, options)
     if not class_name or class_name == '' then
@@ -154,14 +108,21 @@ function M.create_class(class_name, class_type, options)
         return
     end
     
+    -- 延迟加载需要的模块
+    local core = require('qt-assistant.core')
+    local templates = require('qt-assistant.templates')
+    
+    -- 初始化模板
+    templates.init(M._config.template_path)
+    
     -- 验证类名
-    if not M.core.validate_class_name(class_name) then
+    if not core.validate_class_name(class_name) then
         vim.notify('Error: Invalid class name format', vim.log.levels.ERROR)
         return
     end
     
     -- 创建类
-    local success, error_msg = M.core.create_qt_class(class_name, class_type, options)
+    local success, error_msg = core.create_qt_class(class_name, class_type, options)
     
     if success then
         vim.notify(string.format('Successfully created %s class: %s', class_type, class_name), vim.log.levels.INFO)
@@ -170,166 +131,109 @@ function M.create_class(class_name, class_type, options)
     end
 end
 
--- 创建Qt UI文件
-function M.create_ui(ui_name, ui_type)
-    local success, error_msg = M.core.create_qt_ui(ui_name, ui_type)
-    
-    if success then
-        vim.notify(string.format('Successfully created UI: %s', ui_name), vim.log.levels.INFO)
-    else
-        vim.notify(string.format('Error creating UI: %s', error_msg), vim.log.levels.ERROR)
-    end
+-- 创建UI类
+function M.create_ui_class(ui_name, ui_type)
+    M.create_class(ui_name, ui_type, {include_ui = true})
 end
 
 -- 创建数据模型
-function M.create_model(model_name)
+function M.create_model_class(model_name)
     M.create_class(model_name, 'model', {})
 end
 
 -- 获取项目信息
 function M.get_project_info()
     return {
-        root = M.config.project_root,
-        directories = M.config.directories,
-        cmake_file = M.config.project_root .. '/CMakeLists.txt'
+        root = M._config.project_root,
+        directories = M._config.directories,
+        cmake_file = M._config.project_root .. '/CMakeLists.txt'
     }
 end
 
--- ==================== 接口函数 ====================
--- 以下函数对应plugin文件中定义的命令
-
 -- 显示主界面
 function M.show_main_interface()
-    if M.ui then
-        M.ui.show_class_creator()
-    else
-        vim.notify('UI module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local ui = require('qt-assistant.ui')
+    ui.show_class_creator()
 end
 
 -- 项目管理
 function M.open_project(path)
-    if M.project_manager then
-        M.project_manager.open_project(path)
-    else
-        vim.notify('Project manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.open_project(path)
 end
 
 function M.new_project(name, type)
-    if M.project_manager then
-        M.project_manager.new_project(name, type)
-    else
-        vim.notify('Project manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.new_project(name, type)
 end
 
 function M.show_project_manager()
-    if M.ui then
-        M.ui.show_project_manager()
-    else
-        vim.notify('UI module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local ui = require('qt-assistant.ui')
+    ui.show_project_manager()
 end
 
 -- 构建管理
 function M.build_project(build_type)
-    if M.build_manager then
-        M.build_manager.build_project(build_type)
-    else
-        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local build_manager = require('qt-assistant.build_manager')
+    build_manager.build_project(build_type)
 end
 
 function M.run_project()
-    if M.build_manager then
-        M.build_manager.run_project()
-    else
-        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local build_manager = require('qt-assistant.build_manager')
+    build_manager.run_project()
 end
 
 function M.clean_project()
-    if M.build_manager then
-        M.build_manager.clean_project()
-    else
-        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local build_manager = require('qt-assistant.build_manager')
+    build_manager.clean_project()
 end
 
 function M.show_build_status()
-    if M.build_manager then
-        M.build_manager.show_build_status()
-    else
-        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local build_manager = require('qt-assistant.build_manager')
+    build_manager.show_build_status()
 end
 
 -- 脚本管理
 function M.init_scripts()
-    if M.scripts then
-        M.scripts.init_scripts_directory()
-    else
-        vim.notify('Scripts module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local scripts = require('qt-assistant.scripts')
+    scripts.init_scripts_directory()
 end
 
 function M.run_script(script_name)
-    if M.scripts then
-        M.scripts.run_script(script_name, {in_terminal = true})
-    else
-        vim.notify('Scripts module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local scripts = require('qt-assistant.scripts')
+    scripts.run_script(script_name, {in_terminal = true})
 end
 
 -- UI设计师
 function M.open_designer(ui_file)
-    if M.designer then
-        M.designer.open_designer(ui_file)
-    else
-        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local designer = require('qt-assistant.designer')
+    designer.open_designer(ui_file)
 end
 
 function M.open_designer_current()
-    if M.designer then
-        M.designer.open_designer_current()
-    else
-        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local designer = require('qt-assistant.designer')
+    designer.open_designer_current()
 end
 
 function M.preview_ui(ui_file)
-    if M.designer then
-        M.designer.preview_ui(ui_file)
-    else
-        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local designer = require('qt-assistant.designer')
+    designer.preview_ui(ui_file)
 end
 
 function M.sync_ui(ui_file)
-    if M.designer then
-        M.designer.sync_ui(ui_file)
-    else
-        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local designer = require('qt-assistant.designer') 
+    designer.sync_ui(ui_file)
 end
 
 function M.show_designer_manager()
-    if M.ui then
-        M.ui.show_designer_manager()
-    else
-        vim.notify('UI module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local ui = require('qt-assistant.ui')
+    ui.show_designer_manager()
 end
 
 -- 系统信息
 function M.show_system_info()
-    if M.system then
-        M.system.show_system_info()
-    else
-        vim.notify('System module not loaded. Please call setup() first.', vim.log.levels.ERROR)
-    end
+    local system = require('qt-assistant.system')
+    system.show_system_info()
 end
 
 -- 快捷键帮助
