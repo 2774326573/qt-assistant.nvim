@@ -103,180 +103,48 @@ function M.setup(user_config)
     M.designer = require('qt-assistant.designer')
     M.build_manager = require('qt-assistant.build_manager')
     
-    -- 设置用户命令
-    M.setup_commands()
-    
     -- 初始化模板目录
     M.templates.init(M.config.template_path)
     
-    print("Qt Assistant Plugin loaded successfully!")
+    -- 设置快捷键（如果用户配置了）
+    M.setup_keymaps()
+    
+    vim.notify("Qt Assistant Plugin loaded successfully!", vim.log.levels.INFO)
 end
 
--- 设置用户命令
-function M.setup_commands()
-    -- 创建Qt类
-    vim.api.nvim_create_user_command('QtCreateClass', function(opts)
-        local args = vim.split(opts.args, ' ')
-        local class_name = args[1]
-        local class_type = args[2] or 'widget'
-        local options = {}
+-- 设置快捷键映射
+function M.setup_keymaps()
+    -- 用户可以在配置中启用默认快捷键
+    if M.config.enable_default_keymaps then
+        local map = vim.keymap.set
         
-        -- 解析额外选项
-        for i = 3, #args do
-            local option = args[i]
-            if option:match('^--') then
-                local key = option:sub(3)
-                options[key] = true
-            end
-        end
+        -- 基础操作
+        map('n', '<leader>qc', function() M.show_main_interface() end, { desc = 'Qt Assistant' })
+        map('n', '<leader>qh', '<cmd>help qt-assistant<cr>', { desc = 'Qt Help' })
         
-        M.create_class(class_name, class_type, options)
-    end, {
-        nargs = '+',
-        desc = 'Create Qt class',
-        complete = function(ArgLead, CmdLine, CursorPos)
-            return {'main_window', 'dialog', 'widget', 'model', 'delegate', 'thread', 'utility'}
-        end
-    })
-    
-    -- 创建Qt UI
-    vim.api.nvim_create_user_command('QtCreateUI', function(opts)
-        local args = vim.split(opts.args, ' ')
-        local ui_name = args[1]
-        local ui_type = args[2] or 'widget'
-        M.create_ui(ui_name, ui_type)
-    end, {
-        nargs = '+',
-        desc = 'Create Qt UI file'
-    })
-    
-    -- 创建数据模型
-    vim.api.nvim_create_user_command('QtCreateModel', function(opts)
-        local model_name = opts.args
-        M.create_model(model_name)
-    end, {
-        nargs = 1,
-        desc = 'Create Qt data model'
-    })
-    
-    -- 交互式类创建器
-    vim.api.nvim_create_user_command('QtAssistant', function()
-        M.ui.show_class_creator()
-    end, {
-        nargs = 0,
-        desc = 'Open Qt Assistant interactive interface'
-    })
-    
-    -- 项目脚本管理
-    vim.api.nvim_create_user_command('QtScript', function(opts)
-        local script_name = opts.args
-        M.scripts.run_script(script_name)
-    end, {
-        nargs = 1,
-        desc = 'Run Qt project script',
-        complete = function()
-            return {'build', 'clean', 'run', 'debug', 'test'}
-        end
-    })
-    
-    -- 项目管理命令
-    vim.api.nvim_create_user_command('QtOpenProject', function(opts)
-        local project_path = opts.args ~= "" and opts.args or nil
-        M.project_manager.open_project(project_path)
-    end, {
-        nargs = '?',
-        desc = 'Open Qt project',
-        complete = 'dir'
-    })
-    
-    vim.api.nvim_create_user_command('QtBuildProject', function(opts)
-        local build_type = opts.args ~= "" and opts.args or nil
-        M.build_manager.build_project(build_type)
-    end, {
-        nargs = '?',
-        desc = 'Build Qt project',
-        complete = function()
-            return {'Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel'}
-        end
-    })
-    
-    vim.api.nvim_create_user_command('QtRunProject', function()
-        M.build_manager.run_project()
-    end, {
-        nargs = 0,
-        desc = 'Run Qt project'
-    })
-    
-    vim.api.nvim_create_user_command('QtCleanProject', function()
-        M.build_manager.clean_project()
-    end, {
-        nargs = 0,
-        desc = 'Clean Qt project'
-    })
-    
-    -- UI设计师命令
-    vim.api.nvim_create_user_command('QtOpenDesigner', function(opts)
-        local ui_file = opts.args ~= "" and opts.args or nil
-        M.designer.open_designer(ui_file)
-    end, {
-        nargs = '?',
-        desc = 'Open Qt Designer',
-        complete = 'file'
-    })
-    
-    vim.api.nvim_create_user_command('QtOpenDesignerCurrent', function()
-        M.designer.open_designer_current()
-    end, {
-        nargs = 0,
-        desc = 'Open Qt Designer with current file'
-    })
-    
-    vim.api.nvim_create_user_command('QtPreviewUI', function(opts)
-        local ui_file = opts.args ~= "" and opts.args or nil
-        M.designer.preview_ui(ui_file)
-    end, {
-        nargs = '?',
-        desc = 'Preview UI file',
-        complete = 'file'
-    })
-    
-    vim.api.nvim_create_user_command('QtSyncUI', function(opts)
-        local ui_file = opts.args ~= "" and opts.args or nil
-        M.designer.sync_ui(ui_file)
-    end, {
-        nargs = '?',
-        desc = 'Sync UI file',
-        complete = 'file'
-    })
-    
-    -- 项目模板命令
-    vim.api.nvim_create_user_command('QtNewProject', function(opts)
-        local args = vim.split(opts.args, ' ')
-        local project_name = args[1]
-        local template_type = args[2] or 'widget_app'
-        M.project_manager.new_project(project_name, template_type)
-    end, {
-        nargs = '+',
-        desc = 'Create new Qt project',
-        complete = function(ArgLead, CmdLine, CursorPos)
-            return {'widget_app', 'quick_app', 'console_app', 'library'}
-        end
-    })
-    
-    vim.api.nvim_create_user_command('QtListTemplates', function()
-        M.project_manager.list_templates()
-    end, {
-        nargs = 0,
-        desc = 'List available project templates'
-    })
-    
-    -- 系统信息命令
-    vim.api.nvim_create_user_command('QtSystemInfo', function()
-        M.system.show_system_info()
-    end, {
-        nargs = 0,
-        desc = 'Show system information'
-    })
+        -- 项目管理
+        map('n', '<leader>qpo', function() M.show_project_manager() end, { desc = 'Open Project' })
+        map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
+        
+        -- 构建管理  
+        map('n', '<leader>qb', function() M.build_project() end, { desc = 'Build Project' })
+        map('n', '<leader>qr', function() M.run_project() end, { desc = 'Run Project' })
+        map('n', '<leader>qcl', function() M.clean_project() end, { desc = 'Clean Project' })
+        map('n', '<leader>qbs', function() M.show_build_status() end, { desc = 'Build Status' })
+        
+        -- UI设计师
+        map('n', '<leader>qud', function() M.open_designer() end, { desc = 'Open Designer' })
+        map('n', '<leader>quc', function() M.open_designer_current() end, { desc = 'Designer Current' })
+        map('n', '<leader>qum', function() M.show_designer_manager() end, { desc = 'Designer Manager' })
+        
+        -- 脚本管理
+        map('n', '<leader>qsb', function() M.run_script('build') end, { desc = 'Script Build' })
+        map('n', '<leader>qsr', function() M.run_script('run') end, { desc = 'Script Run' })
+        map('n', '<leader>qsd', function() M.run_script('debug') end, { desc = 'Script Debug' })
+        
+        -- 系统信息
+        map('n', '<leader>qsi', function() M.show_system_info() end, { desc = 'System Info' })
+    end
 end
 
 -- 创建Qt类的主函数
@@ -325,6 +193,216 @@ function M.get_project_info()
         directories = M.config.directories,
         cmake_file = M.config.project_root .. '/CMakeLists.txt'
     }
+end
+
+-- ==================== 接口函数 ====================
+-- 以下函数对应plugin文件中定义的命令
+
+-- 显示主界面
+function M.show_main_interface()
+    if M.ui then
+        M.ui.show_class_creator()
+    else
+        vim.notify('UI module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+-- 项目管理
+function M.open_project(path)
+    if M.project_manager then
+        M.project_manager.open_project(path)
+    else
+        vim.notify('Project manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.new_project(name, type)
+    if M.project_manager then
+        M.project_manager.new_project(name, type)
+    else
+        vim.notify('Project manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.show_project_manager()
+    if M.ui then
+        M.ui.show_project_manager()
+    else
+        vim.notify('UI module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+-- 构建管理
+function M.build_project(build_type)
+    if M.build_manager then
+        M.build_manager.build_project(build_type)
+    else
+        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.run_project()
+    if M.build_manager then
+        M.build_manager.run_project()
+    else
+        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.clean_project()
+    if M.build_manager then
+        M.build_manager.clean_project()
+    else
+        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.show_build_status()
+    if M.build_manager then
+        M.build_manager.show_build_status()
+    else
+        vim.notify('Build manager not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+-- 脚本管理
+function M.init_scripts()
+    if M.scripts then
+        M.scripts.init_scripts_directory()
+    else
+        vim.notify('Scripts module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.run_script(script_name)
+    if M.scripts then
+        M.scripts.run_script(script_name, {in_terminal = true})
+    else
+        vim.notify('Scripts module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+-- UI设计师
+function M.open_designer(ui_file)
+    if M.designer then
+        M.designer.open_designer(ui_file)
+    else
+        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.open_designer_current()
+    if M.designer then
+        M.designer.open_designer_current()
+    else
+        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.preview_ui(ui_file)
+    if M.designer then
+        M.designer.preview_ui(ui_file)
+    else
+        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.sync_ui(ui_file)
+    if M.designer then
+        M.designer.sync_ui(ui_file)
+    else
+        vim.notify('Designer module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+function M.show_designer_manager()
+    if M.ui then
+        M.ui.show_designer_manager()
+    else
+        vim.notify('UI module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+-- 系统信息
+function M.show_system_info()
+    if M.system then
+        M.system.show_system_info()
+    else
+        vim.notify('System module not loaded. Please call setup() first.', vim.log.levels.ERROR)
+    end
+end
+
+-- 快捷键帮助
+function M.show_keymaps()
+    local keymaps = {
+        "=== Qt Assistant Keymaps ===",
+        "",
+        "Basic Commands:",
+        "  :QtAssistant         - Open main interface",
+        "  :QtCreateClass       - Create Qt class",
+        "  :QtCreateUI          - Create UI file",
+        "  :QtCreateModel       - Create data model",
+        "",
+        "Project Management:",
+        "  :QtOpenProject       - Open project",
+        "  :QtNewProject        - Create new project",
+        "  :QtProjectManager    - Project manager interface",
+        "",
+        "Build System:",
+        "  :QtBuildProject      - Build project",
+        "  :QtRunProject        - Run project",
+        "  :QtCleanProject      - Clean project",
+        "  :QtBuildStatus       - Show build status",
+        "",
+        "UI Designer:",
+        "  :QtOpenDesigner      - Open Qt Designer",
+        "  :QtOpenDesignerCurrent - Open Designer for current file",
+        "  :QtPreviewUI         - Preview UI file",
+        "  :QtDesignerManager   - Designer manager interface",
+        "",
+        "Scripts:",
+        "  :QtInitScripts       - Initialize project scripts",
+        "  :QtScript <name>     - Run project script",
+        "",
+        "System:",
+        "  :QtSystemInfo        - Show system information",
+        "  :QtKeymaps          - Show this help",
+        "",
+        "Default Keymaps (if enabled):",
+        "  <leader>qc          - Qt Assistant",
+        "  <leader>qb          - Build Project",
+        "  <leader>qr          - Run Project",
+        "  <leader>qud         - Open Designer",
+    }
+    
+    -- 创建帮助窗口
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, keymaps)
+    
+    local width = 50
+    local height = math.min(#keymaps + 2, 25)
+    
+    local win_config = {
+        relative = 'editor',
+        width = width,
+        height = height,
+        col = math.floor((vim.o.columns - width) / 2),
+        row = math.floor((vim.o.lines - height) / 2),
+        style = 'minimal',
+        border = 'rounded'
+    }
+    
+    local win = vim.api.nvim_open_win(buf, true, win_config)
+    
+    vim.api.nvim_win_set_option(win, 'number', false)
+    vim.api.nvim_win_set_option(win, 'relativenumber', false)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    
+    -- 按q关闭
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '<cmd>close<cr>', {
+        noremap = true,
+        silent = true
+    })
 end
 
 return M
