@@ -312,9 +312,15 @@ function M.new_project(project_name, template_type)
         PROJECT_NAME_UPPER = string.upper(project_name),
         PROJECT_NAME_LOWER = string.lower(project_name),
         CLASS_NAME = M.project_name_to_class_name(project_name),
+        FILE_NAME = "mainwindow",  -- 对于main window类，文件名是mainwindow
+        HEADER_GUARD = "MAINWINDOW_H",
         DATE = os.date('%Y-%m-%d'),
         YEAR = os.date('%Y')
     }
+    
+    -- 初始化模板系统
+    local templates = require('qt-assistant.templates')
+    templates.init()
     
     -- 创建项目文件到合适的目录中
     M.create_project_files(project_path, template_type, template_vars)
@@ -322,14 +328,18 @@ function M.new_project(project_name, template_type)
     vim.notify(string.format("Project '%s' created successfully using %s template", 
                            project_name, template.name), vim.log.levels.INFO)
     
-    -- 询问是否打开项目
-    vim.ui.select({'Yes', 'No'}, {
-        prompt = 'Open the new project?'
-    }, function(choice)
-        if choice == 'Yes' then
-            M.open_project(project_path)
-        end
-    end)
+    -- 询问是否打开项目（只在交互模式下）
+    if (vim.fn.has and vim.fn.has('nvim') == 1) and not vim.g.testing_mode then
+        vim.ui.select({'Yes', 'No'}, {
+            prompt = 'Open the new project?'
+        }, function(choice)
+            if choice == 'Yes' then
+                M.open_project(project_path)
+            end
+        end)
+    else
+        vim.notify("Project created. Use :QtOpenProject to open it.", vim.log.levels.INFO)
+    end
     
     return true
 end
@@ -611,6 +621,12 @@ end
 -- 生成模板文件
 function M.generate_template_file(file_name, template_type, vars)
     local templates = require('qt-assistant.templates')
+    
+    -- 确保模板已初始化
+    if not templates._initialized then
+        templates.init()
+        templates._initialized = true
+    end
     
     -- 根据文件扩展名确定模板类型
     local template_name = nil
@@ -1359,7 +1375,7 @@ function M.quick_search_project()
 end
 
 -- 最近项目管理
-local recent_projects_file = vim.fn.stdpath('data') .. '/qt-assistant-recent-projects.json'
+local recent_projects_file = (vim.fn.stdpath and vim.fn.stdpath('data') or os.getenv('HOME') .. '/.local/share/nvim') .. '/qt-assistant-recent-projects.json'
 
 -- 保存最近项目
 function M.save_recent_project(project_path, project_info)

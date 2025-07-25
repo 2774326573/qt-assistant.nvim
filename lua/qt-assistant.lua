@@ -66,7 +66,7 @@ function M.setup(user_config)
     -- 设置快捷键（如果用户配置了）
     M.setup_keymaps()
     
-    vim.notify("Qt Assistant Plugin loaded successfully!", vim.log.levels.INFO)
+    -- vim.notify("Qt Assistant Plugin loaded successfully!", vim.log.levels.INFO)
 end
 
 -- 获取配置
