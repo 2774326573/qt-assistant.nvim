@@ -174,6 +174,11 @@ vim.api.nvim_create_user_command('QtProjectManager', function()
     require('qt-assistant').show_project_manager()
 end, { desc = 'Open Qt project manager' })
 
+vim.api.nvim_create_user_command('QtSearchProjects', function()
+    ensure_loaded()
+    require('qt-assistant').search_qt_projects()
+end, { desc = 'Search for Qt projects' })
+
 vim.api.nvim_create_user_command('QtDesignerManager', function()
     ensure_loaded()
     require('qt-assistant').show_designer_manager()

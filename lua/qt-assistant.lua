@@ -76,6 +76,7 @@ function M.setup_keymaps()
         -- 项目管理
         map('n', '<leader>qpo', function() M.show_project_manager() end, { desc = 'Open Project' })
         map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
+        map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects' })
         
         -- 构建管理  
         map('n', '<leader>qb', function() M.build_project() end, { desc = 'Build Project' })
@@ -172,6 +173,12 @@ function M.show_project_manager()
     ui.show_project_manager()
 end
 
+-- 智能搜索Qt项目
+function M.search_qt_projects()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.search_and_select_project()
+end
+
 -- 构建管理
 function M.build_project(build_type)
     local build_manager = require('qt-assistant.build_manager')
@@ -251,6 +258,7 @@ function M.show_keymaps()
         "  :QtCreateModel       - Create data model",
         "",
         "Project Management:",
+        "  :QtSearchProjects    - Search for Qt projects",
         "  :QtOpenProject       - Open project",
         "  :QtNewProject        - Create new project",
         "  :QtProjectManager    - Project manager interface",
@@ -285,6 +293,7 @@ function M.show_keymaps()
             "  <leader>qh          - Qt Help",
             "  <leader>qpo         - Open Project",
             "  <leader>qpm         - Project Manager",
+            "  <leader>qps         - Search Qt Projects",
             "  <leader>qb          - Build Project",
             "  <leader>qr          - Run Project",
             "  <leader>qcl         - Clean Project",

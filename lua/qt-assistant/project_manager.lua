@@ -468,4 +468,108 @@ function M.is_qt_project(project_path)
     return #detected_types > 0
 end
 
+-- 智能搜索Qt项目
+function M.search_qt_projects(search_paths, max_depth)
+    search_paths = search_paths or {vim.fn.getcwd(), vim.fn.expand('~')}
+    max_depth = max_depth or 3
+    
+    local found_projects = {}
+    
+    -- 搜索函数
+    local function search_directory(dir, current_depth)
+        if current_depth > max_depth then
+            return
+        end
+        
+        -- 检查当前目录是否是Qt项目
+        local detected_types = M.detect_project_type(dir)
+        if #detected_types > 0 then
+            table.insert(found_projects, {
+                path = dir,
+                name = vim.fn.fnamemodify(dir, ':t'),
+                types = detected_types,
+                primary_type = detected_types[1]
+            })
+        end
+        
+        -- 递归搜索子目录
+        local handle = vim.loop.fs_scandir(dir)
+        if not handle then
+            return
+        end
+        
+        while true do
+            local name, type = vim.loop.fs_scandir_next(handle)
+            if not name then break end
+            
+            if type == "directory" and not name:match("^%.") and 
+               name ~= "build" and name ~= "node_modules" and 
+               name ~= ".git" and name ~= ".vscode" then
+                
+                local sub_path = dir .. "/" .. name
+                search_directory(sub_path, current_depth + 1)
+            end
+        end
+    end
+    
+    -- 在指定路径中搜索
+    for _, search_path in ipairs(search_paths) do
+        if vim.fn.isdirectory(search_path) == 1 then
+            search_directory(search_path, 0)
+        end
+    end
+    
+    -- 按项目名称排序
+    table.sort(found_projects, function(a, b)
+        return a.name < b.name
+    end)
+    
+    return found_projects
+end
+
+-- 显示项目搜索结果
+function M.show_project_search_results(projects)
+    if #projects == 0 then
+        vim.notify("No Qt projects found in search paths", vim.log.levels.WARN)
+        return
+    end
+    
+    local items = {}
+    for i, project in ipairs(projects) do
+        table.insert(items, string.format("%d. %s (%s) - %s", 
+            i, project.name, project.primary_type.name, project.path))
+    end
+    
+    vim.ui.select(items, {
+        prompt = 'Select Qt project to open:',
+        format_item = function(item)
+            return item
+        end
+    }, function(choice, idx)
+        if choice and idx then
+            M.open_project(projects[idx].path)
+        end
+    end)
+end
+
+-- 搜索并选择Qt项目
+function M.search_and_select_project()
+    vim.notify("Searching for Qt projects...", vim.log.levels.INFO)
+    
+    -- 异步搜索以避免阻塞UI
+    vim.defer_fn(function()
+        local search_paths = {
+            vim.fn.getcwd(),
+            vim.fn.expand('~'),
+            vim.fn.expand('~/Projects'),
+            vim.fn.expand('~/Development'),
+            vim.fn.expand('~/code'),
+            '/home/' .. vim.fn.expand('$USER') .. '/QtProjects'
+        }
+        
+        local projects = M.search_qt_projects(search_paths, 2)
+        M.show_project_search_results(projects)
+    end, 100)
+end
+
 return M
