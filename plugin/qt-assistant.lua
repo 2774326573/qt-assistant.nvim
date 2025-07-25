@@ -251,6 +251,26 @@ vim.api.nvim_create_user_command('QtCreateModelClass', function()
     require('qt-assistant').create_class_interactive('model')
 end, { desc = 'Create model class (interactive)' })
 
+vim.api.nvim_create_user_command('QtCreateThread', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('thread')
+end, { desc = 'Create thread class (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateDelegate', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('delegate')
+end, { desc = 'Create delegate class (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateUtility', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('utility')
+end, { desc = 'Create utility class (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateSingleton', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('singleton')
+end, { desc = 'Create singleton class (interactive)' })
+
 -- 设置默认快捷键
 local function setup_keymaps()
     local map = vim.keymap.set

@@ -381,6 +381,708 @@ void {{CLASS_NAME}}::updateDisplay()
 }
 ]]
 
+    -- Thread 头文件模板
+    builtin_templates.thread_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QThread>
+#include <QMutex>
+#include <QWaitCondition>
+#include <QAtomicInt>
+
+class {{CLASS_NAME}} : public QThread
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}();
+
+    // 控制线程
+    void startWork();
+    void stopWork();
+    void pauseWork();
+    void resumeWork();
+    
+    // 获取状态
+    bool isWorking() const;
+    bool isPaused() const;
+
+signals:
+    void workStarted();
+    void workFinished();
+    void workPaused();
+    void workResumed();
+    void progressChanged(int percent);
+    void errorOccurred(const QString &error);
+    void resultReady(const QVariant &result);
+
+protected:
+    void run() override;
+
+private slots:
+    void handleError(const QString &error);
+
+private:
+    void doWork();
+    void cleanup();
+    
+    // 线程状态控制
+    QAtomicInt m_running;
+    QAtomicInt m_paused;
+    QMutex m_mutex;
+    QWaitCondition m_condition;
+    
+    // 工作数据
+    QVariant m_workData;
+    int m_progress;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    -- Thread 源文件模板
+    builtin_templates.thread_source = [[
+#include "{{FILE_NAME}}.h"
+#include <QDebug>
+#include <QThread>
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QThread(parent)
+    , m_running(0)
+    , m_paused(0)
+    , m_progress(0)
+{
+    connect(this, &{{CLASS_NAME}}::errorOccurred, this, &{{CLASS_NAME}}::handleError);
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+    stopWork();
+    if (!wait(3000)) {
+        terminate();
+        wait();
+    }
+}
+
+void {{CLASS_NAME}}::startWork()
+{
+    if (!isRunning()) {
+        m_running = 1;
+        m_paused = 0;
+        start();
+        emit workStarted();
+    }
+}
+
+void {{CLASS_NAME}}::stopWork()
+{
+    m_running = 0;
+    m_paused = 0;
+    
+    // 唤醒可能在等待的线程
+    QMutexLocker locker(&m_mutex);
+    m_condition.wakeAll();
+}
+
+void {{CLASS_NAME}}::pauseWork()
+{
+    if (isRunning() && !isPaused()) {
+        m_paused = 1;
+        emit workPaused();
+    }
+}
+
+void {{CLASS_NAME}}::resumeWork()
+{
+    if (isRunning() && isPaused()) {
+        QMutexLocker locker(&m_mutex);
+        m_paused = 0;
+        m_condition.wakeAll();
+        emit workResumed();
+    }
+}
+
+bool {{CLASS_NAME}}::isWorking() const
+{
+    return m_running.loadAcquire() == 1;
+}
+
+bool {{CLASS_NAME}}::isPaused() const
+{
+    return m_paused.loadAcquire() == 1;
+}
+
+void {{CLASS_NAME}}::run()
+{
+    try {
+        doWork();
+        emit workFinished();
+    } catch (const std::exception &e) {
+        emit errorOccurred(QString::fromStdString(e.what()));
+    } catch (...) {
+        emit errorOccurred("Unknown error occurred in worker thread");
+    }
+    
+    cleanup();
+}
+
+void {{CLASS_NAME}}::doWork()
+{
+    m_progress = 0;
+    emit progressChanged(m_progress);
+    
+    // 主工作循环
+    const int totalSteps = 100;
+    
+    for (int step = 0; step < totalSteps && m_running.loadAcquire(); ++step) {
+        // 检查暂停状态
+        if (m_paused.loadAcquire()) {
+            QMutexLocker locker(&m_mutex);
+            while (m_paused.loadAcquire() && m_running.loadAcquire()) {
+                m_condition.wait(&m_mutex);
+            }
+        }
+        
+        // 如果被停止，退出循环
+        if (!m_running.loadAcquire()) {
+            break;
+        }
+        
+        // TODO: 在这里添加你的实际工作代码
+        // 模拟工作
+        msleep(50); // 模拟50ms的工作
+        
+        // 更新进度
+        m_progress = (step + 1) * 100 / totalSteps;
+        emit progressChanged(m_progress);
+        
+        // 可以在这里发送中间结果
+        if (step % 10 == 0) {
+            emit resultReady(QVariant(QString("Step %1 completed").arg(step)));
+        }
+    }
+    
+    if (m_running.loadAcquire()) {
+        emit progressChanged(100);
+        emit resultReady(QVariant("Work completed successfully"));
+    }
+}
+
+void {{CLASS_NAME}}::cleanup()
+{
+    m_running = 0;
+    m_paused = 0;
+    m_progress = 0;
+}
+
+void {{CLASS_NAME}}::handleError(const QString &error)
+{
+    qDebug() << "{{CLASS_NAME}} error:" << error;
+    stopWork();
+}
+]]
+
+    -- Delegate 头文件模板
+    builtin_templates.delegate_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QStyledItemDelegate>
+#include <QModelIndex>
+#include <QStyleOptionViewItem>
+#include <QWidget>
+
+class {{CLASS_NAME}} : public QStyledItemDelegate
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}();
+
+    // QStyledItemDelegate interface
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    void setEditorData(QWidget *editor, const QModelIndex &index) const override;
+    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
+    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+
+signals:
+    void editingFinished();
+
+private slots:
+    void onEditorFinished();
+
+private:
+    void drawText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+    void drawBackground(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+    QRect textRect(const QStyleOptionViewItem &option, const QModelIndex &index) const;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    -- Delegate 源文件模板
+    builtin_templates.delegate_source = [[
+#include "{{FILE_NAME}}.h"
+#include <QPainter>
+#include <QApplication>
+#include <QLineEdit>
+#include <QSpinBox>
+#include <QComboBox>
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QStyledItemDelegate(parent)
+{
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+}
+
+void {{CLASS_NAME}}::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    if (!index.isValid()) {
+        QStyledItemDelegate::paint(painter, option, index);
+        return;
+    }
+
+    painter->save();
+    
+    // 绘制背景
+    drawBackground(painter, option, index);
+    
+    // 绘制文本
+    drawText(painter, option, index);
+    
+    painter->restore();
+}
+
+QSize {{CLASS_NAME}}::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    if (!index.isValid()) {
+        return QStyledItemDelegate::sizeHint(option, index);
+    }
+    
+    QSize size = QStyledItemDelegate::sizeHint(option, index);
+    // 可以根据需要调整大小
+    size.setHeight(qMax(size.height(), 25));
+    
+    return size;
+}
+
+QWidget *{{CLASS_NAME}}::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(option)
+    
+    if (!index.isValid()) {
+        return nullptr;
+    }
+    
+    // 根据数据类型创建不同的编辑器
+    QVariant data = index.data(Qt::EditRole);
+    
+    switch (data.type()) {
+    case QVariant::Int:
+    case QVariant::Double: {
+        QSpinBox *editor = new QSpinBox(parent);
+        editor->setRange(-999999, 999999);
+        connect(editor, QOverload<int>::of(&QSpinBox::valueChanged), this, &{{CLASS_NAME}}::onEditorFinished);
+        return editor;
+    }
+    case QVariant::String:
+    default: {
+        QLineEdit *editor = new QLineEdit(parent);
+        connect(editor, &QLineEdit::editingFinished, this, &{{CLASS_NAME}}::onEditorFinished);
+        return editor;
+    }
+    }
+}
+
+void {{CLASS_NAME}}::setEditorData(QWidget *editor, const QModelIndex &index) const
+{
+    if (!editor || !index.isValid()) {
+        return;
+    }
+    
+    QVariant data = index.data(Qt::EditRole);
+    
+    if (QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor)) {
+        lineEdit->setText(data.toString());
+    } else if (QSpinBox *spinBox = qobject_cast<QSpinBox *>(editor)) {
+        spinBox->setValue(data.toInt());
+    }
+}
+
+void {{CLASS_NAME}}::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const
+{
+    if (!editor || !model || !index.isValid()) {
+        return;
+    }
+    
+    QVariant data;
+    
+    if (QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor)) {
+        data = lineEdit->text();
+    } else if (QSpinBox *spinBox = qobject_cast<QSpinBox *>(editor)) {
+        data = spinBox->value();
+    }
+    
+    if (data.isValid()) {
+        model->setData(index, data, Qt::EditRole);
+    }
+}
+
+void {{CLASS_NAME}}::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+    
+    if (editor) {
+        editor->setGeometry(option.rect);
+    }
+}
+
+void {{CLASS_NAME}}::onEditorFinished()
+{
+    emit editingFinished();
+}
+
+void {{CLASS_NAME}}::drawText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    QString text = index.data(Qt::DisplayRole).toString();
+    QRect rect = textRect(option, index);
+    
+    painter->setPen(option.palette.color(QPalette::Text));
+    painter->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, text);
+}
+
+void {{CLASS_NAME}}::drawBackground(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+    
+    if (option.state & QStyle::State_Selected) {
+        painter->fillRect(option.rect, option.palette.highlight());
+    } else {
+        painter->fillRect(option.rect, option.palette.base());
+    }
+}
+
+QRect {{CLASS_NAME}}::textRect(const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+    
+    QRect rect = option.rect;
+    rect.adjust(5, 2, -5, -2); // 添加一些边距
+    
+    return rect;
+}
+]]
+
+    -- Utility 头文件模板
+    builtin_templates.utility_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QObject>
+#include <QString>
+#include <QVariant>
+
+class {{CLASS_NAME}} : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}();
+
+    // 静态工具函数
+    static QString formatString(const QString &format, const QVariantList &args);
+    static QVariant convertValue(const QVariant &value, QVariant::Type targetType);
+    static bool validateInput(const QString &input, const QString &pattern);
+    
+    // 实例方法
+    void initialize();
+    void cleanup();
+    bool isInitialized() const;
+
+signals:
+    void initialized();
+    void cleanedUp();
+    void errorOccurred(const QString &error);
+
+public slots:
+    void reset();
+
+private:
+    void setupUtility();
+    
+    bool m_initialized;
+    QVariantMap m_settings;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    -- Utility 源文件模板
+    builtin_templates.utility_source = [[
+#include "{{FILE_NAME}}.h"
+#include <QRegularExpression>
+#include <QDebug>
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QObject(parent)
+    , m_initialized(false)
+{
+    setupUtility();
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+    cleanup();
+}
+
+QString {{CLASS_NAME}}::formatString(const QString &format, const QVariantList &args)
+{
+    QString result = format;
+    
+    for (int i = 0; i < args.size(); ++i) {
+        QString placeholder = QString("{%1}").arg(i);
+        result.replace(placeholder, args[i].toString());
+    }
+    
+    return result;
+}
+
+QVariant {{CLASS_NAME}}::convertValue(const QVariant &value, QVariant::Type targetType)
+{
+    if (value.type() == targetType) {
+        return value;
+    }
+    
+    QVariant converted = value;
+    if (converted.convert(targetType)) {
+        return converted;
+    }
+    
+    return QVariant();
+}
+
+bool {{CLASS_NAME}}::validateInput(const QString &input, const QString &pattern)
+{
+    QRegularExpression regex(pattern);
+    return regex.match(input).hasMatch();
+}
+
+void {{CLASS_NAME}}::initialize()
+{
+    if (m_initialized) {
+        return;
+    }
+    
+    // TODO: 添加初始化逻辑
+    m_settings.clear();
+    m_settings["version"] = "1.0.0";
+    m_settings["created"] = QDateTime::currentDateTime();
+    
+    m_initialized = true;
+    emit initialized();
+}
+
+void {{CLASS_NAME}}::cleanup()
+{
+    if (!m_initialized) {
+        return;
+    }
+    
+    // TODO: 添加清理逻辑
+    m_settings.clear();
+    
+    m_initialized = false;
+    emit cleanedUp();
+}
+
+bool {{CLASS_NAME}}::isInitialized() const
+{
+    return m_initialized;
+}
+
+void {{CLASS_NAME}}::reset()
+{
+    cleanup();
+    initialize();
+}
+
+void {{CLASS_NAME}}::setupUtility()
+{
+    // TODO: 添加设置逻辑
+    qDebug() << "Setting up" << metaObject()->className();
+}
+]]
+
+    -- Singleton 头文件模板
+    builtin_templates.singleton_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QObject>
+#include <QMutex>
+
+class {{CLASS_NAME}} : public QObject
+{
+    Q_OBJECT
+
+public:
+    // 获取单例实例
+    static {{CLASS_NAME}} *instance();
+    
+    // 删除拷贝构造函数和赋值操作符
+    {{CLASS_NAME}}(const {{CLASS_NAME}} &) = delete;
+    {{CLASS_NAME}} &operator=(const {{CLASS_NAME}} &) = delete;
+    
+    // 单例功能接口
+    void initialize();
+    void shutdown();
+    bool isInitialized() const;
+    
+    // 业务功能方法
+    void doSomething();
+    QVariant getValue(const QString &key) const;
+    void setValue(const QString &key, const QVariant &value);
+
+signals:
+    void initialized();
+    void shutdownCompleted();
+    void valueChanged(const QString &key, const QVariant &value);
+
+private:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}();
+    
+    void setupSingleton();
+    
+    static {{CLASS_NAME}} *s_instance;
+    static QMutex s_mutex;
+    
+    bool m_initialized;
+    QVariantMap m_data;
+    QMutex m_dataMutex;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    -- Singleton 源文件模板
+    builtin_templates.singleton_source = [[
+#include "{{FILE_NAME}}.h"
+#include <QMutexLocker>
+#include <QDebug>
+
+// 静态成员定义
+{{CLASS_NAME}} *{{CLASS_NAME}}::s_instance = nullptr;
+QMutex {{CLASS_NAME}}::s_mutex;
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QObject(parent)
+    , m_initialized(false)
+{
+    setupSingleton();
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+    shutdown();
+}
+
+{{CLASS_NAME}} *{{CLASS_NAME}}::instance()
+{
+    // 双检查锁定模式
+    if (!s_instance) {
+        QMutexLocker locker(&s_mutex);
+        if (!s_instance) {
+            s_instance = new {{CLASS_NAME}}();
+        }
+    }
+    return s_instance;
+}
+
+void {{CLASS_NAME}}::initialize()
+{
+    if (m_initialized) {
+        return;
+    }
+    
+    QMutexLocker locker(&m_dataMutex);
+    
+    // TODO: 添加初始化逻辑
+    m_data.clear();
+    m_data["initialized_at"] = QDateTime::currentDateTime();
+    m_data["version"] = "1.0.0";
+    
+    m_initialized = true;
+    emit initialized();
+    
+    qDebug() << "{{CLASS_NAME}} initialized";
+}
+
+void {{CLASS_NAME}}::shutdown()
+{
+    if (!m_initialized) {
+        return;
+    }
+    
+    QMutexLocker locker(&m_dataMutex);
+    
+    // TODO: 添加清理逻辑
+    m_data.clear();
+    
+    m_initialized = false;
+    emit shutdownCompleted();
+    
+    qDebug() << "{{CLASS_NAME}} shutdown completed";
+}
+
+bool {{CLASS_NAME}}::isInitialized() const
+{
+    return m_initialized;
+}
+
+void {{CLASS_NAME}}::doSomething()
+{
+    if (!m_initialized) {
+        qWarning() << "{{CLASS_NAME}} not initialized";
+        return;
+    }
+    
+    // TODO: 实现业务逻辑
+    qDebug() << "{{CLASS_NAME}} doing something...";
+}
+
+QVariant {{CLASS_NAME}}::getValue(const QString &key) const
+{
+    QMutexLocker locker(&m_dataMutex);
+    return m_data.value(key);
+}
+
+void {{CLASS_NAME}}::setValue(const QString &key, const QVariant &value)
+{
+    {
+        QMutexLocker locker(&m_dataMutex);
+        m_data[key] = value;
+    }
+    
+    emit valueChanged(key, value);
+}
+
+void {{CLASS_NAME}}::setupSingleton()
+{
+    // TODO: 添加单例设置逻辑
+    qDebug() << "Setting up singleton" << metaObject()->className();
+}
+]]
+
     -- 添加更多模板...
     M.add_model_templates()
     M.add_ui_templates()
