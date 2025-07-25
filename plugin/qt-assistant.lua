@@ -189,6 +189,11 @@ vim.api.nvim_create_user_command('QtRecentProjects', function()
     require('qt-assistant').show_recent_projects()
 end, { desc = 'Show recent Qt projects' })
 
+vim.api.nvim_create_user_command('QtSmartSelector', function()
+    ensure_loaded()
+    require('qt-assistant').smart_project_selector()
+end, { desc = 'Smart project selector (all-in-one)' })
+
 vim.api.nvim_create_user_command('QtDesignerManager', function()
     ensure_loaded()
     require('qt-assistant').show_designer_manager()

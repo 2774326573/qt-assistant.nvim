@@ -412,15 +412,19 @@ function M.show_project_manager()
     end
     
     table.insert(menu_items, "Actions:")
-    table.insert(menu_items, "1. Search for Qt projects")
-    table.insert(menu_items, "2. Open existing project (manual)")
-    table.insert(menu_items, "3. Create new project")
-    table.insert(menu_items, "4. Show project templates")
-    table.insert(menu_items, "5. Build project")
-    table.insert(menu_items, "6. Run project")
-    table.insert(menu_items, "7. Clean project")
+    table.insert(menu_items, "1. Smart Project Selector (All-in-One)")
+    table.insert(menu_items, "2. Create new project")
+    table.insert(menu_items, "3. Show project templates")
+    table.insert(menu_items, "4. Build project")
+    table.insert(menu_items, "5. Run project")
+    table.insert(menu_items, "6. Clean project")
     table.insert(menu_items, "")
-    table.insert(menu_items, "Press number to select, 'q' to quit")
+    table.insert(menu_items, "Advanced Options:")
+    table.insert(menu_items, "s - Search Qt projects")
+    table.insert(menu_items, "r - Recent projects")
+    table.insert(menu_items, "m - Manual path input")
+    table.insert(menu_items, "")
+    table.insert(menu_items, "Press number/letter to select, 'q' to quit")
     
     -- 创建浮动窗口
     local buf = vim.api.nvim_create_buf(false, true)
@@ -458,17 +462,9 @@ function M.show_project_manager()
     local actions = {
         ['1'] = function()
             close_window()
-            project_manager.search_and_select_project()
+            project_manager.show_smart_project_selector()
         end,
         ['2'] = function()
-            close_window()
-            vim.ui.input({prompt = 'Project path: ', default = vim.fn.getcwd(), completion = 'dir'}, function(path)
-                if path then
-                    project_manager.open_project(path)
-                end
-            end)
-        end,
-        ['3'] = function()
             close_window()
             vim.ui.input({prompt = 'Project name: '}, function(name)
                 if name then
@@ -482,24 +478,41 @@ function M.show_project_manager()
                 end
             end)
         end,
-        ['4'] = function()
+        ['3'] = function()
             close_window()
             project_manager.list_templates()
         end,
-        ['5'] = function()
+        ['4'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.build_project()
         end,
-        ['6'] = function()
+        ['5'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.run_project()
         end,
-        ['7'] = function()
+        ['6'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.clean_project()
+        end,
+        -- 高级选项
+        ['s'] = function()
+            close_window()
+            project_manager.search_and_select_project()
+        end,
+        ['r'] = function()
+            close_window()
+            project_manager.show_recent_projects()
+        end,
+        ['m'] = function()
+            close_window()
+            vim.ui.input({prompt = 'Project path: ', default = vim.fn.getcwd(), completion = 'dir'}, function(path)
+                if path then
+                    project_manager.open_project(path)
+                end
+            end)
         end
     }
     

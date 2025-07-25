@@ -747,4 +747,179 @@ function M.open_project(project_path)
     return success
 end
 
+-- 智能项目选择器 - 整合所有项目搜索和打开功能
+function M.show_smart_project_selector()
+    local all_projects = {}
+    local sections = {}
+    
+    -- 1. 检查当前目录是否是Qt项目
+    local current_dir = vim.fn.getcwd()
+    if M.is_qt_project(current_dir) then
+        table.insert(sections, {
+            title = "📂 Current Directory",
+            projects = {{
+                path = current_dir,
+                name = vim.fn.fnamemodify(current_dir, ':t'),
+                display = string.format("📂 %s (Current Directory)", vim.fn.fnamemodify(current_dir, ':t')),
+                priority = 1
+            }}
+        })
+    end
+    
+    -- 2. 加载最近项目
+    local recent_projects = M.load_recent_projects()
+    if #recent_projects > 0 then
+        local recent_items = {}
+        for i, project in ipairs(recent_projects) do
+            if project.path ~= current_dir then -- 避免重复显示当前目录
+                local time_str = os.date('%m-%d %H:%M', project.last_opened)
+                table.insert(recent_items, {
+                    path = project.path,
+                    name = project.name,
+                    display = string.format("🕒 %s (%s) [%s]", project.name, project.type, time_str),
+                    priority = 2
+                })
+            end
+        end
+        if #recent_items > 0 then
+            table.insert(sections, {
+                title = "🕒 Recent Projects",
+                projects = recent_items
+            })
+        end
+    end
+    
+    -- 3. 搜索附近的Qt项目
+    vim.notify("Searching for Qt projects...", vim.log.levels.INFO)
+    
+    -- 异步搜索
+    vim.defer_fn(function()
+        local search_paths = {
+            vim.fn.expand('~'),
+            vim.fn.expand('~/Projects'),
+            vim.fn.expand('~/Development'), 
+            vim.fn.expand('~/code'),
+            vim.fn.expand('~/workspace'),
+            vim.fn.expand('~/Documents')
+        }
+        
+        local found_projects = M.search_qt_projects(search_paths, 2)
+        
+        -- 过滤掉已显示的项目
+        local existing_paths = {}
+        for _, section in ipairs(sections) do
+            for _, proj in ipairs(section.projects) do
+                existing_paths[proj.path] = true
+            end
+        end
+        
+        local new_projects = {}
+        for _, project in ipairs(found_projects) do
+            if not existing_paths[project.path] then
+                table.insert(new_projects, {
+                    path = project.path,
+                    name = project.name,
+                    display = string.format("🔍 %s (%s)", project.name, project.primary_type.name),
+                    priority = 3
+                })
+            end
+        end
+        
+        if #new_projects > 0 then
+            table.insert(sections, {
+                title = "🔍 Found Projects",
+                projects = new_projects
+            })
+        end
+        
+        -- 4. 添加手动选择选项
+        table.insert(sections, {
+            title = "📁 Manual Selection",
+            projects = {{
+                path = "MANUAL_SELECT",
+                name = "Browse...",
+                display = "📁 Browse for project directory...",
+                priority = 4
+            }}
+        })
+        
+        -- 显示统一选择界面
+        M.display_unified_project_selector(sections)
+    end, 100)
+end
+
+-- 显示统一的项目选择界面
+function M.display_unified_project_selector(sections)
+    local items = {}
+    local project_map = {}
+    
+    -- 构建选择列表
+    for _, section in ipairs(sections) do
+        if #section.projects > 0 then
+            table.insert(items, "")
+            table.insert(items, section.title .. ":")
+            table.insert(items, string.rep("─", 50))
+            
+            for _, project in ipairs(section.projects) do
+                table.insert(items, project.display)
+                project_map[#items] = project
+            end
+        end
+    end
+    
+    if #items == 0 then
+        vim.notify("No Qt projects found", vim.log.levels.WARN)
+        return
+    end
+    
+    -- 检查是否只有一个真正的项目选项（排除分隔线和标题）
+    local real_projects = {}
+    for _, project in pairs(project_map) do
+        if project.path ~= "MANUAL_SELECT" then
+            table.insert(real_projects, project)
+        end
+    end
+    
+    -- 如果只有一个项目，直接打开
+    if #real_projects == 1 then
+        local project = real_projects[1]
+        vim.notify(string.format("Opening: %s", project.name), vim.log.levels.INFO)
+        M.open_project(project.path)
+        return
+    end
+    
+    -- 显示选择界面
+    vim.ui.select(items, {
+        prompt = 'Select Qt project to open:',
+        format_item = function(item)
+            return item
+        end
+    }, function(choice, idx)
+        if not choice or not idx then
+            return
+        end
+        
+        local selected_project = project_map[idx]
+        if not selected_project then
+            return
+        end
+        
+        if selected_project.path == "MANUAL_SELECT" then
+            -- 手动选择目录
+            vim.ui.input({
+                prompt = 'Project path: ',
+                default = vim.fn.getcwd(),
+                completion = 'dir'
+            }, function(path)
+                if path then
+                    M.open_project(path)
+                end
+            end)
+        else
+            -- 打开选中的项目
+            M.open_project(selected_project.path)
+        end
+    end)
+end
+
 return M

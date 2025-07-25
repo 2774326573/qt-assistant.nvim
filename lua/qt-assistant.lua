@@ -74,6 +74,7 @@ function M.setup_keymaps()
         map('n', '<leader>qh', '<cmd>help qt-assistant<cr>', { desc = 'Qt Help' })
         
         -- 项目管理
+        map('n', '<leader>qp', function() M.smart_project_selector() end, { desc = 'Smart Project Selector' })
         map('n', '<leader>qpo', function() M.show_project_manager() end, { desc = 'Open Project' })
         map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
         map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects' })
@@ -193,6 +194,12 @@ function M.show_recent_projects()
     project_manager.show_recent_projects()
 end
 
+-- 智能项目选择器（整合所有功能）
+function M.smart_project_selector()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.show_smart_project_selector()
+end
+
 -- 构建管理
 function M.build_project(build_type)
     local build_manager = require('qt-assistant.build_manager')
@@ -272,6 +279,7 @@ function M.show_keymaps()
         "  :QtCreateModel       - Create data model",
         "",
         "Project Management:",
+        "  :QtSmartSelector     - Smart project selector (all-in-one)",
         "  :QtSearchProjects    - Search for Qt projects",
         "  :QtQuickSearch       - Quick search (current dir first)",
         "  :QtRecentProjects    - Show recent projects",
@@ -307,6 +315,7 @@ function M.show_keymaps()
             "Default Keymaps (ENABLED):",
             "  <leader>qc          - Qt Assistant",
             "  <leader>qh          - Qt Help",
+            "  <leader>qp          - Smart Project Selector (⭐ MAIN)",
             "  <leader>qpo         - Open Project",
             "  <leader>qpm         - Project Manager",
             "  <leader>qps         - Search Qt Projects",
