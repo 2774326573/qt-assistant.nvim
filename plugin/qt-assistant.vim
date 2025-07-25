@@ -21,7 +21,15 @@ endfunction
 command! -nargs=+ -complete=customlist,s:CompleteClassTypes QtCreateClass call s:LoadQtAssistant() | lua require('qt-assistant').create_class(<f-args>)
 command! -nargs=+ QtCreateUI call s:LoadQtAssistant() | lua require('qt-assistant').create_ui_class(<f-args>)
 command! -nargs=1 QtCreateModel call s:LoadQtAssistant() | lua require('qt-assistant').create_model_class(<f-args>)
-command! QtAssistant call s:LoadQtAssistant() | lua require('qt-assistant.ui').show_class_creator()
+command! QtAssistant call s:LoadQtAssistant() | lua require('qt-assistant').show_main_interface()
+
+" 便捷的无参数类创建命令（交互式）
+command! QtClassCreator call s:LoadQtAssistant() | lua require('qt-assistant').show_main_interface()
+command! QtQuickClass call s:LoadQtAssistant() | lua require('qt-assistant').quick_create_class()
+command! QtCreateMainWindow call s:LoadQtAssistant() | lua require('qt-assistant').create_class_interactive('main_window')
+command! QtCreateDialog call s:LoadQtAssistant() | lua require('qt-assistant').create_class_interactive('dialog')
+command! QtCreateWidget call s:LoadQtAssistant() | lua require('qt-assistant').create_class_interactive('widget')
+command! QtCreateModelClass call s:LoadQtAssistant() | lua require('qt-assistant').create_class_interactive('model')
 command! -nargs=1 -complete=customlist,s:CompleteScriptNames QtScript call s:LoadQtAssistant() | lua require('qt-assistant.scripts').run_script(<f-args>)
 command! QtScriptManager call s:LoadQtAssistant() | lua require('qt-assistant.ui').show_script_manager()
 command! QtInitScripts call s:LoadQtAssistant() | lua require('qt-assistant.scripts').init_scripts_directory()
@@ -112,11 +120,12 @@ if get(g:, 'qt_assistant_setup_keymaps', 1)
     nnoremap <leader>qum :QtDesignerManager<CR>
     
     " === 快速类创建快捷键 ===
-    " 常用类类型快捷创建
-    nnoremap <leader>qcw :QtCreateClass 
-    nnoremap <leader>qcd :QtCreateClass 
-    nnoremap <leader>qcv :QtCreateClass 
-    nnoremap <leader>qcm :QtCreateModel 
+    " 常用类类型快捷创建（交互式）
+    nnoremap <leader>qcc :QtQuickClass<CR>
+    nnoremap <leader>qcw :QtCreateMainWindow<CR>
+    nnoremap <leader>qcd :QtCreateDialog<CR>
+    nnoremap <leader>qcv :QtCreateWidget<CR>
+    nnoremap <leader>qcm :QtCreateModelClass<CR> 
     
     " === 一键操作快捷键 ===
     " 常用组合操作
@@ -164,10 +173,11 @@ function! s:ShowKeymaps()
         \ "  <leader>qum - Designer manager",
         \ "",
         \ "Quick Class Creation:",
-        \ "  <leader>qcw - Create widget (need to complete)",
-        \ "  <leader>qcd - Create dialog (need to complete)",
-        \ "  <leader>qcv - Create view (need to complete)",
-        \ "  <leader>qcm - Create model (need to complete)",
+        \ "  <leader>qcc - Quick class creator (choose type)",
+        \ "  <leader>qcw - Create Main Window (interactive)",
+        \ "  <leader>qcd - Create Dialog (interactive)",
+        \ "  <leader>qcv - Create Widget (interactive)",
+        \ "  <leader>qcm - Create Model (interactive)",
         \ "",
         \ "Combo Operations:",
         \ "  <leader>qbr - Build and run",

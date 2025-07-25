@@ -176,6 +176,45 @@ function M.show_main_interface()
     ui.show_class_creator()
 end
 
+-- 交互式类创建函数
+function M.create_class_interactive(class_type)
+    -- 提示用户输入类名
+    local class_name = vim.fn.input('Enter class name: ')
+    if class_name and class_name ~= '' then
+        M.create_class(class_name, class_type, {})
+    else
+        vim.notify('Class creation cancelled', vim.log.levels.WARN)
+    end
+end
+
+-- 快速类创建（显示类型选择器）
+function M.quick_create_class()
+    local class_types = {
+        { key = '1', name = 'Main Window', type = 'main_window' },
+        { key = '2', name = 'Dialog', type = 'dialog' },
+        { key = '3', name = 'Widget', type = 'widget' },
+        { key = '4', name = 'Model', type = 'model' },
+        { key = '5', name = 'Delegate', type = 'delegate' },
+        { key = '6', name = 'Thread', type = 'thread' },
+        { key = '7', name = 'Utility', type = 'utility' },
+        { key = '8', name = 'Singleton', type = 'singleton' }
+    }
+    
+    local choices = {}
+    for _, item in ipairs(class_types) do
+        table.insert(choices, string.format("%s. %s", item.key, item.name))
+    end
+    
+    local choice = vim.fn.inputlist(vim.list_extend({'Select class type:'}, choices))
+    
+    if choice >= 1 and choice <= #class_types then
+        local selected_type = class_types[choice].type
+        M.create_class_interactive(selected_type)
+    else
+        vim.notify('Class creation cancelled', vim.log.levels.WARN)
+    end
+end
+
 -- 项目管理
 function M.open_project(path)
     local project_manager = require('qt-assistant.project_manager')
@@ -303,9 +342,12 @@ function M.show_keymaps()
         "",
         "Basic Commands:",
         "  :QtAssistant         - Open main interface",
-        "  :QtCreateClass       - Create Qt class",
-        "  :QtCreateUI          - Create UI file",
-        "  :QtCreateModel       - Create data model",
+        "  :QtQuickClass        - Quick class creator (interactive)",
+        "  :QtCreateClass       - Create Qt class (with args)",
+        "  :QtCreateMainWindow  - Create main window (interactive)",
+        "  :QtCreateDialog      - Create dialog (interactive)",
+        "  :QtCreateWidget      - Create widget (interactive)",
+        "  :QtCreateModelClass  - Create model (interactive)",
         "",
         "Project Management:",
         "  :QtSmartSelector     - Auto open Qt project (smart & fast)",
@@ -348,6 +390,13 @@ function M.show_keymaps()
             "Basic:",
             "  <leader>qc          - Qt Assistant",
             "  <leader>qh          - Qt Help",
+            "",
+            "Quick Class Creation:",
+            "  <leader>qcc         - Quick Class Creator (choose type)",
+            "  <leader>qcw         - Create Main Window",
+            "  <leader>qcd         - Create Dialog",
+            "  <leader>qcv         - Create Widget",
+            "  <leader>qcm         - Create Model",
             "",
             "Project Core:",
             "  <leader>qpo         - Smart Open Project (⭐ Auto)",
