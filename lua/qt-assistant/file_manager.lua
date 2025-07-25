@@ -5,7 +5,24 @@ local M = {}
 
 -- 获取插件配置
 local function get_config()
-    return require('qt-assistant.config').get()
+    -- 安全地获取配置，避免循环依赖
+    local ok, config_module = pcall(require, 'qt-assistant.config')
+    if ok then
+        return config_module.get()
+    else
+        -- 返回默认配置
+        return {
+            project_root = vim.fn.getcwd(),
+            directories = {
+                source = "src",
+                include = "include", 
+                ui = "ui",
+                resource = "resource",
+                scripts = "scripts"
+            },
+            naming_convention = "snake_case"
+        }
+    end
 end
 
 -- 类名转换为文件名

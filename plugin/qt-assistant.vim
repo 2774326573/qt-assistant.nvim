@@ -19,8 +19,8 @@ endfunction
 
 " 注册命令
 command! -nargs=+ -complete=customlist,s:CompleteClassTypes QtCreateClass call s:LoadQtAssistant() | lua require('qt-assistant').create_class(<f-args>)
-command! -nargs=+ QtCreateUI call s:LoadQtAssistant() | lua require('qt-assistant').create_ui(<f-args>)
-command! -nargs=1 QtCreateModel call s:LoadQtAssistant() | lua require('qt-assistant').create_model(<f-args>)
+command! -nargs=+ QtCreateUI call s:LoadQtAssistant() | lua require('qt-assistant').create_ui_class(<f-args>)
+command! -nargs=1 QtCreateModel call s:LoadQtAssistant() | lua require('qt-assistant').create_model_class(<f-args>)
 command! QtAssistant call s:LoadQtAssistant() | lua require('qt-assistant.ui').show_class_creator()
 command! -nargs=1 -complete=customlist,s:CompleteScriptNames QtScript call s:LoadQtAssistant() | lua require('qt-assistant.scripts').run_script(<f-args>)
 command! QtScriptManager call s:LoadQtAssistant() | lua require('qt-assistant.ui').show_script_manager()
@@ -32,6 +32,12 @@ command! -nargs=? -complete=dir QtOpenProject call s:LoadQtAssistant() | lua req
 command! -nargs=+ -complete=customlist,s:CompleteProjectTemplates QtNewProject call s:LoadQtAssistant() | lua require('qt-assistant.project_manager').new_project(<f-args>)
 command! QtListTemplates call s:LoadQtAssistant() | lua require('qt-assistant.project_manager').list_templates()
 command! QtProjectManager call s:LoadQtAssistant() | lua require('qt-assistant.ui').show_project_manager()
+command! QtSearchProjects call s:LoadQtAssistant() | lua require('qt-assistant').search_qt_projects()
+command! QtRecentProjects call s:LoadQtAssistant() | lua require('qt-assistant').show_recent_projects()
+command! QtSmartSelector call s:LoadQtAssistant() | lua require('qt-assistant').smart_project_selector()
+command! QtChooseProject call s:LoadQtAssistant() | lua require('qt-assistant').smart_project_selector_with_choice()
+command! QtQuickSwitcher call s:LoadQtAssistant() | lua require('qt-assistant').quick_project_switcher()
+command! QtGlobalSearch call s:LoadQtAssistant() | lua require('qt-assistant').global_search_projects()
 
 " 构建管理命令
 command! -nargs=? -complete=customlist,s:CompleteBuildTypes QtBuildProject call s:LoadQtAssistant() | lua require('qt-assistant.build_manager').build_project(<f-args>)
@@ -45,6 +51,10 @@ command! QtOpenDesignerCurrent call s:LoadQtAssistant() | lua require('qt-assist
 command! -nargs=? -complete=file QtPreviewUI call s:LoadQtAssistant() | lua require('qt-assistant.designer').preview_ui(<f-args>)
 command! -nargs=? -complete=file QtSyncUI call s:LoadQtAssistant() | lua require('qt-assistant.designer').sync_ui(<f-args>)
 command! QtDesignerManager call s:LoadQtAssistant() | lua require('qt-assistant.ui').show_designer_manager()
+
+" 系统信息和帮助命令
+command! QtSystemInfo call s:LoadQtAssistant() | lua require('qt-assistant').show_system_info()
+command! QtKeymapsLua call s:LoadQtAssistant() | lua require('qt-assistant').show_keymaps()
 
 " 命令补全函数
 function! s:CompleteClassTypes(ArgLead, CmdLine, CursorPos)

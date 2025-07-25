@@ -44,7 +44,9 @@ function M.create_qt_class(class_name, class_type, options)
     end
     
     -- 更新CMakeLists.txt（如果启用）
-    if require('qt-assistant.config').get().auto_update_cmake then
+    local ok, config_module = pcall(require, 'qt-assistant.config')
+    local auto_update = ok and config_module.get().auto_update_cmake
+    if auto_update then
         cmake.add_source_files(files)
     end
     
