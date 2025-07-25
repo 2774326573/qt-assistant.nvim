@@ -747,68 +747,387 @@ function M.open_project(project_path)
     return success
 end
 
--- 智能项目选择器 - 整合所有项目搜索和打开功能
+-- 🚀 优化版智能项目选择器
 function M.show_smart_project_selector()
-    -- 1. 首先检查当前目录是否是Qt项目
     local current_dir = vim.fn.getcwd()
+    
+    -- 显示搜索进度动画
+    local progress_handle = M._show_search_progress()
+    
+    -- 1. 立即检查当前目录（最快）
     if M.is_qt_project(current_dir) then
-        vim.notify(string.format("Opening current Qt project: %s", vim.fn.fnamemodify(current_dir, ':t')), vim.log.levels.INFO)
+        M._hide_search_progress(progress_handle)
+        vim.notify(string.format("✅ Opening current Qt project: %s", vim.fn.fnamemodify(current_dir, ':t')), vim.log.levels.INFO)
         M.open_project(current_dir)
         return
     end
     
-    -- 2. 检查最近项目，如果只有一个，直接打开
-    local recent_projects = M.load_recent_projects()
-    if #recent_projects == 1 then
-        local project = recent_projects[1]
-        vim.notify(string.format("Opening recent project: %s", project.name), vim.log.levels.INFO)
-        M.open_project(project.path)
-        return
-    end
-    
-    -- 3. 如果有多个最近项目，优先选择最近的一个
-    if #recent_projects > 1 then
-        local latest_project = recent_projects[1] -- 最近的项目
-        vim.notify(string.format("Opening most recent project: %s", latest_project.name), vim.log.levels.INFO)
-        M.open_project(latest_project.path)
-        return
-    end
-    
-    -- 4. 如果没有最近项目，搜索并直接打开找到的第一个项目
-    vim.notify("No recent projects, searching for Qt projects...", vim.log.levels.INFO)
-    
+    -- 2. 异步执行智能搜索策略
     vim.defer_fn(function()
-        local search_paths = {
-            current_dir,  -- 先搜索当前目录的子目录
-            vim.fn.expand('~'),
-            vim.fn.expand('~/Projects'),
-            vim.fn.expand('~/Development'), 
-            vim.fn.expand('~/code'),
-            vim.fn.expand('~/workspace'),
-            vim.fn.expand('~/Documents')
-        }
+        M._execute_smart_search_strategy(current_dir, progress_handle)
+    end, 50)
+end
+
+-- 执行智能搜索策略
+function M._execute_smart_search_strategy(current_dir, progress_handle)
+    -- 阶段1: 检查最近项目（缓存，很快）
+    local recent_projects = M.load_recent_projects()
+    local valid_recent = {}
+    
+    for _, project in ipairs(recent_projects) do
+        if vim.fn.isdirectory(project.path) == 1 and project.path ~= current_dir then
+            table.insert(valid_recent, project)
+        end
+    end
+    
+    if #valid_recent > 0 then
+        M._hide_search_progress(progress_handle)
+        local latest = valid_recent[1]
+        local time_ago = M._format_time_ago(latest.last_opened)
+        vim.notify(string.format("🕒 Opening recent project: %s (%s ago)", latest.name, time_ago), vim.log.levels.INFO)
+        M.open_project(latest.path)
+        return
+    end
+    
+    -- 阶段2: 智能近邻搜索（中等速度）
+    vim.defer_fn(function()
+        M._smart_proximity_search(current_dir, progress_handle)
+    end, 100)
+end
+
+-- 智能近邻搜索
+function M._smart_proximity_search(current_dir, progress_handle)
+    local proximity_paths = M._get_proximity_search_paths(current_dir)
+    local found_projects = {}
+    
+    for _, path_info in ipairs(proximity_paths) do
+        if vim.fn.isdirectory(path_info.path) == 1 then
+            local projects = M.search_qt_projects({path_info.path}, path_info.depth)
+            for _, project in ipairs(projects) do
+                if project.path ~= current_dir then
+                    project._proximity_score = path_info.priority
+                    table.insert(found_projects, project)
+                end
+            end
+            
+            -- 如果在高优先级路径找到项目，立即返回
+            if #found_projects > 0 and path_info.priority >= 90 then
+                break
+            end
+        end
+    end
+    
+    if #found_projects > 0 then
+        M._hide_search_progress(progress_handle)
+        -- 按优先级排序
+        table.sort(found_projects, function(a, b)
+            return (a._proximity_score or 0) > (b._proximity_score or 0)
+        end)
         
-        local found_projects = M.search_qt_projects(search_paths, 2)
+        local best_project = found_projects[1]
+        vim.notify(string.format("📁 Found nearby project: %s (%s)", 
+            best_project.name, best_project.primary_type.name), vim.log.levels.INFO)
+        M.open_project(best_project.path)
+        return
+    end
+    
+    -- 阶段3: 深度搜索（较慢，异步执行）
+    vim.defer_fn(function()
+        M._deep_search_with_intelligence(current_dir, progress_handle)
+    end, 200)
+end
+
+-- 获取近邻搜索路径（按优先级排序）
+function M._get_proximity_search_paths(current_dir)
+    local paths = {}
+    
+    -- 父目录（最高优先级）
+    local parent_dir = vim.fn.fnamemodify(current_dir, ':h')
+    if parent_dir ~= current_dir then
+        table.insert(paths, {path = parent_dir, depth = 1, priority = 100})
+    end
+    
+    -- 当前目录的子目录
+    table.insert(paths, {path = current_dir, depth = 2, priority = 95})
+    
+    -- 兄弟目录
+    local grandparent = vim.fn.fnamemodify(current_dir, ':h:h')
+    if grandparent ~= parent_dir then
+        table.insert(paths, {path = grandparent, depth = 2, priority = 90})
+    end
+    
+    -- 用户桌面和下载（常用位置）
+    table.insert(paths, {path = vim.fn.expand('~/Desktop'), depth = 1, priority = 80})
+    table.insert(paths, {path = vim.fn.expand('~/Downloads'), depth = 1, priority = 75})
+    
+    -- 开发相关目录
+    local dev_dirs = {
+        {vim.fn.expand('~/Projects'), 85},
+        {vim.fn.expand('~/Development'), 85}, 
+        {vim.fn.expand('~/code'), 80},
+        {vim.fn.expand('~/src'), 80},
+        {vim.fn.expand('~/workspace'), 75},
+    }
+    
+    for _, dir_info in ipairs(dev_dirs) do
+        table.insert(paths, {path = dir_info[1], depth = 2, priority = dir_info[2]})
+    end
+    
+    return paths
+end
+
+-- 深度智能搜索
+function M._deep_search_with_intelligence(current_dir, progress_handle)
+    local extended_paths = {
+        vim.fn.expand('~'),
+        vim.fn.expand('~/Documents'),
+        vim.fn.expand('~/work'),
+        '/opt',
+        '/usr/local/src'
+    }
+    
+    local all_projects = {}
+    
+    for _, path in ipairs(extended_paths) do
+        if vim.fn.isdirectory(path) == 1 then
+            local projects = M.search_qt_projects({path}, 3)
+            for _, project in ipairs(projects) do
+                if project.path ~= current_dir then
+                    -- 计算智能评分
+                    project._intelligence_score = M._calculate_project_intelligence(project, current_dir)
+                    table.insert(all_projects, project)
+                end
+            end
+        end
+    end
+    
+    M._hide_search_progress(progress_handle)
+    
+    if #all_projects > 0 then
+        -- 按智能评分排序
+        table.sort(all_projects, function(a, b)
+            return a._intelligence_score > b._intelligence_score
+        end)
         
-        if #found_projects > 0 then
-            local project = found_projects[1] -- 选择找到的第一个项目
-            vim.notify(string.format("Found and opening: %s (%s)", 
-                project.name, project.primary_type.name), vim.log.levels.INFO)
-            M.open_project(project.path)
-        else
-            -- 如果什么都没找到，提供手动选择
-            vim.notify("No Qt projects found, please select manually", vim.log.levels.WARN)
+        local best_project = all_projects[1]
+        vim.notify(string.format("🔍 Discovered Qt project: %s (score: %.1f)", 
+            best_project.name, best_project._intelligence_score), vim.log.levels.INFO)
+        M.open_project(best_project.path)
+    else
+        M._show_no_projects_dialog(current_dir)
+    end
+end
+
+-- 计算项目智能评分
+function M._calculate_project_intelligence(project, current_dir)
+    local score = 0
+    
+    -- 基础项目类型评分
+    local type_scores = {
+        ["CMake Project"] = 10,
+        ["qmake Project"] = 8,
+        ["Qbs Project"] = 6,
+        ["Meson Project"] = 7
+    }
+    score = score + (type_scores[project.primary_type.name] or 5)
+    
+    -- 路径相似度评分
+    score = score + M._calculate_path_similarity(project.path, current_dir) * 15
+    
+    -- 项目名称相关性评分
+    score = score + M._calculate_name_relevance(project.name, current_dir) * 20
+    
+    -- 最近活跃度评分
+    score = score + M._calculate_activity_score(project.path) * 10
+    
+    -- 项目大小评分（更大的项目可能更重要）
+    score = score + M._calculate_size_score(project.path) * 5
+    
+    return score
+end
+
+-- 路径相似度计算
+function M._calculate_path_similarity(path1, path2)
+    local parts1 = vim.split(path1, '/')
+    local parts2 = vim.split(path2, '/')
+    local common = 0
+    local total = math.max(#parts1, #parts2)
+    
+    for i = 1, math.min(#parts1, #parts2) do
+        if parts1[i] == parts2[i] then
+            common = common + 1
+        end
+    end
+    
+    return total > 0 and common / total or 0
+end
+
+-- 名称相关性计算
+function M._calculate_name_relevance(project_name, current_dir)
+    local current_name = vim.fn.fnamemodify(current_dir, ':t'):lower()
+    local proj_name_lower = project_name:lower()
+    
+    -- 完全匹配
+    if proj_name_lower == current_name then return 1.0 end
+    
+    -- 包含关系
+    if proj_name_lower:find(current_name) or current_name:find(proj_name_lower) then
+        return 0.7
+    end
+    
+    -- 相似词汇
+    local similar_words = {'app', 'project', 'demo', 'test', 'example'}
+    for _, word in ipairs(similar_words) do
+        if proj_name_lower:find(word) and current_name:find(word) then
+            return 0.4
+        end
+    end
+    
+    return 0
+end
+
+-- 活跃度评分
+function M._calculate_activity_score(project_path)
+    local stat = vim.loop.fs_stat(project_path)
+    if not stat then return 0 end
+    
+    local days_ago = (os.time() - stat.mtime.sec) / (24 * 3600)
+    
+    if days_ago < 1 then return 1.0
+    elseif days_ago < 7 then return 0.8
+    elseif days_ago < 30 then return 0.5
+    elseif days_ago < 90 then return 0.3
+    else return 0.1 end
+end
+
+-- 项目大小评分
+function M._calculate_size_score(project_path)
+    local handle = vim.loop.fs_scandir(project_path)
+    if not handle then return 0 end
+    
+    local file_count = 0
+    while true do
+        local name, type = vim.loop.fs_scandir_next(handle)
+        if not name then break end
+        if type == "file" and name:match("%.(cpp|h|ui|pro|cmake)$") then
+            file_count = file_count + 1
+        end
+        if file_count > 50 then break end -- 避免过度计算
+    end
+    
+    return math.min(file_count / 50, 1.0)
+end
+
+-- 显示搜索进度
+function M._show_search_progress()
+    local handle = {
+        timer = vim.loop.new_timer(),
+        dots = 0
+    }
+    
+    handle.timer:start(0, 400, vim.schedule_wrap(function()
+        handle.dots = (handle.dots + 1) % 4
+        local animation = string.rep('.', handle.dots) .. string.rep(' ', 3 - handle.dots)
+        vim.notify(string.format("🔍 Searching for Qt projects%s", animation), vim.log.levels.INFO, {
+            replace = true
+        })
+    end))
+    
+    return handle
+end
+
+-- 隐藏搜索进度
+function M._hide_search_progress(handle)
+    if handle and handle.timer and not handle.timer:is_closing() then
+        handle.timer:stop()
+        handle.timer:close()
+    end
+end
+
+-- 格式化时间差
+function M._format_time_ago(timestamp)
+    local diff = os.time() - timestamp
+    if diff < 60 then return "just now"
+    elseif diff < 3600 then return string.format("%dm", math.floor(diff / 60))
+    elseif diff < 86400 then return string.format("%dh", math.floor(diff / 3600))
+    elseif diff < 604800 then return string.format("%dd", math.floor(diff / 86400))
+    else return string.format("%dw", math.floor(diff / 604800)) end
+end
+
+-- 无项目找到对话框
+function M._show_no_projects_dialog(current_dir)
+    local options = {
+        "📁 Browse for project directory",
+        "➕ Create new Qt project here", 
+        "🔍 Search in specific directory",
+        "📋 Show all recent projects",
+        "❌ Cancel"
+    }
+    
+    vim.ui.select(options, {
+        prompt = '❌ No Qt projects found. What would you like to do?',
+        format_item = function(item) return item end
+    }, function(choice, idx)
+        if not choice then return end
+        
+        if idx == 1 then
             vim.ui.input({
                 prompt = 'Project path: ',
                 default = current_dir,
                 completion = 'dir'
             }, function(path)
-                if path then
-                    M.open_project(path)
+                if path and path ~= "" then 
+                    M.open_project(path) 
                 end
             end)
+        elseif idx == 2 then
+            M._quick_project_creator(current_dir)
+        elseif idx == 3 then
+            vim.ui.input({
+                prompt = 'Search in directory: ',
+                default = vim.fn.expand('~'),
+                completion = 'dir'
+            }, function(path)
+                if path and path ~= "" then
+                    local projects = M.search_qt_projects({path}, 4)
+                    if #projects > 0 then
+                        M.show_project_search_results(projects)
+                    else
+                        vim.notify("No Qt projects found in: " .. path, vim.log.levels.WARN)
+                    end
+                end
+            end)
+        elseif idx == 4 then
+            M.show_smart_project_selector_with_choice()
         end
-    end, 100)
+    end)
+end
+
+-- 快速項目創建器
+function M._quick_project_creator(current_dir)
+    local templates = {"widget_app", "quick_app", "console_app", "library"}
+    local template_names = {
+        "Qt Widgets Application", 
+        "Qt Quick Application",
+        "Qt Console Application",
+        "Qt Library"
+    }
+    
+    vim.ui.select(template_names, {
+        prompt = 'Select project template:'
+    }, function(choice, idx)
+        if not choice then return end
+        
+        local default_name = vim.fn.fnamemodify(current_dir, ':t')
+        vim.ui.input({
+            prompt = 'Project name: ',
+            default = default_name
+        }, function(name)
+            if name and name ~= "" then
+                M.new_project(name, templates[idx])
+            end
+        end)
+    end)
 end
 
 -- 智能项目选择器（带选择界面）- 当用户需要手动选择时使用
