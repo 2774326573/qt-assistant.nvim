@@ -294,13 +294,17 @@ function M.new_project(project_name, template_type)
         return false
     end
     
-    -- 创建项目目录
+    -- 创建项目根目录
     local project_path = vim.fn.getcwd() .. "/" .. project_name
     local success, error_msg = file_manager.ensure_directory_exists(project_path)
     if not success then
         vim.notify("Failed to create project directory: " .. error_msg, vim.log.levels.ERROR)  
         return false
     end
+    
+    -- 创建项目目录结构
+    vim.notify("Creating project directory structure...", vim.log.levels.INFO)
+    M.create_project_directories(project_path, template_type)
     
     -- 生成项目文件
     local template_vars = {
@@ -312,18 +316,8 @@ function M.new_project(project_name, template_type)
         YEAR = os.date('%Y')
     }
     
-    for _, file_name in ipairs(template.files) do
-        local file_content = M.generate_template_file(file_name, template_type, template_vars)
-        if file_content then
-            local file_path = project_path .. "/" .. file_name
-            local write_success = file_manager.write_file(file_path, file_content)
-            if write_success then
-                vim.notify("Created: " .. file_name, vim.log.levels.INFO)
-            else
-                vim.notify("Failed to create: " .. file_name, vim.log.levels.ERROR)
-            end
-        end
-    end
+    -- 创建项目文件到合适的目录中
+    M.create_project_files(project_path, template_type, template_vars)
     
     vim.notify(string.format("Project '%s' created successfully using %s template", 
                            project_name, template.name), vim.log.levels.INFO)
@@ -338,6 +332,269 @@ function M.new_project(project_name, template_type)
     end)
     
     return true
+end
+
+-- 创建项目目录结构
+function M.create_project_directories(project_path, template_type)
+    local directories = {}
+    
+    -- 根据项目类型创建不同的目录结构
+    if template_type == "widget_app" or template_type == "quick_app" then
+        directories = {
+            "src",
+            "include",
+            "ui",
+            "resources",
+            "build",
+            "docs",
+            "tests"
+        }
+    elseif template_type == "console_app" then
+        directories = {
+            "src",
+            "include", 
+            "build",
+            "docs",
+            "tests"
+        }
+    elseif template_type == "library" then
+        directories = {
+            "src",
+            "include",
+            "build",
+            "examples",
+            "docs",
+            "tests"
+        }
+    end
+    
+    -- 创建目录
+    for _, dir in ipairs(directories) do
+        local dir_path = project_path .. "/" .. dir
+        local success, error_msg = file_manager.ensure_directory_exists(dir_path)
+        if success then
+            vim.notify("Created directory: " .. dir, vim.log.levels.INFO)
+        else
+            vim.notify("Failed to create directory " .. dir .. ": " .. error_msg, vim.log.levels.WARN)
+        end
+    end
+    
+    -- 创建QML特定目录（对于Quick应用）
+    if template_type == "quick_app" then
+        local qml_dirs = {"qml", "qml/components", "qml/pages"}
+        for _, dir in ipairs(qml_dirs) do
+            local dir_path = project_path .. "/" .. dir
+            file_manager.ensure_directory_exists(dir_path)
+            vim.notify("Created QML directory: " .. dir, vim.log.levels.INFO)
+        end
+    end
+end
+
+-- 创建项目文件
+function M.create_project_files(project_path, template_type, template_vars)
+    local template = project_templates[template_type]
+    
+    -- 定义文件到目录的映射
+    local file_mappings = {
+        ["main.cpp"] = "src",
+        ["mainwindow.h"] = "include",
+        ["mainwindow.cpp"] = "src",
+        ["mainwindow.ui"] = "ui",
+        ["library.h"] = "include",
+        ["library_global.h"] = "include", 
+        ["library.cpp"] = "src",
+        ["main.qml"] = "qml",
+        ["qml.qrc"] = "resources",
+        ["CMakeLists.txt"] = "",  -- 根目录
+    }
+    
+    for _, file_name in ipairs(template.files) do
+        local file_content = M.generate_template_file(file_name, template_type, template_vars)
+        if file_content then
+            -- 确定文件应该放在哪个目录
+            local target_dir = file_mappings[file_name] or ""
+            local file_path = project_path
+            if target_dir ~= "" then
+                file_path = file_path .. "/" .. target_dir
+            end
+            file_path = file_path .. "/" .. file_name
+            
+            local write_success = file_manager.write_file(file_path, file_content)
+            if write_success then
+                local relative_path = target_dir ~= "" and (target_dir .. "/" .. file_name) or file_name
+                vim.notify("Created: " .. relative_path, vim.log.levels.INFO)
+            else
+                vim.notify("Failed to create: " .. file_name, vim.log.levels.ERROR)
+            end
+        end
+    end
+    
+    -- 创建额外的项目文件
+    M.create_additional_project_files(project_path, template_type, template_vars)
+end
+
+-- 创建额外的项目文件
+function M.create_additional_project_files(project_path, template_type, template_vars)
+    -- 创建README.md
+    local readme_content = string.format([[# %s
+
+## 项目描述
+%s项目，使用Qt框架开发。
+
+## 构建方法
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+## 运行
+```bash
+./build/%s
+```
+
+## 项目结构
+- `src/` - 源代码文件
+- `include/` - 头文件
+- `ui/` - UI文件 (仅GUI应用)
+- `resources/` - 资源文件
+- `build/` - 构建输出目录
+- `docs/` - 文档文件
+- `tests/` - 测试文件
+
+## 依赖
+- Qt 6.x
+- CMake 3.16+
+
+## 作者
+Generated by Qt Assistant Plugin on %s
+]], template_vars.PROJECT_NAME, project_templates[template_type].description, 
+    template_vars.PROJECT_NAME_LOWER, template_vars.DATE)
+    
+    file_manager.write_file(project_path .. "/README.md", readme_content)
+    vim.notify("Created: README.md", vim.log.levels.INFO)
+    
+    -- 创建.gitignore
+    local gitignore_content = [[# Build directories
+build/
+build-*/
+
+# Qt generated files
+*.pro.user*
+*.autosave
+ui_*.h
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+
+# Object files
+*.o
+*.obj
+
+# Shared objects
+*.so
+*.dll
+*.dylib
+
+# Executables
+*.exe
+
+# IDE files
+.vscode/
+.idea/
+*.user
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+]]
+    
+    file_manager.write_file(project_path .. "/.gitignore", gitignore_content)
+    vim.notify("Created: .gitignore", vim.log.levels.INFO)
+    
+    -- 为Quick应用创建额外的QML文件
+    if template_type == "quick_app" then
+        M.create_qml_project_files(project_path, template_vars)
+    end
+end
+
+-- 创建QML项目的额外文件
+function M.create_qml_project_files(project_path, template_vars)
+    -- 创建基础QML组件
+    local button_component = [[import QtQuick 2.15
+import QtQuick.Controls 2.15
+
+Button {
+    id: customButton
+    
+    property alias buttonText: buttonText.text
+    property alias buttonColor: background.color
+    
+    background: Rectangle {
+        id: background
+        color: "#4CAF50"
+        radius: 8
+        border.color: customButton.hovered ? "#45a049" : "transparent"
+        border.width: 2
+    }
+    
+    contentItem: Text {
+        id: buttonText
+        text: "Custom Button"
+        color: "white"
+        font.pixelSize: 16
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+    }
+}
+]]
+    
+    file_manager.write_file(project_path .. "/qml/components/CustomButton.qml", button_component)
+    vim.notify("Created: qml/components/CustomButton.qml", vim.log.levels.INFO)
+    
+    -- 创建主页面
+    local main_page = string.format([[import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import "./components"
+
+ApplicationWindow {
+    id: window
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("%s")
+    
+    ColumnLayout {
+        anchors.centerIn: parent
+        spacing: 20
+        
+        Text {
+            id: welcomeText
+            text: "Welcome to %s"
+            font.pixelSize: 24
+            Layout.alignment: Qt.AlignHCenter
+        }
+        
+        CustomButton {
+            buttonText: "Click Me!"
+            Layout.alignment: Qt.AlignHCenter
+            onClicked: {
+                welcomeText.text = "Button Clicked!"
+            }
+        }
+    }
+}
+]], template_vars.PROJECT_NAME, template_vars.PROJECT_NAME)
+    
+    file_manager.write_file(project_path .. "/qml/pages/MainPage.qml", main_page)
+    vim.notify("Created: qml/pages/MainPage.qml", vim.log.levels.INFO)
 end
 
 -- 项目名转类名

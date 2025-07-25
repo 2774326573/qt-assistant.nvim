@@ -1409,36 +1409,58 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 qt6_standard_project_setup()
 
+# 包含目录
+include_directories(include)
+
+# 源文件
 set(SOURCES
-    main.cpp
-    {{FILE_NAME}}.cpp
+    src/main.cpp
+    src/mainwindow.cpp
 )
 
+# 头文件
 set(HEADERS
-    {{FILE_NAME}}.h
+    include/mainwindow.h
 )
 
+# UI文件
 set(UI_FILES
-    {{FILE_NAME}}.ui
+    ui/mainwindow.ui
 )
 
+# 创建可执行文件
 qt6_add_executable({{PROJECT_NAME}}
     ${SOURCES}
     ${HEADERS}
 )
 
+# 处理UI文件
+qt6_wrap_ui(UI_HEADERS ${UI_FILES})
+target_sources({{PROJECT_NAME}} PRIVATE ${UI_HEADERS})
+
+# 添加生成的UI头文件目录到包含路径
+target_include_directories({{PROJECT_NAME}} PRIVATE 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    include
+)
+
+# 处理资源文件
 qt6_add_resources({{PROJECT_NAME}} "resources"
     PREFIX "/"
+    BASE "resources"
     FILES
         # Add resource files here
 )
 
-qt6_wrap_ui(UI_HEADERS ${UI_FILES})
-
-target_sources({{PROJECT_NAME}} PRIVATE ${UI_HEADERS})
+# 链接Qt库
 target_link_libraries({{PROJECT_NAME}} Qt6::Core Qt6::Widgets)
 
-# Installation
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
 install(TARGETS {{PROJECT_NAME}}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
@@ -1458,24 +1480,48 @@ find_package(Qt6 REQUIRED COMPONENTS Core Quick)
 
 qt6_standard_project_setup()
 
+# 包含目录
+include_directories(include)
+
+# 源文件
 set(SOURCES
-    main.cpp
+    src/main.cpp
 )
 
+# 创建可执行文件
 qt6_add_executable({{PROJECT_NAME}}
     ${SOURCES}
 )
 
+# 添加QML模块
 qt6_add_qml_module({{PROJECT_NAME}}
     URI {{PROJECT_NAME}}
     VERSION 1.0
     QML_FILES
-        main.qml
+        qml/main.qml
+        qml/pages/MainPage.qml
+        qml/components/CustomButton.qml
 )
 
+# 处理资源文件
+qt6_add_resources({{PROJECT_NAME}} "qml_resources"
+    PREFIX "/"
+    BASE "qml"
+    FILES
+        qml/main.qml
+        qml/pages/MainPage.qml
+        qml/components/CustomButton.qml
+)
+
+# 链接Qt库
 target_link_libraries({{PROJECT_NAME}} Qt6::Core Qt6::Quick)
 
-# Installation
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
 install(TARGETS {{PROJECT_NAME}}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
@@ -1495,17 +1541,31 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt6_standard_project_setup()
 
+# 包含目录
+include_directories(include)
+
+# 源文件
 set(SOURCES
-    main.cpp
+    src/main.cpp
 )
 
+# 创建可执行文件
 qt6_add_executable({{PROJECT_NAME}}
     ${SOURCES}
 )
 
+# 添加包含目录
+target_include_directories({{PROJECT_NAME}} PRIVATE include)
+
+# 链接Qt库
 target_link_libraries({{PROJECT_NAME}} Qt6::Core)
 
-# Installation
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
 install(TARGETS {{PROJECT_NAME}}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
@@ -1525,26 +1585,46 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt6_standard_project_setup()
 
+# 包含目录
+include_directories(include)
+
+# 源文件
 set(SOURCES
-    {{FILE_NAME}}.cpp
+    src/library.cpp
 )
 
+# 头文件
 set(HEADERS
-    {{FILE_NAME}}.h
-    {{FILE_NAME}}_global.h
+    include/library.h
+    include/library_global.h
 )
 
+# 创建共享库
 qt6_add_library({{PROJECT_NAME}} SHARED
     ${SOURCES}
     ${HEADERS}
 )
 
+# 添加包含目录
+target_include_directories({{PROJECT_NAME}} 
+    PUBLIC include
+    PRIVATE src
+)
+
+# 链接Qt库
 target_link_libraries({{PROJECT_NAME}} Qt6::Core)
 
-# Export symbols
+# 导出符号
 target_compile_definitions({{PROJECT_NAME}} PRIVATE {{PROJECT_NAME_UPPER}}_LIBRARY)
 
-# Installation
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
 install(TARGETS {{PROJECT_NAME}}
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
