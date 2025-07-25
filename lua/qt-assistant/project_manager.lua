@@ -315,7 +315,12 @@ function M.new_project(project_name, template_type)
         FILE_NAME = "mainwindow",  -- 对于main window类，文件名是mainwindow
         HEADER_GUARD = "MAINWINDOW_H",
         DATE = os.date('%Y-%m-%d'),
-        YEAR = os.date('%Y')
+        YEAR = os.date('%Y'),
+        -- 根据项目类型设置条件变量
+        INCLUDE_UI = (template_type == "widget_app"),  -- Widget应用包含UI
+        UI_FORWARD_DECLARE = "QT_FORWARD_DECLARE_CLASS(Ui::" .. M.project_name_to_class_name(project_name) .. ")",
+        UI_INCLUDE = "#include \"ui_mainwindow.h\"",
+        UI_MEMBER_VARIABLE = "    Ui::" .. M.project_name_to_class_name(project_name) .. " *ui;"
     }
     
     -- 初始化模板系统
@@ -441,6 +446,9 @@ function M.create_project_files(project_path, template_type, template_vars)
     
     -- 创建额外的项目文件
     M.create_additional_project_files(project_path, template_type, template_vars)
+    
+    -- 创建项目脚本
+    M.create_project_scripts(project_path, template_type)
 end
 
 -- 创建额外的项目文件
@@ -531,6 +539,38 @@ cmake_install.cmake
     -- 为Quick应用创建额外的QML文件
     if template_type == "quick_app" then
         M.create_qml_project_files(project_path, template_vars)
+    end
+end
+
+-- 创建项目脚本
+function M.create_project_scripts(project_path, template_type)
+    -- 只在Neovim环境中创建脚本
+    if not vim.fn.has or vim.fn.has('nvim') ~= 1 then
+        vim.notify("Skipping script creation in non-Neovim environment", vim.log.levels.INFO)
+        return
+    end
+    
+    local ok, scripts = pcall(require, 'qt-assistant.scripts')
+    if not ok then
+        vim.notify("Scripts module not available", vim.log.levels.WARN)
+        return
+    end
+    
+    -- 临时更改工作目录到项目根目录
+    local original_cwd = vim.fn.getcwd()
+    local escape = vim.fn.fnameescape or function(path) return "'" .. path:gsub("'", "'\"'\"'") .. "'" end
+    local success = pcall(vim.cmd, 'cd ' .. escape(project_path))
+    
+    if success then
+        -- 使用scripts模块创建脚本
+        scripts.init_scripts_directory()
+        
+        -- 恢复原始工作目录
+        vim.cmd('cd ' .. escape(original_cwd))
+        
+        vim.notify("Created project build scripts", vim.log.levels.INFO)
+    else
+        vim.notify("Failed to create project scripts", vim.log.levels.WARN)
     end
 end
 

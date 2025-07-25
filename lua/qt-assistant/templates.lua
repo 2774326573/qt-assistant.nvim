@@ -1796,13 +1796,25 @@ end
 -- 处理条件语句
 function M.process_conditionals(template, vars)
     -- 处理 {{#VAR}} ... {{/VAR}} 条件块
-    return template:gsub("{{#(%w+)}}(.-){{/%1}}", function(var, content)
-        if vars[var] then
-            return content
-        else
-            return ""
-        end
-    end)
+    -- 由于Lua不支持反向引用，我们需要手动匹配
+    local result = template
+    
+    -- 查找所有条件块
+    for var_name in pairs(vars) do
+        local start_tag = "{{#" .. var_name .. "}}"
+        local end_tag = "{{/" .. var_name .. "}}"
+        local pattern = start_tag:gsub("([%(%)%.%+%-%*%?%[%]%^%$%%])", "%%%1") .. "(.-)" .. end_tag:gsub("([%(%)%.%+%-%*%?%[%]%^%$%%])", "%%%1")
+        
+        result = result:gsub(pattern, function(content)
+            if vars[var_name] then
+                return content
+            else
+                return ""
+            end
+        end)
+    end
+    
+    return result
 end
 
 -- 列出可用模板
