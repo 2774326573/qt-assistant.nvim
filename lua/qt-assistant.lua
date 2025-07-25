@@ -42,7 +42,7 @@ function M.setup(user_config)
             log_level = "INFO",
             log_file = vim.fn.stdpath('data') .. '/qt-assistant.log'
         },
-        enable_default_keymaps = false
+        enable_default_keymaps = true
     }
     
     M._config = vim.tbl_deep_extend('force', default_config, user_config or {})
@@ -238,6 +238,9 @@ end
 
 -- 快捷键帮助
 function M.show_keymaps()
+    local config = M.get_config()
+    local keymaps_enabled = config.enable_default_keymaps
+    
     local keymaps = {
         "=== Qt Assistant Keymaps ===",
         "",
@@ -262,6 +265,7 @@ function M.show_keymaps()
         "  :QtOpenDesigner      - Open Qt Designer",
         "  :QtOpenDesignerCurrent - Open Designer for current file",
         "  :QtPreviewUI         - Preview UI file",
+        "  :QtSyncUI            - Sync UI file with source",
         "  :QtDesignerManager   - Designer manager interface",
         "",
         "Scripts:",
@@ -272,12 +276,36 @@ function M.show_keymaps()
         "  :QtSystemInfo        - Show system information",
         "  :QtKeymaps          - Show this help",
         "",
-        "Default Keymaps (if enabled):",
-        "  <leader>qc          - Qt Assistant",
-        "  <leader>qb          - Build Project",
-        "  <leader>qr          - Run Project",
-        "  <leader>qud         - Open Designer",
     }
+    
+    if keymaps_enabled then
+        vim.list_extend(keymaps, {
+            "Default Keymaps (ENABLED):",
+            "  <leader>qc          - Qt Assistant",
+            "  <leader>qh          - Qt Help",
+            "  <leader>qpo         - Open Project",
+            "  <leader>qpm         - Project Manager",
+            "  <leader>qb          - Build Project",
+            "  <leader>qr          - Run Project",
+            "  <leader>qcl         - Clean Project",
+            "  <leader>qbs         - Build Status",
+            "  <leader>qud         - Open Designer",
+            "  <leader>quc         - Designer Current",
+            "  <leader>qum         - Designer Manager",
+            "  <leader>qsb         - Script Build",
+            "  <leader>qsr         - Script Run",
+            "  <leader>qsd         - Script Debug",
+            "  <leader>qsi         - System Info",
+        })
+    else
+        vim.list_extend(keymaps, {
+            "Default Keymaps (DISABLED):",
+            "  To enable, add to your config:",
+            "  require('qt-assistant').setup({",
+            "    enable_default_keymaps = true",
+            "  })",
+        })
+    end
     
     -- 创建帮助窗口
     local buf = vim.api.nvim_create_buf(false, true)

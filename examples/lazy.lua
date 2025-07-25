@@ -39,6 +39,9 @@ return {
     },
     config = function()
         require('qt-assistant').setup({
+            -- 启用默认快捷键
+            enable_default_keymaps = true,
+            
             -- 项目根目录（默认为当前工作目录）
             project_root = vim.fn.getcwd(),
             

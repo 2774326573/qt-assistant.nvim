@@ -1,7 +1,9 @@
 -- Qt Assistant 基础配置示例
 
--- 简单配置（使用默认设置）
-require('qt-assistant').setup()
+-- 简单配置（启用默认快捷键）
+require('qt-assistant').setup({
+    enable_default_keymaps = true  -- 启用默认快捷键
+})
 
 -- 自定义快捷键
 vim.keymap.set('n', '<F5>', '<cmd>QtBuildProject<cr>', { desc = 'Build Project' })
