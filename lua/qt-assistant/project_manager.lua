@@ -468,12 +468,145 @@ function M.is_qt_project(project_path)
     return #detected_types > 0
 end
 
+-- 获取系统所有可用的搜索路径（包括不同驱动器）
+function M.get_global_search_paths()
+    local config = require('qt-assistant').get_config()
+    local global_config = config.global_search or {}
+    
+    local paths = {}
+    
+    -- 添加用户自定义路径
+    if global_config.custom_search_paths then
+        for _, custom_path in ipairs(global_config.custom_search_paths) do
+            if vim.fn.isdirectory(custom_path) == 1 then
+                table.insert(paths, custom_path)
+            end
+        end
+    end
+    
+    -- 如果禁用系统路径，只返回自定义路径
+    if not global_config.include_system_paths then
+        return paths
+    end
+    
+    -- 检测操作系统
+    local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+    
+    if is_windows then
+        -- Windows: 检查所有驱动器盘符
+        for drive_letter = string.byte('A'), string.byte('Z') do
+            local drive = string.char(drive_letter) .. ":\\"
+            if vim.fn.isdirectory(drive) == 1 then
+                table.insert(paths, drive)
+                -- 添加常见的开发目录
+                local common_dirs = {
+                    drive .. "Projects",
+                    drive .. "Development", 
+                    drive .. "Code",
+                    drive .. "Qt",
+                    drive .. "workspace",
+                    drive .. "src",
+                    drive .. "Users\\" .. vim.fn.expand('$USERNAME') .. "\\Documents",
+                    drive .. "Users\\" .. vim.fn.expand('$USERNAME') .. "\\Desktop"
+                }
+                for _, dir in ipairs(common_dirs) do
+                    if vim.fn.isdirectory(dir) == 1 then
+                        table.insert(paths, dir)
+                    end
+                end
+            end
+        end
+    else
+        -- Linux/macOS: 检查常见的挂载点和目录
+        local unix_paths = {
+            "/",
+            "/home",
+            "/opt",
+            "/usr/local",
+            "/var",
+            "/mnt",
+            "/media",
+            vim.fn.expand('~'),
+            vim.fn.expand('~/Documents'),
+            vim.fn.expand('~/Projects'),
+            vim.fn.expand('~/Development'),
+            vim.fn.expand('~/Code'),
+            vim.fn.expand('~/Desktop'),
+            vim.fn.expand('~/workspace'),
+            vim.fn.expand('~/src')
+        }
+        
+        for _, path in ipairs(unix_paths) do
+            if vim.fn.isdirectory(path) == 1 then
+                table.insert(paths, path)
+            end
+        end
+        
+        -- 检查挂载的其他设备
+        local mounts = {"/mnt", "/media"}
+        for _, mount_base in ipairs(mounts) do
+            if vim.fn.isdirectory(mount_base) == 1 then
+                local handle = vim.loop.fs_scandir(mount_base)
+                if handle then
+                    while true do
+                        local name, type = vim.loop.fs_scandir_next(handle)
+                        if not name then break end
+                        
+                        if type == "directory" then
+                            local mount_path = mount_base .. "/" .. name
+                            table.insert(paths, mount_path)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 去重并排序
+    local unique_paths = {}
+    local seen = {}
+    
+    for _, path in ipairs(paths) do
+        local normalized = vim.fn.fnamemodify(path, ':p')
+        if not seen[normalized] then
+            seen[normalized] = true
+            table.insert(unique_paths, normalized)
+        end
+    end
+    
+    table.sort(unique_paths)
+    return unique_paths
+end
+
 -- 智能搜索Qt项目
 function M.search_qt_projects(search_paths, max_depth)
     search_paths = search_paths or {vim.fn.getcwd(), vim.fn.expand('~')}
     max_depth = max_depth or 3
     
+    -- 获取配置中的排除模式
+    local config = require('qt-assistant').get_config()
+    local global_config = config.global_search or {}
+    local exclude_patterns = global_config.exclude_patterns or {
+        "node_modules", ".git", ".vscode", "build", "target", 
+        "dist", "out", "__pycache__", ".cache", "tmp", "temp"
+    }
+    
     local found_projects = {}
+    
+    -- 检查是否应该排除目录
+    local function should_exclude(name)
+        if name:match("^%.") then
+            return true
+        end
+        
+        for _, pattern in ipairs(exclude_patterns) do
+            if name == pattern or name:match(pattern) then
+                return true
+            end
+        end
+        
+        return false
+    end
     
     -- 搜索函数
     local function search_directory(dir, current_depth)
@@ -502,10 +635,7 @@ function M.search_qt_projects(search_paths, max_depth)
             local name, type = vim.loop.fs_scandir_next(handle)
             if not name then break end
             
-            if type == "directory" and not name:match("^%.") and 
-               name ~= "build" and name ~= "node_modules" and 
-               name ~= ".git" and name ~= ".vscode" then
-                
+            if type == "directory" and not should_exclude(name) then
                 local sub_path = dir .. "/" .. name
                 search_directory(sub_path, current_depth + 1)
             end
@@ -525,6 +655,214 @@ function M.search_qt_projects(search_paths, max_depth)
     end)
     
     return found_projects
+end
+
+-- 全局搜索Qt项目（跨驱动器）
+function M.global_search_qt_projects(progress_callback)
+    progress_callback = progress_callback or function() end
+    
+    local found_projects = {}
+    local search_paths = M.get_global_search_paths()
+    
+    progress_callback("🌍 Starting global search across all drives...")
+    vim.notify("🔍 Global search started. This may take a while...", vim.log.levels.INFO)
+    
+    local total_paths = #search_paths
+    local processed = 0
+    
+    -- 异步搜索函数
+    local function search_path_async(path_index)
+        if path_index > total_paths then
+            progress_callback("✅ Global search completed!")
+            -- 搜索完成后显示结果
+            vim.defer_fn(function()
+                M.show_global_search_results(found_projects)
+            end, 100)
+            return
+        end
+        
+        local search_path = search_paths[path_index]
+        processed = processed + 1
+        
+        progress_callback(string.format("🔍 Searching (%d/%d): %s", 
+            processed, total_paths, vim.fn.fnamemodify(search_path, ':~')))
+        
+        -- 使用配置的深度设置
+        local config = require('qt-assistant').get_config()
+        local global_config = config.global_search or {}
+        local max_depth = global_config.max_depth or 3
+        
+        -- 根目录使用更小的深度以提高性能
+        if search_path:match("^[A-Z]:\\$") or search_path == "/" then
+            max_depth = math.min(max_depth, 2)
+        end
+        
+        local projects = M.search_qt_projects({search_path}, max_depth)
+        
+        -- 将找到的项目添加到结果中
+        for _, project in ipairs(projects) do
+            -- 检查是否已存在（去重）
+            local exists = false
+            for _, existing in ipairs(found_projects) do
+                if existing.path == project.path then
+                    exists = true
+                    break
+                end
+            end
+            
+            if not exists then
+                -- 添加搜索来源信息
+                project.search_source = search_path
+                project.global_search = true
+                table.insert(found_projects, project)
+            end
+        end
+        
+        -- 继续搜索下一个路径
+        vim.defer_fn(function()
+            search_path_async(path_index + 1)
+        end, 10)  -- 很短的延迟，保持响应性
+    end
+    
+    -- 开始异步搜索
+    search_path_async(1)
+end
+
+-- 显示全局搜索结果
+function M.show_global_search_results(projects)
+    if #projects == 0 then
+        vim.notify("🔍 No Qt projects found in global search", vim.log.levels.WARN)
+        return
+    end
+    
+    -- 按驱动器/路径分组
+    local groups = {}
+    for _, project in ipairs(projects) do
+        local source = project.search_source or "Unknown"
+        local group_key = source
+        
+        if not groups[group_key] then
+            groups[group_key] = {
+                title = group_key,
+                projects = {}
+            }
+        end
+        
+        table.insert(groups[group_key].projects, project)
+    end
+    
+    -- 创建显示项目
+    local items = {}
+    local project_map = {}
+    
+    table.insert(items, "")
+    table.insert(items, string.format("🌍 Global Qt Project Search Results (%d projects found)", #projects))
+    table.insert(items, string.rep("═", 70))
+    table.insert(items, "")
+    
+    -- 按组显示项目
+    local sorted_groups = {}
+    for _, group in pairs(groups) do
+        table.insert(sorted_groups, group)
+    end
+    table.sort(sorted_groups, function(a, b) return a.title < b.title end)
+    
+    for _, group in ipairs(sorted_groups) do
+        table.insert(items, "📁 " .. vim.fn.fnamemodify(group.title, ':~'))
+        table.insert(items, string.rep("─", 50))
+        
+        -- 排序组内项目
+        table.sort(group.projects, function(a, b) return a.name < b.name end)
+        
+        for _, project in ipairs(group.projects) do
+            local display = string.format("   • %s (%s) - %s", 
+                project.name, 
+                project.primary_type.name,
+                vim.fn.fnamemodify(project.path, ':~'))
+            
+            table.insert(items, display)
+            project_map[#items] = project
+        end
+        
+        table.insert(items, "")
+    end
+    
+    table.insert(items, string.rep("─", 70))
+    table.insert(items, "Press Enter to open project, 'q' to quit")
+    
+    -- 创建浮动窗口
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, items)
+    
+    local width = math.min(80, vim.o.columns - 4)
+    local height = math.min(#items + 2, vim.o.lines - 4)
+    
+    local win_config = {
+        relative = 'editor',
+        width = width,
+        height = height,
+        col = math.floor((vim.o.columns - width) / 2),
+        row = math.floor((vim.o.lines - height) / 2),
+        style = 'minimal',
+        border = 'rounded',
+        title = ' Global Search Results ',
+        title_pos = 'center'
+    }
+    
+    local win = vim.api.nvim_open_win(buf, true, win_config)
+    
+    -- 设置窗口选项
+    vim.api.nvim_win_set_option(win, 'number', false)
+    vim.api.nvim_win_set_option(win, 'relativenumber', false)
+    vim.api.nvim_win_set_option(win, 'cursorline', true)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    
+    -- 设置高亮
+    vim.api.nvim_buf_add_highlight(buf, -1, 'Title', 1, 0, -1)
+    vim.api.nvim_buf_add_highlight(buf, -1, 'Comment', 2, 0, -1)
+    
+    local function close_window()
+        vim.api.nvim_win_close(win, true)
+    end
+    
+    -- 设置键盘映射
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '', {
+        callback = close_window,
+        noremap = true,
+        silent = true
+    })
+    
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<Esc>', '', {
+        callback = close_window,
+        noremap = true,
+        silent = true
+    })
+    
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<CR>', '', {
+        callback = function()
+            local line_num = vim.api.nvim_win_get_cursor(win)[1]
+            local project = project_map[line_num]
+            if project then
+                close_window()
+                vim.notify(string.format("Opening global project: %s", project.name), vim.log.levels.INFO)
+                M.open_project(project.path)
+            end
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    -- 自动定位到第一个项目
+    vim.defer_fn(function()
+        if vim.api.nvim_win_is_valid(win) then
+            for line = 1, #items do
+                if project_map[line] then
+                    vim.api.nvim_win_set_cursor(win, {line, 0})
+                    break
+                end
+            end
+        end
+    end, 50)
 end
 
 -- 显示项目搜索结果
@@ -614,6 +952,128 @@ function M.search_and_select_project(options)
         end
         
         M.show_project_search_results(projects)
+    end, 100)
+end
+
+-- 启动全局搜索（带进度显示）
+function M.start_global_search()
+    -- 检查全局搜索是否启用
+    local config = require('qt-assistant').get_config()
+    local global_config = config.global_search or {}
+    
+    if not global_config.enabled then
+        vim.notify("Global search is disabled. Enable it in your configuration.", vim.log.levels.WARN)
+        return
+    end
+    
+    -- 创建进度显示窗口
+    local progress_buf = vim.api.nvim_create_buf(false, true)
+    local progress_items = {
+        "",
+        "🌍 Global Qt Project Search",
+        string.rep("═", 40),
+        "",
+        "🔍 Initializing global search...",
+        "",
+        "This will search all available drives and directories.",
+        "Press 'q' to cancel search.",
+        ""
+    }
+    
+    vim.api.nvim_buf_set_lines(progress_buf, 0, -1, false, progress_items)
+    
+    local progress_win_config = {
+        relative = 'editor',
+        width = 50,
+        height = 12,
+        col = math.floor((vim.o.columns - 50) / 2),
+        row = math.floor((vim.o.lines - 12) / 2),
+        style = 'minimal',
+        border = 'rounded',
+        title = ' Searching... ',
+        title_pos = 'center'
+    }
+    
+    local progress_win = vim.api.nvim_open_win(progress_buf, true, progress_win_config)
+    
+    -- 设置窗口选项
+    vim.api.nvim_win_set_option(progress_win, 'number', false)
+    vim.api.nvim_win_set_option(progress_win, 'relativenumber', false)
+    vim.api.nvim_buf_set_option(progress_buf, 'modifiable', false)
+    
+    -- 设置高亮
+    vim.api.nvim_buf_add_highlight(progress_buf, -1, 'Title', 1, 0, -1)
+    vim.api.nvim_buf_add_highlight(progress_buf, -1, 'Comment', 2, 0, -1)
+    
+    local search_cancelled = false
+    
+    local function close_progress_window()
+        if vim.api.nvim_win_is_valid(progress_win) then
+            vim.api.nvim_win_close(progress_win, true)
+        end
+    end
+    
+    local function update_progress(message)
+        if search_cancelled or not vim.api.nvim_win_is_valid(progress_win) then
+            return
+        end
+        
+        local new_items = {}
+        for i = 1, 4 do
+            table.insert(new_items, progress_items[i])
+        end
+        table.insert(new_items, message)
+        for i = 6, #progress_items do
+            table.insert(new_items, progress_items[i])
+        end
+        
+        vim.api.nvim_buf_set_option(progress_buf, 'modifiable', true)
+        vim.api.nvim_buf_set_lines(progress_buf, 0, -1, false, new_items)
+        vim.api.nvim_buf_set_option(progress_buf, 'modifiable', false)
+        
+        -- 强制刷新显示
+        vim.cmd('redraw')
+    end
+    
+    -- 取消搜索的键盘映射
+    vim.api.nvim_buf_set_keymap(progress_buf, 'n', 'q', '', {
+        callback = function()
+            search_cancelled = true
+            close_progress_window()
+            vim.notify("Global search cancelled", vim.log.levels.INFO)
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    vim.api.nvim_buf_set_keymap(progress_buf, 'n', '<Esc>', '', {
+        callback = function()
+            search_cancelled = true
+            close_progress_window()
+            vim.notify("Global search cancelled", vim.log.levels.INFO)
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    -- 重写progress_callback以关闭进度窗口
+    local original_progress_callback = function(message)
+        if search_cancelled then
+            return
+        end
+        
+        if message:match("completed") then
+            close_progress_window()
+        else
+            update_progress(message)
+        end
+    end
+    
+    -- 延迟启动搜索，让进度窗口先显示
+    vim.defer_fn(function()
+        if not search_cancelled then
+            M.global_search_qt_projects(original_progress_callback)
+        end
     end, 100)
 end
 
@@ -1229,6 +1689,240 @@ function M.show_smart_project_selector_with_choice()
         -- 显示统一选择界面
         M.display_unified_project_selector(sections)
     end, 100)
+end
+
+-- 快速项目切换界面
+function M.show_quick_project_switcher()
+    local recent_projects = M.load_recent_projects()
+    
+    if #recent_projects == 0 then
+        vim.notify("No recent projects found. Use smart selector to open projects first.", vim.log.levels.WARN)
+        M.show_smart_project_selector()
+        return
+    end
+    
+    -- 准备快速切换列表
+    local items = {}
+    local project_map = {}
+    
+    -- 当前项目信息
+    local current_dir = vim.fn.getcwd()
+    local current_project_idx = nil
+    
+    -- 查找当前项目
+    for i, project in ipairs(recent_projects) do
+        if vim.fn.fnamemodify(project.path, ':p') == vim.fn.fnamemodify(current_dir, ':p') then
+            current_project_idx = i
+            break
+        end
+    end
+    
+    -- 添加标题
+    table.insert(items, "")
+    if current_project_idx then
+        table.insert(items, "🔄 Quick Project Switcher (Current: " .. recent_projects[current_project_idx].name .. ")")
+    else
+        table.insert(items, "🔄 Quick Project Switcher")
+    end
+    table.insert(items, string.rep("═", 60))
+    table.insert(items, "")
+    
+    -- 添加最近项目
+    for i, project in ipairs(recent_projects) do
+        local is_current = (i == current_project_idx)
+        local time_str = os.date('%m-%d %H:%M', project.last_opened)
+        local prefix = is_current and "👉" or "  "
+        local status = is_current and " (Current)" or ""
+        
+        local display = string.format("%s %d. %s (%s)%s - %s [%s]", 
+            prefix, i, project.name, project.type, status, 
+            vim.fn.fnamemodify(project.path, ':~'), time_str)
+        
+        table.insert(items, display)
+        project_map[#items] = project
+    end
+    
+    table.insert(items, "")
+    table.insert(items, string.rep("─", 60))
+    table.insert(items, "  s. Smart Selector (Find new projects)")
+    table.insert(items, "  Enter number (1-" .. #recent_projects .. ") to switch, 's' for smart selector, 'q' to quit")
+    
+    -- 创建浮动窗口
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, items)
+    
+    local width = math.min(80, vim.o.columns - 4)
+    local height = math.min(#items + 2, vim.o.lines - 4)
+    
+    local win_config = {
+        relative = 'editor',
+        width = width,
+        height = height,
+        col = math.floor((vim.o.columns - width) / 2),
+        row = math.floor((vim.o.lines - height) / 2),
+        style = 'minimal',
+        border = 'rounded',
+        title = ' Quick Switcher ',
+        title_pos = 'center'
+    }
+    
+    local win = vim.api.nvim_open_win(buf, true, win_config)
+    
+    -- 设置窗口选项
+    vim.api.nvim_win_set_option(win, 'number', false)
+    vim.api.nvim_win_set_option(win, 'relativenumber', false)
+    vim.api.nvim_win_set_option(win, 'cursorline', true)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    
+    -- 设置高亮
+    vim.api.nvim_buf_add_highlight(buf, -1, 'Title', 1, 0, -1)
+    vim.api.nvim_buf_add_highlight(buf, -1, 'Comment', 2, 0, -1)
+    
+    -- 高亮当前项目
+    if current_project_idx then
+        local current_line = 4 + current_project_idx - 1
+        vim.api.nvim_buf_add_highlight(buf, -1, 'DiffAdd', current_line, 0, -1)
+    end
+    
+    local function close_window()
+        vim.api.nvim_win_close(win, true)
+    end
+    
+    -- 设置键盘映射
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '', {
+        callback = close_window,
+        noremap = true,
+        silent = true
+    })
+    
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<Esc>', '', {
+        callback = close_window,
+        noremap = true,
+        silent = true
+    })
+    
+    -- 智能选择器
+    vim.api.nvim_buf_set_keymap(buf, 'n', 's', '', {
+        callback = function()
+            close_window()
+            M.show_smart_project_selector()
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    -- 数字快捷键切换项目
+    for i = 1, math.min(#recent_projects, 9) do
+        vim.api.nvim_buf_set_keymap(buf, 'n', tostring(i), '', {
+            callback = function()
+                close_window()
+                local project = recent_projects[i]
+                if project.path ~= current_dir then
+                    vim.notify(string.format("Switching to: %s", project.name), vim.log.levels.INFO)
+                    M.open_project(project.path)
+                else
+                    vim.notify("Already in this project", vim.log.levels.INFO)
+                end
+            end,
+            noremap = true,
+            silent = true
+        })
+    end
+    
+    -- Enter键选择当前行
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<CR>', '', {
+        callback = function()
+            local line_num = vim.api.nvim_win_get_cursor(win)[1]
+            local project = project_map[line_num]
+            if project then
+                close_window()
+                if project.path ~= current_dir then
+                    vim.notify(string.format("Switching to: %s", project.name), vim.log.levels.INFO)
+                    M.open_project(project.path)
+                else
+                    vim.notify("Already in this project", vim.log.levels.INFO)
+                end
+            end
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    -- 快速键盘导航 - j/k上下移动, Tab在项目间快速跳转
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<Tab>', '', {
+        callback = function()
+            local current_line = vim.api.nvim_win_get_cursor(win)[1]
+            local next_project_line = nil
+            
+            -- 找到下一个项目行
+            for line = current_line + 1, #items do
+                if project_map[line] then
+                    next_project_line = line
+                    break
+                end
+            end
+            
+            -- 如果没找到，从头开始找
+            if not next_project_line then
+                for line = 1, current_line - 1 do
+                    if project_map[line] then
+                        next_project_line = line
+                        break
+                    end
+                end
+            end
+            
+            if next_project_line then
+                vim.api.nvim_win_set_cursor(win, {next_project_line, 0})
+            end
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    -- Shift+Tab 向上跳转项目
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<S-Tab>', '', {
+        callback = function()
+            local current_line = vim.api.nvim_win_get_cursor(win)[1]
+            local prev_project_line = nil
+            
+            -- 从当前行向上找
+            for line = current_line - 1, 1, -1 do
+                if project_map[line] then
+                    prev_project_line = line
+                    break
+                end
+            end
+            
+            -- 如果没找到，从尾部开始找
+            if not prev_project_line then
+                for line = #items, current_line + 1, -1 do
+                    if project_map[line] then
+                        prev_project_line = line
+                        break
+                    end
+                end
+            end
+            
+            if prev_project_line then
+                vim.api.nvim_win_set_cursor(win, {prev_project_line, 0})
+            end
+        end,
+        noremap = true,
+        silent = true
+    })
+    
+    -- 自动定位到第一个项目
+    vim.defer_fn(function()
+        if vim.api.nvim_win_is_valid(win) then
+            for line = 1, #items do
+                if project_map[line] then
+                    vim.api.nvim_win_set_cursor(win, {line, 0})
+                    break
+                end
+            end
+        end
+    end, 50)
 end
 
 -- 显示统一的项目选择界面

@@ -18,23 +18,48 @@ return {
         'QtProjectManager',
         'QtDesignerManager',
         'QtBuildStatus',
-        'QtSystemInfo'
+        'QtSystemInfo',
+        -- 新增的项目搜索命令
+        'QtSmartSelector',
+        'QtChooseProject', 
+        'QtQuickSwitcher',
+        'QtGlobalSearch'
     },
     keys = {
+        -- 基础操作
         { '<leader>qc', '<cmd>QtAssistant<cr>', desc = 'Qt Assistant' },
         { '<leader>qh', '<cmd>help qt-assistant<cr>', desc = 'Qt Help' },
-        { '<leader>qpo', '<cmd>QtOpenProject<cr>', desc = 'Open Project' },
+        
+        -- 项目核心
+        { '<leader>qpo', '<cmd>QtSmartSelector<cr>', desc = 'Smart Open Project (Auto)' },
         { '<leader>qpm', '<cmd>QtProjectManager<cr>', desc = 'Project Manager' },
+        
+        -- 项目切换
+        { '<leader>qpc', '<cmd>QtChooseProject<cr>', desc = 'Choose Project (Manual)' },
+        { '<leader>qpw', '<cmd>QtQuickSwitcher<cr>', desc = 'Quick Project Switcher' },
+        { '<leader>qpr', '<cmd>QtRecentProjects<cr>', desc = 'Recent Projects' },
+        
+        -- 项目搜索
+        { '<leader>qps', '<cmd>QtSearchProjects<cr>', desc = 'Search Qt Projects (Local)' },
+        { '<leader>qpg', '<cmd>QtGlobalSearch<cr>', desc = 'Global Search All Drives' },
+        
+        -- 构建系统
         { '<leader>qb', '<cmd>QtBuildProject<cr>', desc = 'Build Project' },
         { '<leader>qr', '<cmd>QtRunProject<cr>', desc = 'Run Project' },
         { '<leader>qcl', '<cmd>QtCleanProject<cr>', desc = 'Clean Project' },
         { '<leader>qbs', '<cmd>QtBuildStatus<cr>', desc = 'Build Status' },
+        
+        -- UI设计师
         { '<leader>qud', '<cmd>QtOpenDesigner<cr>', desc = 'Open Designer' },
         { '<leader>quc', '<cmd>QtOpenDesignerCurrent<cr>', desc = 'Designer Current' },
         { '<leader>qum', '<cmd>QtDesignerManager<cr>', desc = 'Designer Manager' },
+        
+        -- 脚本管理
         { '<leader>qsb', '<cmd>QtScript build<cr>', desc = 'Script Build' },
         { '<leader>qsr', '<cmd>QtScript run<cr>', desc = 'Script Run' },
         { '<leader>qsd', '<cmd>QtScript debug<cr>', desc = 'Script Debug' },
+        
+        -- 系统信息
         { '<leader>qsi', '<cmd>QtSystemInfo<cr>', desc = 'System Info' },
     },
     config = function()
@@ -70,6 +95,22 @@ return {
                 build_dir = "build",      -- 构建目录
                 parallel_build = true,    -- 并行构建
                 build_jobs = 4            -- 构建线程数
+            },
+            
+            -- 全局搜索配置
+            global_search = {
+                enabled = true,                    -- 启用全局搜索
+                max_depth = 3,                     -- 最大搜索深度
+                include_system_paths = true,       -- 包含系统路径
+                custom_search_paths = {            -- 自定义搜索路径
+                    -- "/path/to/your/projects",
+                    -- "D:\\MyProjects"
+                },
+                exclude_patterns = {               -- 排除模式
+                    "node_modules", ".git", ".vscode", 
+                    "build", "target", "dist", "out",
+                    "__pycache__", ".cache", "tmp", "temp"
+                }
             },
             
             -- UI设计师配置

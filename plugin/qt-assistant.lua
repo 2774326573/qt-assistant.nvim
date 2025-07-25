@@ -179,10 +179,6 @@ vim.api.nvim_create_user_command('QtSearchProjects', function()
     require('qt-assistant').search_qt_projects()
 end, { desc = 'Search for Qt projects' })
 
-vim.api.nvim_create_user_command('QtQuickSearch', function()
-    ensure_loaded()
-    require('qt-assistant').quick_search_project()
-end, { desc = 'Quick search for Qt project (current dir first)' })
 
 vim.api.nvim_create_user_command('QtRecentProjects', function()
     ensure_loaded()
@@ -198,6 +194,16 @@ vim.api.nvim_create_user_command('QtChooseProject', function()
     ensure_loaded()
     require('qt-assistant').smart_project_selector_with_choice()
 end, { desc = 'Choose project from all available options' })
+
+vim.api.nvim_create_user_command('QtQuickSwitcher', function()
+    ensure_loaded()
+    require('qt-assistant').quick_project_switcher()
+end, { desc = 'Quick project switcher (recent projects)' })
+
+vim.api.nvim_create_user_command('QtGlobalSearch', function()
+    ensure_loaded()
+    require('qt-assistant').global_search_projects()
+end, { desc = 'Global search Qt projects across all drives' })
 
 vim.api.nvim_create_user_command('QtDesignerManager', function()
     ensure_loaded()

@@ -29,6 +29,16 @@ function M.setup(user_config)
             parallel_build = true,
             build_jobs = 4
         },
+        global_search = {
+            enabled = true,
+            max_depth = 3,
+            include_system_paths = true,
+            custom_search_paths = {},
+            exclude_patterns = {
+                "node_modules", ".git", ".vscode", "build", "target", 
+                "dist", "out", "__pycache__", ".cache", "tmp", "temp"
+            }
+        },
         designer = {
             designer_path = "designer",
             creator_path = "qtcreator",
@@ -73,14 +83,19 @@ function M.setup_keymaps()
         map('n', '<leader>qc', function() M.show_main_interface() end, { desc = 'Qt Assistant' })
         map('n', '<leader>qh', '<cmd>help qt-assistant<cr>', { desc = 'Qt Help' })
         
-        -- 项目管理
-        map('n', '<leader>qp', function() M.smart_project_selector() end, { desc = 'Auto Open Project (Smart)' })
-        map('n', '<leader>qpc', function() M.smart_project_selector_with_choice() end, { desc = 'Choose Project (Manual)' })
-        map('n', '<leader>qpo', function() M.smart_project_selector() end, { desc = 'Quick Open Qt Project (4-key)' })
+        -- 项目管理 (Project Management)
+        -- 核心操作
+        map('n', '<leader>qpo', function() M.smart_project_selector() end, { desc = 'Smart Open Project (Auto)' })
         map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
-        map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects' })
-        map('n', '<leader>qpq', function() M.quick_search_project() end, { desc = 'Quick Search Project' })
+        
+        -- 项目选择/切换
+        map('n', '<leader>qpc', function() M.smart_project_selector_with_choice() end, { desc = 'Choose Project (Manual)' })
+        map('n', '<leader>qpw', function() M.quick_project_switcher() end, { desc = 'Quick Project Switcher' })
         map('n', '<leader>qpr', function() M.show_recent_projects() end, { desc = 'Recent Projects' })
+        
+        -- 项目搜索
+        map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects (Local)' })
+        map('n', '<leader>qpg', function() M.global_search_projects() end, { desc = 'Global Search All Drives' })
         
         -- 构建管理  
         map('n', '<leader>qb', function() M.build_project() end, { desc = 'Build Project' })
@@ -183,11 +198,6 @@ function M.search_qt_projects()
     project_manager.search_and_select_project()
 end
 
--- 快速搜索Qt项目（当前目录优先）
-function M.quick_search_project()
-    local project_manager = require('qt-assistant.project_manager')
-    project_manager.quick_search_project()
-end
 
 -- 显示最近项目
 function M.show_recent_projects()
@@ -205,6 +215,18 @@ end
 function M.smart_project_selector_with_choice()
     local project_manager = require('qt-assistant.project_manager')
     project_manager.show_smart_project_selector_with_choice()
+end
+
+-- 快速项目切换器
+function M.quick_project_switcher()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.show_quick_project_switcher()
+end
+
+-- 全局搜索Qt项目
+function M.global_search_projects()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.start_global_search()
 end
 
 -- 构建管理
@@ -288,8 +310,9 @@ function M.show_keymaps()
         "Project Management:",
         "  :QtSmartSelector     - Auto open Qt project (smart & fast)",
         "  :QtChooseProject     - Choose from all Qt projects",
+        "  :QtQuickSwitcher     - Quick project switcher (recent projects)",
+        "  :QtGlobalSearch      - Global search all drives (comprehensive)",
         "  :QtSearchProjects    - Search for Qt projects",
-        "  :QtQuickSearch       - Quick search (current dir first)",
         "  :QtRecentProjects    - Show recent projects",
         "  :QtOpenProject       - Open project",
         "  :QtNewProject        - Create new project",
@@ -321,25 +344,41 @@ function M.show_keymaps()
     if keymaps_enabled then
         vim.list_extend(keymaps, {
             "Default Keymaps (ENABLED):",
+            "",
+            "Basic:",
             "  <leader>qc          - Qt Assistant",
             "  <leader>qh          - Qt Help",
-            "  <leader>qp          - Auto Open Project (3-key)",
-            "  <leader>qpo         - Quick Open Qt Project (⭐ 4-key)",
-            "  <leader>qpc         - Choose Project (Manual)",
+            "",
+            "Project Core:",
+            "  <leader>qpo         - Smart Open Project (⭐ Auto)",
             "  <leader>qpm         - Project Manager",
-            "  <leader>qps         - Search Qt Projects",
-            "  <leader>qpq         - Quick Search Project",
+            "",
+            "Project Switch:",
+            "  <leader>qpc         - Choose Project (Manual)",
+            "  <leader>qpw         - Quick Project Switcher (⚡ Fast)",
             "  <leader>qpr         - Recent Projects",
+            "",
+            "Project Search:",
+            "  <leader>qps         - Search Qt Projects (Local)",
+            "  <leader>qpg         - Global Search All Drives (🌍 Complete)",
+            "",
+            "Build System:",
             "  <leader>qb          - Build Project",
             "  <leader>qr          - Run Project",
             "  <leader>qcl         - Clean Project",
             "  <leader>qbs         - Build Status",
+            "",
+            "UI Designer:",
             "  <leader>qud         - Open Designer",
             "  <leader>quc         - Designer Current",
             "  <leader>qum         - Designer Manager",
+            "",
+            "Scripts:",
             "  <leader>qsb         - Script Build",
             "  <leader>qsr         - Script Run",
             "  <leader>qsd         - Script Debug",
+            "",
+            "System:",
             "  <leader>qsi         - System Info",
         })
     else

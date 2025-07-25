@@ -18,10 +18,11 @@
 - **工具类**: 静态方法类、单例模式类
 
 ### 项目管理功能
-- **项目检测**: 自动识别CMake、qmake、Meson等构建系统
+- **智能项目搜索**: 跨驱动器全局搜索Qt项目，支持智能选择和快速切换
+- **项目检测**: 自动识别CMake、qmake、Qbs、Meson等构建系统
 - **项目模板**: Widget应用、Quick应用、控制台应用、库项目
 - **项目结构分析**: 智能识别源码、头文件、UI文件目录
-- **项目快速切换**: 支持多项目开发环境
+- **快速项目切换**: 支持最近项目列表和一键切换功能
 
 ### UI设计师集成
 - **Qt Designer集成**: 自动启动Qt Designer编辑UI文件
@@ -135,6 +136,12 @@ use {
 
 #### 项目管理
 ```vim
+:QtSmartSelector    # 智能项目选择器（自动打开）
+:QtChooseProject    # 项目手动选择
+:QtQuickSwitcher    # 快速项目切换器（最近项目）
+:QtGlobalSearch     # 全局搜索所有驱动器中的Qt项目
+:QtSearchProjects   # 本地搜索Qt项目
+:QtRecentProjects   # 显示最近项目
 :QtOpenProject /path/to/project
 :QtNewProject MyApp widget_app
 :QtBuildProject Debug
@@ -219,6 +226,18 @@ require('qt-assistant').setup({
         build_dir = "build", 
         parallel_build = true,
         build_jobs = 4
+    },
+    
+    -- 全局搜索配置
+    global_search = {
+        enabled = true,                    -- 启用全局搜索
+        max_depth = 3,                     -- 最大搜索深度
+        include_system_paths = true,       -- 包含系统路径
+        custom_search_paths = {},          -- 自定义搜索路径
+        exclude_patterns = {               -- 排除模式
+            "node_modules", ".git", ".vscode", 
+            "build", "target", "dist", "out"
+        }
     },
     
     -- UI设计师配置
@@ -337,9 +356,19 @@ project/
 - `<leader>qh` - 显示帮助
 
 ### 项目管理
-- `<leader>qpo` - 打开项目
+
+**核心操作:**
+- `<leader>qpo` - 智能打开项目 (⭐ 自动)
 - `<leader>qpm` - 项目管理器
-- `<leader>qpt` - 列出项目模板
+
+**项目切换:**
+- `<leader>qpc` - 选择项目 (手动)
+- `<leader>qpw` - 快速项目切换器 (⚡ 快速)
+- `<leader>qpr` - 最近项目
+
+**项目搜索:**
+- `<leader>qps` - 搜索Qt项目 (本地)
+- `<leader>qpg` - 全局搜索所有驱动器 (🌍 完整)
 
 ### 构建管理
 - `<leader>qb` - 构建项目
@@ -357,11 +386,9 @@ project/
 - `<leader>qsb` - 脚本构建
 - `<leader>qsr` - 脚本运行
 - `<leader>qsd` - 脚本调试
-- `<leader>qsm` - 脚本管理器
 
-### 组合操作
-- `<leader>qbr` - 构建并运行
-- `<leader>qcb` - 清理并构建
+### 系统信息
+- `<leader>qsi` - 系统信息
 
 **注意**: `<leader>` 通常是 `\` 键，可以通过 `let mapleader = ","` 来自定义。
 
