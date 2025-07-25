@@ -534,14 +534,24 @@ function M.show_project_search_results(projects)
         return
     end
     
+    -- 如果只找到一个项目，直接打开
+    if #projects == 1 then
+        local project = projects[1]
+        vim.notify(string.format("Found and opening: %s (%s)", 
+            project.name, project.primary_type.name), vim.log.levels.INFO)
+        M.open_project(project.path)
+        return
+    end
+    
+    -- 多个项目时显示选择界面
     local items = {}
     for i, project in ipairs(projects) do
-        table.insert(items, string.format("%d. %s (%s) - %s", 
-            i, project.name, project.primary_type.name, project.path))
+        table.insert(items, string.format("%s (%s) - %s", 
+            project.name, project.primary_type.name, project.path))
     end
     
     vim.ui.select(items, {
-        prompt = 'Select Qt project to open:',
+        prompt = string.format('Found %d Qt projects, select one to open:', #projects),
         format_item = function(item)
             return item
         end
@@ -553,23 +563,188 @@ function M.show_project_search_results(projects)
 end
 
 -- 搜索并选择Qt项目
-function M.search_and_select_project()
+function M.search_and_select_project(options)
+    options = options or {}
+    local max_depth = options.max_depth or 2
+    local include_current = options.include_current ~= false
+    
     vim.notify("Searching for Qt projects...", vim.log.levels.INFO)
     
     -- 异步搜索以避免阻塞UI
     vim.defer_fn(function()
-        local search_paths = {
-            vim.fn.getcwd(),
+        local search_paths = {}
+        
+        -- 如果当前目录就是Qt项目，优先检查
+        if include_current then
+            local current_dir = vim.fn.getcwd()
+            if M.is_qt_project(current_dir) then
+                vim.notify(string.format("Current directory is a Qt project: %s", 
+                    vim.fn.fnamemodify(current_dir, ':t')), vim.log.levels.INFO)
+                M.open_project(current_dir)
+                return
+            end
+            table.insert(search_paths, current_dir)
+        end
+        
+        -- 添加其他搜索路径
+        local additional_paths = {
             vim.fn.expand('~'),
             vim.fn.expand('~/Projects'),
             vim.fn.expand('~/Development'),
             vim.fn.expand('~/code'),
+            vim.fn.expand('~/workspace'),
+            vim.fn.expand('~/Documents'),
             '/home/' .. vim.fn.expand('$USER') .. '/QtProjects'
         }
         
-        local projects = M.search_qt_projects(search_paths, 2)
+        for _, path in ipairs(additional_paths) do
+            if vim.fn.isdirectory(path) == 1 then
+                table.insert(search_paths, path)
+            end
+        end
+        
+        local projects = M.search_qt_projects(search_paths, max_depth)
+        
+        -- 过滤掉当前目录（如果已经检查过）
+        if include_current then
+            local current_dir = vim.fn.getcwd()
+            projects = vim.tbl_filter(function(project)
+                return project.path ~= current_dir
+            end, projects)
+        end
+        
         M.show_project_search_results(projects)
     end, 100)
+end
+
+-- 快速搜索（只搜索当前目录和父目录）
+function M.quick_search_project()
+    local current_dir = vim.fn.getcwd()
+    
+    -- 检查当前目录
+    if M.is_qt_project(current_dir) then
+        vim.notify("Opening current Qt project", vim.log.levels.INFO)
+        M.open_project(current_dir)
+        return
+    end
+    
+    -- 检查父目录
+    local parent_dir = vim.fn.fnamemodify(current_dir, ':h')
+    if parent_dir ~= current_dir and M.is_qt_project(parent_dir) then
+        vim.notify("Opening parent Qt project", vim.log.levels.INFO)
+        M.open_project(parent_dir)
+        return
+    end
+    
+    -- 如果当前和父目录都不是Qt项目，进行完整搜索
+    vim.notify("No Qt project in current/parent directory, searching...", vim.log.levels.INFO)
+    M.search_and_select_project({max_depth = 1, include_current = false})
+end
+
+-- 最近项目管理
+local recent_projects_file = vim.fn.stdpath('data') .. '/qt-assistant-recent-projects.json'
+
+-- 保存最近项目
+function M.save_recent_project(project_path, project_info)
+    local recent_projects = M.load_recent_projects()
+    
+    -- 移除已存在的项目（避免重复）
+    recent_projects = vim.tbl_filter(function(proj)
+        return proj.path ~= project_path
+    end, recent_projects)
+    
+    -- 添加到列表开头
+    table.insert(recent_projects, 1, {
+        path = project_path,
+        name = vim.fn.fnamemodify(project_path, ':t'),
+        type = project_info and project_info.type or 'unknown',
+        last_opened = os.time()
+    })
+    
+    -- 只保留最近10个项目
+    if #recent_projects > 10 then
+        recent_projects = vim.list_slice(recent_projects, 1, 10)
+    end
+    
+    -- 保存到文件
+    local file = io.open(recent_projects_file, 'w')
+    if file then
+        file:write(vim.json.encode(recent_projects))
+        file:close()
+    end
+end
+
+-- 加载最近项目
+function M.load_recent_projects()
+    local file = io.open(recent_projects_file, 'r')
+    if not file then
+        return {}
+    end
+    
+    local content = file:read('*all')
+    file:close()
+    
+    local ok, recent_projects = pcall(vim.json.decode, content)
+    if not ok or type(recent_projects) ~= 'table' then
+        return {}
+    end
+    
+    -- 过滤掉不存在的项目
+    return vim.tbl_filter(function(proj)
+        return vim.fn.isdirectory(proj.path) == 1
+    end, recent_projects)
+end
+
+-- 显示最近项目
+function M.show_recent_projects()
+    local recent_projects = M.load_recent_projects()
+    
+    if #recent_projects == 0 then
+        vim.notify("No recent Qt projects found", vim.log.levels.INFO)
+        return
+    end
+    
+    -- 如果只有一个最近项目，直接打开
+    if #recent_projects == 1 then
+        local project = recent_projects[1]
+        vim.notify(string.format("Opening recent project: %s", project.name), vim.log.levels.INFO)
+        M.open_project(project.path)
+        return
+    end
+    
+    -- 多个项目时显示选择界面
+    local items = {}
+    for i, project in ipairs(recent_projects) do
+        local time_str = os.date('%Y-%m-%d %H:%M', project.last_opened)
+        table.insert(items, string.format("%s (%s) - %s [%s]", 
+            project.name, project.type, project.path, time_str))
+    end
+    
+    vim.ui.select(items, {
+        prompt = 'Select recent Qt project:',
+        format_item = function(item)
+            return item
+        end
+    }, function(choice, idx)
+        if choice and idx then
+            M.open_project(recent_projects[idx].path)
+        end
+    end)
+end
+
+-- 重写open_project函数以保存最近项目
+local original_open_project = M.open_project
+function M.open_project(project_path)
+    local success = original_open_project(project_path)
+    
+    if success and M.current_project then
+        -- 保存到最近项目列表
+        M.save_recent_project(project_path, {
+            type = M.current_project.type
+        })
+    end
+    
+    return success
 end
 
 return M

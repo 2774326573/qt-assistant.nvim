@@ -77,6 +77,8 @@ function M.setup_keymaps()
         map('n', '<leader>qpo', function() M.show_project_manager() end, { desc = 'Open Project' })
         map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
         map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects' })
+        map('n', '<leader>qpq', function() M.quick_search_project() end, { desc = 'Quick Search Project' })
+        map('n', '<leader>qpr', function() M.show_recent_projects() end, { desc = 'Recent Projects' })
         
         -- 构建管理  
         map('n', '<leader>qb', function() M.build_project() end, { desc = 'Build Project' })
@@ -179,6 +181,18 @@ function M.search_qt_projects()
     project_manager.search_and_select_project()
 end
 
+-- 快速搜索Qt项目（当前目录优先）
+function M.quick_search_project()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.quick_search_project()
+end
+
+-- 显示最近项目
+function M.show_recent_projects()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.show_recent_projects()
+end
+
 -- 构建管理
 function M.build_project(build_type)
     local build_manager = require('qt-assistant.build_manager')
@@ -259,6 +273,8 @@ function M.show_keymaps()
         "",
         "Project Management:",
         "  :QtSearchProjects    - Search for Qt projects",
+        "  :QtQuickSearch       - Quick search (current dir first)",
+        "  :QtRecentProjects    - Show recent projects",
         "  :QtOpenProject       - Open project",
         "  :QtNewProject        - Create new project",
         "  :QtProjectManager    - Project manager interface",
@@ -294,6 +310,8 @@ function M.show_keymaps()
             "  <leader>qpo         - Open Project",
             "  <leader>qpm         - Project Manager",
             "  <leader>qps         - Search Qt Projects",
+            "  <leader>qpq         - Quick Search Project",
+            "  <leader>qpr         - Recent Projects",
             "  <leader>qb          - Build Project",
             "  <leader>qr          - Run Project",
             "  <leader>qcl         - Clean Project",

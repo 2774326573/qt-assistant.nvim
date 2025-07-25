@@ -179,6 +179,16 @@ vim.api.nvim_create_user_command('QtSearchProjects', function()
     require('qt-assistant').search_qt_projects()
 end, { desc = 'Search for Qt projects' })
 
+vim.api.nvim_create_user_command('QtQuickSearch', function()
+    ensure_loaded()
+    require('qt-assistant').quick_search_project()
+end, { desc = 'Quick search for Qt project (current dir first)' })
+
+vim.api.nvim_create_user_command('QtRecentProjects', function()
+    ensure_loaded()
+    require('qt-assistant').show_recent_projects()
+end, { desc = 'Show recent Qt projects' })
+
 vim.api.nvim_create_user_command('QtDesignerManager', function()
     ensure_loaded()
     require('qt-assistant').show_designer_manager()
