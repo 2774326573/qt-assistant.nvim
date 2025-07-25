@@ -224,3 +224,86 @@ vim.api.nvim_create_user_command('QtKeymaps', function()
     ensure_loaded()
     require('qt-assistant').show_keymaps()
 end, { desc = 'Show Qt Assistant keymaps' })
+
+-- 添加交互式类创建命令
+vim.api.nvim_create_user_command('QtQuickClass', function()
+    ensure_loaded()
+    require('qt-assistant').quick_create_class()
+end, { desc = 'Quick class creator (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateMainWindow', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('main_window')
+end, { desc = 'Create main window class (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateDialog', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('dialog')
+end, { desc = 'Create dialog class (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateWidget', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('widget')
+end, { desc = 'Create widget class (interactive)' })
+
+vim.api.nvim_create_user_command('QtCreateModelClass', function()
+    ensure_loaded()
+    require('qt-assistant').create_class_interactive('model')
+end, { desc = 'Create model class (interactive)' })
+
+-- 设置默认快捷键
+local function setup_keymaps()
+    local map = vim.keymap.set
+    
+    -- 基础操作
+    map('n', '<leader>qc', '<cmd>QtAssistant<cr>', { desc = 'Qt Assistant' })
+    map('n', '<leader>qh', '<cmd>help qt-assistant<cr>', { desc = 'Qt Help' })
+    
+    -- 快速类创建
+    map('n', '<leader>qcc', '<cmd>QtQuickClass<cr>', { desc = 'Quick Class Creator' })
+    map('n', '<leader>qcw', '<cmd>QtCreateMainWindow<cr>', { desc = 'Create Main Window' })
+    map('n', '<leader>qcd', '<cmd>QtCreateDialog<cr>', { desc = 'Create Dialog' })
+    map('n', '<leader>qcv', '<cmd>QtCreateWidget<cr>', { desc = 'Create Widget' })
+    map('n', '<leader>qcm', '<cmd>QtCreateModelClass<cr>', { desc = 'Create Model' })
+    
+    -- 项目管理
+    map('n', '<leader>qpo', '<cmd>QtSmartSelector<cr>', { desc = 'Smart Open Project' })
+    map('n', '<leader>qpm', '<cmd>QtProjectManager<cr>', { desc = 'Project Manager' })
+    map('n', '<leader>qpc', '<cmd>QtChooseProject<cr>', { desc = 'Choose Project' })
+    map('n', '<leader>qpw', '<cmd>QtQuickSwitcher<cr>', { desc = 'Quick Project Switcher' })
+    map('n', '<leader>qpr', '<cmd>QtRecentProjects<cr>', { desc = 'Recent Projects' })
+    map('n', '<leader>qps', '<cmd>QtSearchProjects<cr>', { desc = 'Search Projects' })
+    map('n', '<leader>qpg', '<cmd>QtGlobalSearch<cr>', { desc = 'Global Search' })
+    
+    -- 构建管理
+    map('n', '<leader>qb', '<cmd>QtBuildProject<cr>', { desc = 'Build Project' })
+    map('n', '<leader>qr', '<cmd>QtRunProject<cr>', { desc = 'Run Project' })
+    map('n', '<leader>qcl', '<cmd>QtCleanProject<cr>', { desc = 'Clean Project' })
+    map('n', '<leader>qbs', '<cmd>QtBuildStatus<cr>', { desc = 'Build Status' })
+    
+    -- UI设计师
+    map('n', '<leader>qud', '<cmd>QtOpenDesigner<cr>', { desc = 'Open Designer' })
+    map('n', '<leader>quc', '<cmd>QtOpenDesignerCurrent<cr>', { desc = 'Designer Current' })
+    map('n', '<leader>qum', '<cmd>QtDesignerManager<cr>', { desc = 'Designer Manager' })
+    
+    -- 脚本管理
+    map('n', '<leader>qsb', '<cmd>QtScript build<cr>', { desc = 'Script Build' })
+    map('n', '<leader>qsr', '<cmd>QtScript run<cr>', { desc = 'Script Run' })
+    map('n', '<leader>qsd', '<cmd>QtScript debug<cr>', { desc = 'Script Debug' })
+    
+    -- 系统信息
+    map('n', '<leader>qsi', '<cmd>QtSystemInfo<cr>', { desc = 'System Info' })
+    map('n', '<leader>qsk', '<cmd>QtKeymaps<cr>', { desc = 'Show Keymaps' })
+end
+
+-- 自动设置快捷键
+setup_keymaps()
+
+-- 自动初始化插件配置
+vim.schedule(function()
+    ensure_loaded()
+    local ok, qt_assistant = pcall(require, 'qt-assistant')
+    if ok and qt_assistant.setup then
+        qt_assistant.setup({})
+    end
+end)
