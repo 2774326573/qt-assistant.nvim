@@ -192,7 +192,12 @@ end, { desc = 'Show recent Qt projects' })
 vim.api.nvim_create_user_command('QtSmartSelector', function()
     ensure_loaded()
     require('qt-assistant').smart_project_selector()
-end, { desc = 'Smart project selector (all-in-one)' })
+end, { desc = 'Smart project selector (auto open)' })
+
+vim.api.nvim_create_user_command('QtChooseProject', function()
+    ensure_loaded()
+    require('qt-assistant').smart_project_selector_with_choice()
+end, { desc = 'Choose project from all available options' })
 
 vim.api.nvim_create_user_command('QtDesignerManager', function()
     ensure_loaded()

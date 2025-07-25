@@ -749,6 +749,70 @@ end
 
 -- 智能项目选择器 - 整合所有项目搜索和打开功能
 function M.show_smart_project_selector()
+    -- 1. 首先检查当前目录是否是Qt项目
+    local current_dir = vim.fn.getcwd()
+    if M.is_qt_project(current_dir) then
+        vim.notify(string.format("Opening current Qt project: %s", vim.fn.fnamemodify(current_dir, ':t')), vim.log.levels.INFO)
+        M.open_project(current_dir)
+        return
+    end
+    
+    -- 2. 检查最近项目，如果只有一个，直接打开
+    local recent_projects = M.load_recent_projects()
+    if #recent_projects == 1 then
+        local project = recent_projects[1]
+        vim.notify(string.format("Opening recent project: %s", project.name), vim.log.levels.INFO)
+        M.open_project(project.path)
+        return
+    end
+    
+    -- 3. 如果有多个最近项目，优先选择最近的一个
+    if #recent_projects > 1 then
+        local latest_project = recent_projects[1] -- 最近的项目
+        vim.notify(string.format("Opening most recent project: %s", latest_project.name), vim.log.levels.INFO)
+        M.open_project(latest_project.path)
+        return
+    end
+    
+    -- 4. 如果没有最近项目，搜索并直接打开找到的第一个项目
+    vim.notify("No recent projects, searching for Qt projects...", vim.log.levels.INFO)
+    
+    vim.defer_fn(function()
+        local search_paths = {
+            current_dir,  -- 先搜索当前目录的子目录
+            vim.fn.expand('~'),
+            vim.fn.expand('~/Projects'),
+            vim.fn.expand('~/Development'), 
+            vim.fn.expand('~/code'),
+            vim.fn.expand('~/workspace'),
+            vim.fn.expand('~/Documents')
+        }
+        
+        local found_projects = M.search_qt_projects(search_paths, 2)
+        
+        if #found_projects > 0 then
+            local project = found_projects[1] -- 选择找到的第一个项目
+            vim.notify(string.format("Found and opening: %s (%s)", 
+                project.name, project.primary_type.name), vim.log.levels.INFO)
+            M.open_project(project.path)
+        else
+            -- 如果什么都没找到，提供手动选择
+            vim.notify("No Qt projects found, please select manually", vim.log.levels.WARN)
+            vim.ui.input({
+                prompt = 'Project path: ',
+                default = current_dir,
+                completion = 'dir'
+            }, function(path)
+                if path then
+                    M.open_project(path)
+                end
+            end)
+        end
+    end, 100)
+end
+
+-- 智能项目选择器（带选择界面）- 当用户需要手动选择时使用
+function M.show_smart_project_selector_with_choice()
     local all_projects = {}
     local sections = {}
     

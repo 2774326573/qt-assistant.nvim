@@ -412,12 +412,13 @@ function M.show_project_manager()
     end
     
     table.insert(menu_items, "Actions:")
-    table.insert(menu_items, "1. Smart Project Selector (All-in-One)")
-    table.insert(menu_items, "2. Create new project")
-    table.insert(menu_items, "3. Show project templates")
-    table.insert(menu_items, "4. Build project")
-    table.insert(menu_items, "5. Run project")
-    table.insert(menu_items, "6. Clean project")
+    table.insert(menu_items, "1. Auto Open Project (Smart & Fast)")
+    table.insert(menu_items, "2. Select Project (Choose Manually)")
+    table.insert(menu_items, "3. Create new project")
+    table.insert(menu_items, "4. Show project templates")
+    table.insert(menu_items, "5. Build project")
+    table.insert(menu_items, "6. Run project")
+    table.insert(menu_items, "7. Clean project")
     table.insert(menu_items, "")
     table.insert(menu_items, "Advanced Options:")
     table.insert(menu_items, "s - Search Qt projects")
@@ -466,6 +467,10 @@ function M.show_project_manager()
         end,
         ['2'] = function()
             close_window()
+            project_manager.show_smart_project_selector_with_choice()
+        end,
+        ['3'] = function()
+            close_window()
             vim.ui.input({prompt = 'Project name: '}, function(name)
                 if name then
                     vim.ui.select({'widget_app', 'quick_app', 'console_app', 'library'}, {
@@ -478,21 +483,21 @@ function M.show_project_manager()
                 end
             end)
         end,
-        ['3'] = function()
-            close_window()
-            project_manager.list_templates()
-        end,
         ['4'] = function()
             close_window()
-            local build_manager = require('qt-assistant.build_manager')
-            build_manager.build_project()
+            project_manager.list_templates()
         end,
         ['5'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
-            build_manager.run_project()
+            build_manager.build_project()
         end,
         ['6'] = function()
+            close_window()
+            local build_manager = require('qt-assistant.build_manager')
+            build_manager.run_project()
+        end,
+        ['7'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.clean_project()

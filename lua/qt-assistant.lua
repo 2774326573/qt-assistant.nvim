@@ -74,7 +74,8 @@ function M.setup_keymaps()
         map('n', '<leader>qh', '<cmd>help qt-assistant<cr>', { desc = 'Qt Help' })
         
         -- 项目管理
-        map('n', '<leader>qp', function() M.smart_project_selector() end, { desc = 'Smart Project Selector' })
+        map('n', '<leader>qp', function() M.smart_project_selector() end, { desc = 'Auto Open Project (Smart)' })
+        map('n', '<leader>qpc', function() M.smart_project_selector_with_choice() end, { desc = 'Choose Project (Manual)' })
         map('n', '<leader>qpo', function() M.show_project_manager() end, { desc = 'Open Project' })
         map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
         map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects' })
@@ -194,10 +195,16 @@ function M.show_recent_projects()
     project_manager.show_recent_projects()
 end
 
--- 智能项目选择器（整合所有功能）
+-- 智能项目选择器（整合所有功能）- 自动打开
 function M.smart_project_selector()
     local project_manager = require('qt-assistant.project_manager')
     project_manager.show_smart_project_selector()
+end
+
+-- 智能项目选择器（带选择界面）- 手动选择
+function M.smart_project_selector_with_choice()
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.show_smart_project_selector_with_choice()
 end
 
 -- 构建管理
@@ -279,7 +286,8 @@ function M.show_keymaps()
         "  :QtCreateModel       - Create data model",
         "",
         "Project Management:",
-        "  :QtSmartSelector     - Smart project selector (all-in-one)",
+        "  :QtSmartSelector     - Auto open Qt project (smart & fast)",
+        "  :QtChooseProject     - Choose from all Qt projects",
         "  :QtSearchProjects    - Search for Qt projects",
         "  :QtQuickSearch       - Quick search (current dir first)",
         "  :QtRecentProjects    - Show recent projects",
@@ -315,7 +323,8 @@ function M.show_keymaps()
             "Default Keymaps (ENABLED):",
             "  <leader>qc          - Qt Assistant",
             "  <leader>qh          - Qt Help",
-            "  <leader>qp          - Smart Project Selector (⭐ MAIN)",
+            "  <leader>qp          - Auto Open Project (⭐ MAIN)",
+            "  <leader>qpc         - Choose Project (Manual)",
             "  <leader>qpo         - Open Project",
             "  <leader>qpm         - Project Manager",
             "  <leader>qps         - Search Qt Projects",
