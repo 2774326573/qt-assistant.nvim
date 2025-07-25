@@ -73,13 +73,10 @@ function M.setup_keymaps()
         map('n', '<leader>qc', function() M.show_main_interface() end, { desc = 'Qt Assistant' })
         map('n', '<leader>qh', '<cmd>help qt-assistant<cr>', { desc = 'Qt Help' })
         
-        -- 项目管理 - 主要快捷键
+        -- 项目管理
         map('n', '<leader>qp', function() M.smart_project_selector() end, { desc = 'Auto Open Project (Smart)' })
         map('n', '<leader>qpc', function() M.smart_project_selector_with_choice() end, { desc = 'Choose Project (Manual)' })
-        
-        -- 更简短的替代快捷键
-        map('n', '<leader>p', function() M.smart_project_selector() end, { desc = 'Quick Open Qt Project' })
-        map('n', '<leader>qpo', function() M.show_project_manager() end, { desc = 'Open Project' })
+        map('n', '<leader>qpo', function() M.smart_project_selector() end, { desc = 'Quick Open Qt Project (4-key)' })
         map('n', '<leader>qpm', function() M.show_project_manager() end, { desc = 'Project Manager' })
         map('n', '<leader>qps', function() M.search_qt_projects() end, { desc = 'Search Qt Projects' })
         map('n', '<leader>qpq', function() M.quick_search_project() end, { desc = 'Quick Search Project' })
@@ -326,10 +323,9 @@ function M.show_keymaps()
             "Default Keymaps (ENABLED):",
             "  <leader>qc          - Qt Assistant",
             "  <leader>qh          - Qt Help",
-            "  <leader>p           - Quick Open Qt Project (⭐ FASTEST)",
-            "  <leader>qp          - Auto Open Project (Smart)",
+            "  <leader>qp          - Auto Open Project (3-key)",
+            "  <leader>qpo         - Quick Open Qt Project (⭐ 4-key)",
             "  <leader>qpc         - Choose Project (Manual)",
-            "  <leader>qpo         - Open Project",
             "  <leader>qpm         - Project Manager",
             "  <leader>qps         - Search Qt Projects",
             "  <leader>qpq         - Quick Search Project",
