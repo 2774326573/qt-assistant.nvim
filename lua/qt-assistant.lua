@@ -300,6 +300,36 @@ function M.run_script(script_name)
     scripts.run_script(script_name, {in_terminal = true})
 end
 
+-- 快速生成脚本
+function M.generate_scripts()
+    local scripts = require('qt-assistant.scripts')
+    return scripts.quick_generate_scripts()
+end
+
+-- 生成单个脚本
+function M.generate_single_script(script_type)
+    local scripts = require('qt-assistant.scripts')
+    return scripts.generate_single_script(script_type)
+end
+
+-- 交互式脚本生成器
+function M.show_script_generator()
+    local scripts = require('qt-assistant.scripts')
+    return scripts.interactive_script_generator()
+end
+
+-- 编辑脚本
+function M.edit_script(script_name)
+    local scripts = require('qt-assistant.scripts')
+    return scripts.edit_script(script_name)
+end
+
+-- 列出脚本
+function M.list_scripts()
+    local scripts = require('qt-assistant.scripts')
+    return scripts.get_available_scripts()
+end
+
 -- UI设计师
 function M.open_designer(ui_file)
     local designer = require('qt-assistant.designer')

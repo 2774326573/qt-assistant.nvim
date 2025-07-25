@@ -726,4 +726,461 @@ function M.show_script_status()
     end
 end
 
+-- ==================== 新增功能：独立脚本生成 ====================
+
+-- 脚本类型配置（统一版本）
+local script_types = {
+    build = {
+        name = "构建脚本",
+        description = "编译项目的脚本",
+        executable = true
+    },
+    run = {
+        name = "运行脚本", 
+        description = "运行项目的脚本",
+        executable = true
+    },
+    debug = {
+        name = "调试脚本",
+        description = "调试项目的脚本", 
+        executable = true
+    },
+    clean = {
+        name = "清理脚本",
+        description = "清理编译文件的脚本",
+        executable = true
+    },
+    test = {
+        name = "测试脚本",
+        description = "运行测试的脚本",
+        executable = true
+    },
+    deploy = {
+        name = "部署脚本",
+        description = "部署项目的脚本",
+        executable = true
+    }
+}
+
+-- 快速生成脚本（可以覆盖现有脚本）
+function M.quick_generate_scripts()
+    local success, scripts_dir = M.ensure_scripts_directory()
+    if not success then
+        vim.notify("Error: " .. scripts_dir, vim.log.levels.ERROR)
+        return false
+    end
+    
+    -- 检测构建系统
+    local build_system = M.detect_build_system()
+    vim.notify("Generating scripts for " .. build_system .. " build system...", vim.log.levels.INFO)
+    
+    -- 强制生成所有脚本
+    M.force_generate_scripts(scripts_dir, build_system)
+    
+    vim.notify("All scripts generated successfully in: " .. scripts_dir, vim.log.levels.INFO)
+    return true
+end
+
+-- 强制生成脚本（覆盖现有）
+function M.force_generate_scripts(scripts_dir, build_system)
+    local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+    local script_ext = is_windows and ".bat" or ".sh"
+    
+    local generated_count = 0
+    
+    -- 为每种脚本类型生成文件
+    for script_type, config in pairs(script_types) do
+        local script_content = M.generate_script_content(script_type, build_system, is_windows)
+        local script_path = system.join_path(scripts_dir, script_type .. script_ext)
+        
+        if M.write_script_file(script_path, script_content, is_windows) then
+            vim.notify("Generated: " .. script_type .. script_ext, vim.log.levels.INFO)
+            generated_count = generated_count + 1
+        end
+    end
+    
+    vim.notify(string.format("Generated %d scripts", generated_count), vim.log.levels.INFO)
+end
+
+-- 生成单个脚本
+function M.generate_single_script(script_type)
+    local success, scripts_dir = M.ensure_scripts_directory()
+    if not success then
+        vim.notify("Error: " .. scripts_dir, vim.log.levels.ERROR)
+        return false
+    end
+    
+    if not script_types[script_type] then
+        vim.notify("Unknown script type: " .. script_type, vim.log.levels.ERROR)
+        return false
+    end
+    
+    -- 检测构建系统
+    local build_system = M.detect_build_system()
+    local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+    local script_ext = is_windows and ".bat" or ".sh"
+    
+    local script_content = M.generate_script_content(script_type, build_system, is_windows)
+    local script_path = system.join_path(scripts_dir, script_type .. script_ext)
+    
+    if M.write_script_file(script_path, script_content, is_windows) then
+        vim.notify("Generated " .. script_type .. " script: " .. script_path, vim.log.levels.INFO)
+        return true
+    else
+        vim.notify("Failed to generate " .. script_type .. " script", vim.log.levels.ERROR)
+        return false
+    end
+end
+
+-- 交互式脚本生成器
+function M.interactive_script_generator()
+    local script_list = {}
+    for script_type, config in pairs(script_types) do
+        table.insert(script_list, {type = script_type, name = config.name})
+    end
+    
+    -- 创建选择菜单
+    local choices = {"=== Script Generator ===", ""}
+    table.insert(choices, "0. Generate All Scripts")
+    table.insert(choices, "")
+    
+    for i, script in ipairs(script_list) do
+        table.insert(choices, string.format("%d. Generate %s", i, script.name))
+    end
+    
+    local choice = vim.fn.inputlist(choices)
+    
+    if choice == 0 then
+        M.quick_generate_scripts()
+    elseif choice >= 1 and choice <= #script_list then
+        local selected_script = script_list[choice]
+        M.generate_single_script(selected_script.type)
+    else
+        vim.notify("Script generation cancelled", vim.log.levels.WARN)
+    end
+end
+
+-- 构建系统检测
+function M.detect_build_system()
+    local cwd = vim.fn.getcwd()
+    
+    -- 检查CMakeLists.txt
+    if vim.fn.filereadable(cwd .. "/CMakeLists.txt") == 1 then
+        return "cmake"
+    end
+    
+    -- 检查.pro文件
+    local pro_files = vim.fn.glob(cwd .. "/*.pro", false, true)
+    if #pro_files > 0 then
+        return "qmake"
+    end
+    
+    -- 检查Makefile
+    if vim.fn.filereadable(cwd .. "/Makefile") == 1 then
+        return "make"
+    end
+    
+    return "unknown"
+end
+
+-- 创建脚本目录
+function M.ensure_scripts_directory()
+    local scripts_dir = M.get_scripts_directory()
+    local stat = vim.loop.fs_stat(scripts_dir)
+    
+    if not stat then
+        local success = vim.fn.mkdir(scripts_dir, "p")
+        if success == 0 then
+            return false, "Failed to create scripts directory: " .. scripts_dir
+        end
+        vim.notify("Created scripts directory: " .. scripts_dir, vim.log.levels.INFO)
+    elseif stat.type ~= "directory" then
+        return false, "Scripts path exists but is not a directory: " .. scripts_dir
+    end
+    
+    return true, scripts_dir
+end
+
+-- 生成脚本内容
+function M.generate_script_content(script_type, build_system, is_windows)
+    local templates = M.get_script_templates(build_system, is_windows)
+    return templates[script_type] or templates.default
+end
+
+-- 获取脚本模板
+function M.get_script_templates(build_system, is_windows)
+    if is_windows then
+        return M.get_windows_templates(build_system)
+    else
+        return M.get_unix_templates(build_system)
+    end
+end
+
+-- Unix/Linux脚本模板（简化版）
+function M.get_unix_templates(build_system)
+    local templates = {}
+    
+    if build_system == "cmake" then
+        templates.build = [[#!/bin/bash
+echo "Building Qt project with CMake..."
+mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake --build . --config Debug -j $(nproc)
+echo "Build completed successfully!"]]
+
+        templates.run = [[#!/bin/bash
+echo "Running Qt project..."
+if [ ! -d "build" ]; then
+    echo "Build directory not found! Please build first."
+    exit 1
+fi
+cd build
+for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
+    if [ -f "$exe" ]; then
+        echo "Running $exe..."
+        "$exe"
+        exit 0
+    fi
+done
+echo "No executable found!"]]
+
+        templates.clean = [[#!/bin/bash
+echo "Cleaning Qt project..."
+if [ -d "build" ]; then
+    rm -rf build
+    echo "Build directory removed."
+fi
+rm -f *.tmp *.log
+echo "Clean completed!"]]
+
+    elseif build_system == "qmake" then
+        templates.build = [[#!/bin/bash
+echo "Building Qt project with qmake..."
+mkdir -p build && cd build
+qmake ..
+make -j $(nproc)
+echo "Build completed successfully!"]]
+
+        templates.run = [[#!/bin/bash
+echo "Running Qt project..."
+if [ ! -d "build" ]; then
+    echo "Build directory not found! Please build first."
+    exit 1
+fi
+cd build
+for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
+    if [ -f "$exe" ]; then
+        echo "Running $exe..."
+        "$exe"
+        exit 0
+    fi
+done
+echo "No executable found!"]]
+
+        templates.clean = [[#!/bin/bash
+echo "Cleaning Qt project..."
+if [ -d "build" ]; then
+    rm -rf build
+fi
+rm -f Makefile* *.pro.user* *.tmp
+echo "Clean completed!"]]
+    end
+
+    templates.debug = [[#!/bin/bash
+echo "Debugging Qt project..."
+if [ ! -d "build" ]; then
+    echo "Build directory not found! Please build first."
+    exit 1
+fi
+cd build
+for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
+    if [ -f "$exe" ]; then
+        echo "Debugging $exe with gdb..."
+        gdb "$exe"
+        exit 0
+    fi
+done
+echo "No executable found!"]]
+
+    templates.test = [[#!/bin/bash
+echo "Running tests..."
+if [ ! -d "build" ]; then
+    echo "Build directory not found! Please build first."
+    exit 1
+fi
+cd build
+ctest --output-on-failure
+echo "Tests completed!"]]
+
+    templates.deploy = [[#!/bin/bash
+echo "Deploying Qt project..."
+if [ ! -d "build" ]; then
+    echo "Build directory not found! Please build first."
+    exit 1
+fi
+cd build
+mkdir -p deploy
+for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
+    if [ -f "$exe" ]; then
+        cp "$exe" deploy/
+    fi
+done
+echo "Deployment completed!"]]
+
+    templates.default = [[#!/bin/bash
+echo "Custom script template"
+echo "Modify this script for your specific needs"]]
+
+    return templates
+end
+
+-- Windows脚本模板（简化版）
+function M.get_windows_templates(build_system)
+    local templates = {}
+    
+    if build_system == "cmake" then
+        templates.build = [[@echo off
+echo Building Qt project with CMake...
+if not exist "build" mkdir build
+cd build
+cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+cmake --build . --config Debug -j 4
+echo Build completed successfully!
+pause]]
+
+        templates.run = [[@echo off
+echo Running Qt project...
+if not exist "build" (
+    echo Build directory not found! Please build first.
+    pause
+    exit /b 1
+)
+cd build
+for %%f in (*.exe) do (
+    echo Running %%f...
+    %%f
+    goto :found
+)
+echo No executable found!
+pause
+:found
+pause]]
+
+        templates.clean = [[@echo off
+echo Cleaning Qt project...
+if exist "build" (
+    rmdir /s /q build
+    echo Build directory removed.
+)
+if exist "*.tmp" del /q *.tmp
+echo Clean completed!
+pause]]
+
+    elseif build_system == "qmake" then
+        templates.build = [[@echo off
+echo Building Qt project with qmake...
+if not exist "build" mkdir build
+cd build
+qmake ..
+mingw32-make -j 4
+echo Build completed successfully!
+pause]]
+    end
+
+    templates.debug = [[@echo off
+echo Debugging Qt project...
+if not exist "build" (
+    echo Build directory not found! Please build first.
+    pause
+    exit /b 1
+)
+cd build
+for %%f in (*.exe) do (
+    echo Debugging %%f with gdb...
+    gdb %%f
+    goto :found
+)
+:found
+pause]]
+
+    templates.test = [[@echo off
+echo Running tests...
+if not exist "build" (
+    echo Build directory not found! Please build first.
+    pause
+    exit /b 1
+)
+cd build
+ctest --output-on-failure
+echo Tests completed!
+pause]]
+
+    templates.deploy = [[@echo off
+echo Deploying Qt project...
+if not exist "build" (
+    echo Build directory not found! Please build first.
+    pause
+    exit /b 1
+)
+cd build
+if not exist "deploy" mkdir deploy
+for %%f in (*.exe) do (
+    copy "%%f" deploy\
+)
+windeployqt deploy\
+echo Deployment completed!
+pause]]
+
+    templates.default = [[@echo off
+echo Custom script template
+pause]]
+
+    return templates
+end
+
+-- 写入脚本文件
+function M.write_script_file(script_path, content, is_windows)
+    local file = io.open(script_path, "w")
+    if not file then
+        vim.notify("Error: Cannot create script file: " .. script_path, vim.log.levels.ERROR)
+        return false
+    end
+    
+    file:write(content)
+    file:close()
+    
+    -- 在Unix系统上设置执行权限
+    if not is_windows then
+        os.execute("chmod +x '" .. script_path .. "'")
+    end
+    
+    return true
+end
+
+-- 列出可用脚本
+function M.list_scripts()
+    local scripts_dir = M.get_scripts_directory()
+    
+    if vim.fn.isdirectory(scripts_dir) == 0 then
+        return {}
+    end
+    
+    local scripts = {}
+    local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+    local script_ext = is_windows and ".bat" or ".sh"
+    
+    local files = vim.fn.glob(scripts_dir .. "/*" .. script_ext, false, true)
+    for _, file in ipairs(files) do
+        local name = vim.fn.fnamemodify(file, ":t:r")
+        table.insert(scripts, name)
+    end
+    
+    return scripts
+end
+
+-- 获取脚本类型信息
+function M.get_script_types()
+    return script_types
+end
+
 return M

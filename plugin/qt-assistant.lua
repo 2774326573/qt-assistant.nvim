@@ -122,6 +122,54 @@ vim.api.nvim_create_user_command('QtInitScripts', function()
     require('qt-assistant').init_scripts()
 end, { desc = 'Initialize Qt project scripts' })
 
+vim.api.nvim_create_user_command('QtGenerateScripts', function()
+    ensure_loaded()
+    require('qt-assistant').generate_scripts()
+end, { desc = 'Generate all Qt project scripts' })
+
+vim.api.nvim_create_user_command('QtScriptGenerator', function()
+    ensure_loaded()
+    require('qt-assistant').show_script_generator()
+end, { desc = 'Open interactive script generator' })
+
+vim.api.nvim_create_user_command('QtGenerateScript', function(opts)
+    ensure_loaded()
+    if opts.args ~= '' then
+        require('qt-assistant').generate_single_script(opts.args)
+    else
+        require('qt-assistant').show_script_generator()
+    end
+end, { 
+    nargs = '?',
+    desc = 'Generate specific Qt project script',
+    complete = function()
+        return {'build', 'run', 'debug', 'clean', 'test', 'deploy'}
+    end
+})
+
+vim.api.nvim_create_user_command('QtEditScript', function(opts)
+    ensure_loaded()
+    if opts.args ~= '' then
+        require('qt-assistant').edit_script(opts.args)
+    else
+        local script_name = vim.fn.input('Script name to edit: ')
+        if script_name and script_name ~= '' then
+            require('qt-assistant').edit_script(script_name)
+        end
+    end
+end, { 
+    nargs = '?',
+    desc = 'Edit Qt project script',
+    complete = function()
+        pcall(ensure_loaded)
+        local ok, qt_assistant = pcall(require, 'qt-assistant')
+        if ok then
+            return qt_assistant.list_scripts()
+        end
+        return {'build', 'run', 'debug', 'clean', 'test', 'deploy'}
+    end
+})
+
 vim.api.nvim_create_user_command('QtScript', function(opts)
     ensure_loaded()
     if opts.args ~= '' then
@@ -310,6 +358,10 @@ local function setup_keymaps()
     map('n', '<leader>qsb', '<cmd>QtScript build<cr>', { desc = 'Script Build' })
     map('n', '<leader>qsr', '<cmd>QtScript run<cr>', { desc = 'Script Run' })
     map('n', '<leader>qsd', '<cmd>QtScript debug<cr>', { desc = 'Script Debug' })
+    map('n', '<leader>qsI', '<cmd>QtInitScripts<cr>', { desc = 'Init Scripts' })
+    map('n', '<leader>qsg', '<cmd>QtGenerateScripts<cr>', { desc = 'Generate All Scripts' })
+    map('n', '<leader>qsG', '<cmd>QtScriptGenerator<cr>', { desc = 'Script Generator' })
+    map('n', '<leader>qse', '<cmd>QtEditScript<cr>', { desc = 'Edit Script' })
     
     -- 系统信息
     map('n', '<leader>qsi', '<cmd>QtSystemInfo<cr>', { desc = 'System Info' })
