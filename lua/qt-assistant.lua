@@ -289,6 +289,17 @@ function M.setup_keymaps()
 		end
 	end, { desc = "Qt: Fix .pro file" })
 	
+	map("n", leader_prefix .. "qec", function()
+		local scripts = require('qt-assistant.scripts')
+		if scripts.generate_single_script('fix_compile') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/fix_compile' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
+	end, { desc = "Qt: Fix compilation environment" })
+	
 	-- 脚本管理 (qs)
 	map("n", leader_prefix .. "qs", function()
 		vim.notify("Qt Scripts:\ng - Generate Scripts\ne - Edit Scripts\ns - Show Status", 

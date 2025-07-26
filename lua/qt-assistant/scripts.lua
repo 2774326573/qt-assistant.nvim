@@ -1183,6 +1183,11 @@ local script_types = {
         name = ".pro文件修复脚本",
         description = "修复Windows下.pro文件的MSVC路径问题",
         executable = true
+    },
+    fix_compile = {
+        name = "编译环境修复脚本",
+        description = "修复编译环境和标准库路径问题",
+        executable = true
     }
 }
 
@@ -1884,6 +1889,130 @@ for %%f in (*.pro) do (
 echo .pro file fix completed!
 pause]]
 
+    templates.fix_compile = [[@echo off
+echo === Qt Compilation Environment Fix Tool ===
+echo.
+
+setlocal enabledelayedexpansion
+
+cd /d "%~dp0.."
+
+echo [1] Setting up MSVC environment...
+call "%~dp0setup_msvc.bat" nopause
+
+if errorlevel 1 (
+    echo Failed to setup MSVC environment!
+    goto :error
+)
+
+echo.
+echo [2] Cleaning previous build...
+if exist "build" (
+    echo Removing build directory...
+    rmdir /s /q "build"
+)
+
+echo.
+echo [3] Checking standard library paths...
+echo Current INCLUDE paths:
+echo !INCLUDE!
+echo.
+
+REM 验证type_traits头文件
+set "TYPE_TRAITS_FOUND="
+for %%I in (!INCLUDE:;= !) do (
+    if exist "%%I\type_traits" (
+        set "TYPE_TRAITS_FOUND=%%I"
+        echo ✓ type_traits found in: %%I
+        goto :found_traits
+    )
+)
+
+echo ✗ type_traits not found in current INCLUDE paths
+echo.
+echo [4] Manually adding standard library paths...
+
+REM 手动添加标准库路径
+if defined VCINSTALLDIR (
+    for /d %%D in ("!VCINSTALLDIR!Tools\MSVC\*") do (
+        set "MSVC_VER=%%~nxD"
+        set "STD_PATH=!VCINSTALLDIR!Tools\MSVC\!MSVC_VER!\include"
+        if exist "!STD_PATH!\type_traits" (
+            echo Adding MSVC standard library: !STD_PATH!
+            set "INCLUDE=!STD_PATH!;!INCLUDE!"
+            set "TYPE_TRAITS_FOUND=!STD_PATH!"
+            goto :found_traits
+        )
+    )
+)
+
+:found_traits
+if not defined TYPE_TRAITS_FOUND (
+    echo ERROR: Cannot find type_traits header file!
+    echo Please ensure Visual Studio 2017 is properly installed.
+    goto :error
+)
+
+echo.
+echo [5] Creating build directory and configuring...
+mkdir build
+cd build
+
+echo.
+echo [6] Running qmake with fixed environment...
+qmake .. -spec win32-msvc
+
+if errorlevel 1 (
+    echo qmake failed!
+    goto :error
+)
+
+echo.
+echo [7] Building project with nmake...
+nmake
+
+if errorlevel 1 (
+    echo nmake failed!
+    goto :error
+)
+
+echo.
+echo === Build completed successfully! ===
+echo.
+echo Executable should be in:
+for %%f in (*.exe) do (
+    echo   ✓ %%f
+)
+
+if exist "release" (
+    for %%f in (release\*.exe) do (
+        echo   ✓ release\%%f
+    )
+)
+
+if exist "debug" (
+    for %%f in (debug\*.exe) do (
+        echo   ✓ debug\%%f
+    )
+)
+
+echo.
+goto :end
+
+:error
+echo.
+echo === Build failed! ===
+echo.
+echo Troubleshooting steps:
+echo 1. Run: check_msvc.bat to verify environment
+echo 2. Check VS2017 installation: {{CUSTOM_VS2017_PATH}}
+echo 3. Verify Qt installation paths
+echo 4. Try running setup_msvc.bat manually
+echo.
+
+:end
+pause]]
+
     -- 添加缺失的脚本类型模板
     templates.setup_msvc = [[@echo off
 REM Setup MSVC Environment - Compatible with Qt version
@@ -2023,18 +2152,6 @@ if "!VCVARSALL!"=="" (
 
 echo Found Visual Studio !VS_VERSION! at: !VCVARSALL!
 
-REM 针对Qt 5.12 + VS2022的特殊处理
-if "!VS_VERSION!"=="2022" (
-    echo WARNING: Using Visual Studio 2022 with Qt 5.12 may cause compatibility issues.
-    echo Recommend using Visual Studio 2017 or recompiling Qt with VS2022.
-    echo.
-    echo Setting up compatibility mode...
-    
-    REM 设置兼容模式环境变量
-    set "INCLUDE=%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include;%INCLUDE%"
-    set "_CL_=/std:c++14"
-)
-
 echo Setting up x64 environment...
 call "!VCVARSALL!" x64
 
@@ -2042,6 +2159,33 @@ if errorlevel 1 (
     echo Failed to setup MSVC environment!
     pause
     exit /b 1
+)
+
+REM 修复标准库路径问题
+if "!VS_VERSION!"=="2017" (
+    echo Fixing VS2017 standard library paths...
+    
+    REM 获取MSVC工具集版本
+    for /d %%D in ("!VCINSTALLDIR!Tools\MSVC\*") do set "MSVC_VER=%%~nxD"
+    
+    REM 设置标准库路径
+    set "STD_INCLUDE=!VCINSTALLDIR!Tools\MSVC\!MSVC_VER!\include"
+    set "UCRT_INCLUDE=!UniversalCRTSdkDir!Include\!UCRTVersion!\ucrt"
+    set "SDK_INCLUDE=!WindowsSdkDir!Include\!WindowsSDKVersion!\um"
+    set "SDK_SHARED_INCLUDE=!WindowsSdkDir!Include\!WindowsSDKVersion!\shared"
+    
+    REM 添加到INCLUDE环境变量前面
+    set "INCLUDE=!STD_INCLUDE!;!UCRT_INCLUDE!;!SDK_INCLUDE!;!SDK_SHARED_INCLUDE!;!INCLUDE!"
+    
+    echo Standard library paths configured:
+    echo   MSVC: !STD_INCLUDE!
+    echo   UCRT: !UCRT_INCLUDE!
+    echo   SDK:  !SDK_INCLUDE!
+    echo.
+) else if "!VS_VERSION!"=="2022" (
+    echo WARNING: Using Visual Studio 2022 with Qt 5.12 may cause compatibility issues.
+    echo Setting up compatibility environment...
+    set "_CL_=/std:c++14"
 )
 
 echo MSVC environment setup completed for Visual Studio !VS_VERSION!!
@@ -2061,6 +2205,7 @@ echo [1] Checking C++ Compiler (cl.exe)...
 where cl >nul 2>&1
 if not errorlevel 1 (
     echo     ✓ cl.exe found
+    cl 2>&1 | findstr "Microsoft" | head -n 1
 ) else (
     echo     ✗ cl.exe not found
 )
@@ -2081,11 +2226,46 @@ echo [3] Checking Qt installation...
 where qmake >nul 2>&1
 if not errorlevel 1 (
     echo     ✓ qmake.exe found
+    qmake -v 2>&1 | findstr "Qt version"
 ) else (
     echo     ✗ qmake.exe not found
 )
 echo.
 
+REM 检查关键环境变量
+echo [4] Checking Environment Variables...
+if defined VCINSTALLDIR (
+    echo     ✓ VCINSTALLDIR = %VCINSTALLDIR%
+) else (
+    echo     ✗ VCINSTALLDIR not set
+)
+
+if defined INCLUDE (
+    echo     ✓ INCLUDE paths configured
+    echo       Key paths:
+    echo %INCLUDE% | findstr /i "type_traits" >nul 2>&1
+    for /f "tokens=1* delims=;" %%a in ("%INCLUDE%") do (
+        if exist "%%a\type_traits" (
+            echo         ✓ type_traits found in: %%a
+        )
+    )
+) else (
+    echo     ✗ INCLUDE not set
+)
+echo.
+
+REM 检查关键头文件
+echo [5] Checking Standard Library Headers...
+for /f "tokens=1* delims=;" %%a in ("%INCLUDE%") do (
+    if exist "%%a\type_traits" (
+        echo     ✓ type_traits found: %%a\type_traits
+        goto :found_headers
+    )
+)
+echo     ✗ type_traits not found in INCLUDE paths
+:found_headers
+
+echo.
 echo To setup MSVC environment, run: setup_msvc.bat
 pause]]
 
