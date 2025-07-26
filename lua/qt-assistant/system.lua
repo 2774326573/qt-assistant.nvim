@@ -394,15 +394,15 @@ function M.get_system_info()
     local uname = vim.loop.os_uname()
     
     return {
-        os = sys.name,
-        type = sys.type,
-        arch = uname.machine,
-        version = uname.release,
-        hostname = uname.nodename,
+        os = sys.name or "Unknown",
+        type = sys.type or "Unknown",
+        arch = uname.machine or "Unknown",
+        version = uname.release or "Unknown", 
+        hostname = uname.nodename or "Unknown",
         neovim_version = vim.version(),
-        path_separator = sys.path_separator,
-        executable_ext = sys.executable_ext,
-        script_ext = sys.script_ext
+        path_separator = sys.path_separator or "/",
+        executable_ext = sys.executable_ext or "",
+        script_ext = sys.script_ext or ".sh"
     }
 end
 
@@ -439,15 +439,15 @@ function M.show_system_info()
     local info_lines = {}
     table.insert(info_lines, "=== System Information ===")
     table.insert(info_lines, "")
-    table.insert(info_lines, "Operating System: " .. info.os)
-    table.insert(info_lines, "Architecture: " .. info.arch)
-    table.insert(info_lines, "Version: " .. info.version) 
-    table.insert(info_lines, "Hostname: " .. info.hostname)
-    table.insert(info_lines, "Neovim Version: " .. tostring(info.neovim_version))
+    table.insert(info_lines, "Operating System: " .. (info.os or "Unknown"))
+    table.insert(info_lines, "Architecture: " .. (info.arch or "Unknown"))
+    table.insert(info_lines, "Version: " .. (info.version or "Unknown")) 
+    table.insert(info_lines, "Hostname: " .. (info.hostname or "Unknown"))
+    table.insert(info_lines, "Neovim Version: " .. tostring(info.neovim_version or "Unknown"))
     table.insert(info_lines, "")
-    table.insert(info_lines, "Path Separator: " .. info.path_separator)
-    table.insert(info_lines, "Executable Extension: " .. (info.executable_ext ~= "" and info.executable_ext or "(none)"))
-    table.insert(info_lines, "Script Extension: " .. info.script_ext)
+    table.insert(info_lines, "Path Separator: " .. (info.path_separator or "/"))
+    table.insert(info_lines, "Executable Extension: " .. ((info.executable_ext and info.executable_ext ~= "") and info.executable_ext or "(none)"))
+    table.insert(info_lines, "Script Extension: " .. (info.script_ext or ".sh"))
     table.insert(info_lines, "")
     table.insert(info_lines, "Qt Tools:")
     for tool, path in pairs(qt_tools) do
