@@ -907,7 +907,7 @@ echo PATH (Qt paths):
 echo %PATH% | findstr /i qt
 echo.
 
-echo To setup MSVC environment, run: setup-msvc.bat
+echo To setup MSVC environment, run: setup_msvc.bat
 pause
 ]]
 
@@ -919,10 +919,10 @@ pause
         ["run.bat"] = run_script,
         ["debug.bat"] = debug_script,
         ["test.bat"] = test_script,
-        ["setup-msvc.bat"] = setup_msvc_script,
-        ["check-msvc.bat"] = check_msvc_script,
-        ["setup-clangd.bat"] = generate_clangd_script,
-        ["fix-pro.bat"] = fix_pro_script
+        ["setup_msvc.bat"] = setup_msvc_script,
+        ["check_msvc.bat"] = check_msvc_script,
+        ["setup_clangd.bat"] = generate_clangd_script,
+        ["fix_pro.bat"] = fix_pro_script
     }
     
     for filename, content in pairs(scripts) do
@@ -1194,6 +1194,9 @@ function M.quick_generate_scripts()
         return false
     end
     
+    -- 清理旧的文件名冲突
+    M.cleanup_old_script_files(scripts_dir)
+    
     -- 检测构建系统
     local build_system = M.detect_build_system()
     vim.notify("Generating scripts for " .. build_system .. " build system...", vim.log.levels.INFO)
@@ -1203,6 +1206,25 @@ function M.quick_generate_scripts()
     
     vim.notify("All scripts generated successfully in: " .. scripts_dir, vim.log.levels.INFO)
     return true
+end
+
+-- 清理旧的脚本文件（连字符命名的文件）
+function M.cleanup_old_script_files(scripts_dir)
+    local old_files = {
+        "setup-msvc.bat",
+        "check-msvc.bat", 
+        "setup-clangd.bat",
+        "fix-pro.bat"
+    }
+    
+    for _, filename in ipairs(old_files) do
+        local system = require('qt-assistant.system')
+        local old_path = system.join_path(scripts_dir, filename)
+        if vim.fn.filereadable(old_path) == 1 then
+            vim.fn.delete(old_path)
+            vim.notify("Removed old script: " .. filename, vim.log.levels.INFO)
+        end
+    end
 end
 
 -- 强制生成脚本（覆盖现有）
@@ -1695,7 +1717,7 @@ echo Building Qt project with qmake...
 cd /d "%~dp0.."
 
 REM Setup MSVC environment first
-call "%~dp0setup-msvc.bat" nopause
+call "%~dp0setup_msvc.bat" nopause
 if errorlevel 1 (
     echo Failed to setup MSVC environment!
     pause
