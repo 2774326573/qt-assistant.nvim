@@ -495,31 +495,26 @@ function M.format_buffer_content()
 		table.insert(cmd, arg)
 	end
 
-	-- 执行格式化
-	local job_output = {}
-	local job_id = vim.fn.jobstart(cmd, {
-		on_stdout = function(_, data)
-			if data then
-				for _, line in ipairs(data) do
-					if line ~= "" then
-						table.insert(job_output, line)
-					end
-				end
-			end
-		end,
-		on_exit = function(_, exit_code)
-			if exit_code == 0 and #job_output > 0 then
-				-- 更新缓冲区内容
-				vim.api.nvim_buf_set_lines(0, 0, -1, false, job_output)
-			end
-		end,
-		stdin = "pipe",
-	})
+	-- 使用同步方式执行格式化
+	local result = vim.fn.system(cmd, content)
+	local exit_code = vim.v.shell_error
 
-	if job_id > 0 then
-		-- 发送内容到stdin
-		vim.fn.chansend(job_id, content)
-		vim.fn.chanclose(job_id, "stdin")
+	if exit_code == 0 and result and result ~= "" then
+		-- 分割结果为行
+		local formatted_lines = vim.split(result, "\n")
+		-- 移除最后的空行（如果存在）
+		if #formatted_lines > 0 and formatted_lines[#formatted_lines] == "" then
+			table.remove(formatted_lines, #formatted_lines)
+		end
+
+		-- 检查是否有实际变化
+		local current_content = table.concat(lines, "\n")
+		local formatted_content = table.concat(formatted_lines, "\n")
+
+		if current_content ~= formatted_content then
+			-- 更新缓冲区内容
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, formatted_lines)
+		end
 	end
 end
 
@@ -548,4 +543,3 @@ function M.setup_auto_format()
 end
 
 return M
-
