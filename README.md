@@ -27,17 +27,28 @@
 
 一个专为Qt C++开发设计的Neovim插件，提供快速类创建、智能文件管理、代码模板、项目脚本管理和Qt5/Qt6跨版本支持功能。
 
-## 🆕 v1.2.0 更新 (2025-07-26)
+## 🆕 v1.3.0 更新 (2025-07-26)
 
-**重要修复**：
+**重大功能更新**：
 
-- ✅ **循环依赖修复**: 完全解决了主界面 (`<leader>qc`) 和类创建功能的循环依赖错误
-- ✅ **系统信息修复**: 修复了系统信息显示 (`<leader>qis`) 的 nil 值错误
-- ✅ **快捷键补全**: 添加了所有缺失的脚本管理快捷键 (`<leader>qsa/qsc/qst/qsp`)
+- ✅ **Windows MSVC环境修复**: 解决了Windows下编译缺少标准库头文件的问题
+- ✅ **Clangd LSP支持**: 新增完整的clangd语言服务器配置支持
+- ✅ **键盘映射系统**: 全新的键盘快捷键系统，支持自定义和Which-key集成
+- ✅ **MSVC自动环境设置**: 构建脚本自动设置MSVC编译环境
+- ✅ **增强的Windows脚本**: 改进Windows批处理脚本的路径处理和错误处理
+- ✅ **.pro文件修复**: 自动添加Windows MSVC编译所需的系统路径
 
-**推荐升级**: 此版本修复了关键稳定性问题，强烈建议所有用户升级。
+**新增功能**：
 
-📚 **详细信息**: 查看 [修复日志](docs/BUGFIX_CHANGELOG_v1.2.0.md) 和 [故障排除指南](docs/CONFIGURATION_TROUBLESHOOTING.md)
+- 🔧 **setup-clangd.bat**: 自动生成适合Neovim的clangd配置文件
+- 🛠️ **fix-pro.bat**: 智能修复.pro文件的Windows MSVC路径问题
+- ⌨️ **丰富的快捷键**: 40+个快捷键覆盖所有功能模块
+- 🎯 **智能命令**: 新增20+个Vim命令，如`:QtSetupClangd`、`:QtSetupMsvc`、`:QtFixPro`等
+- 📝 **Which-key集成**: 支持Which-key插件显示快捷键说明
+
+**推荐升级**: 此版本大幅提升Windows用户体验，强烈建议所有用户升级。
+
+📚 **详细信息**: 查看 [修复日志](docs/BUGFIX_CHANGELOG_v1.3.0.md) 和 [快捷键参考](#完整快捷键参考)
 
 ## 🚀 功能特性
 
@@ -112,11 +123,29 @@
 - **基于项目模板的脚本系统**: 从实际项目脚本提取最佳实践
 - **跨平台脚本生成**: 根据系统自动生成对应格式的脚本
   - Linux/macOS: `build.sh`, `clean.sh`, `run.sh`, `debug.sh`, `test.sh`, `deploy.sh`
-  - Windows: `build.bat`, `clean.bat`, `run.bat`, `debug.bat`, `test.bat`, `deploy.bat`
+  - Windows: `build.bat`, `clean.bat`, `run.bat`, `debug.bat`, `test.bat`, `deploy.bat`, `setup-msvc.bat`, `setup-clangd.bat`
 - **智能脚本内容**: 脚本内容根据系统差异和Qt版本自动适配
 - **项目信息自动检测**: 自动检测项目名称、Qt版本、构建系统
 - **健壮的错误处理**: 失败时立即退出，避免连锁错误
 - **交互式脚本生成器**: 支持选择性生成和一键生成所有脚本
+- **MSVC环境集成**: Windows脚本自动设置MSVC编译环境
+- **Clangd LSP支持**: 自动生成适合Neovim的clangd配置
+
+### 开发环境集成
+
+- **Clangd语言服务器**: 完整的clangd配置支持，解决Qt Creator兼容性问题
+- **MSVC编译环境**: 自动检测和设置Visual Studio编译环境
+- **智能路径处理**: 解决Windows下中文路径和编译器路径问题
+- **LSP配置优化**: 自动生成`.clangd`配置文件，过滤不兼容的编译器标志
+- **编译数据库**: 支持生成标准的compile_commands.json文件
+
+### 键盘映射系统
+
+- **40+快捷键**: 覆盖所有功能模块的完整快捷键系统
+- **层次化设计**: 采用助记符设计，易于记忆和使用
+- **自定义支持**: 支持用户自定义快捷键映射
+- **Which-key集成**: 与Which-key插件无缝集成，显示快捷键说明
+- **智能命令**: 20+个Vim命令，提供完整的命令行接口
 
 ## 🌍 多系统支持
 
@@ -170,6 +199,9 @@ Qt Assistant 支持跨平台使用，提供对以下操作系统的完整支持�
                 on_save = true,              -- 保存时自动格式化
             },
         })
+        
+        -- 设置键盘映射（可选）
+        require('qt-assistant.core').setup_keymaps()
     end
 }
 ```
@@ -328,17 +360,23 @@ use {
 #### 运行项目脚本
 
 ```vim
-:QtScript build
-:QtScript clean
-:QtScript run
-:QtScript debug
-:QtScript test
-:QtScript deploy
+:QtBuild               # 构建项目
+:QtRun                 # 运行项目
+:QtClean               # 清理项目
+:QtDebug               # 调试项目
+:QtTest                # 运行测试
+
+# 环境设置（新增）
+:QtSetupClangd         # 设置clangd语言服务器
+:QtSetupMsvc           # 设置MSVC编译环境
+:QtCheckMsvc           # 检查MSVC状态
+:QtFixPro              # 修复.pro文件的Windows MSVC路径
 
 # 脚本管理
-:QtScriptGenerator      # 交互式脚本生成器
-:QtGenerateAllScripts   # 快速生成所有脚本
-:QtDetectBuildSystem    # 检测项目构建系统
+:QtScripts             # 生成所有脚本
+:QtStatus              # 显示项目状态
+:QtScriptGenerator     # 交互式脚本生成器
+:QtDetectBuildSystem   # 检测项目构建系统
 ```
 
 #### 代码格式化
@@ -606,63 +644,86 @@ project/
 
 ## 🎹 快捷键映射
 
-插件提供了丰富的快捷键映射，使用 `:QtKeymaps` 查看完整列表：
+插件提供了丰富的快捷键映射系统，支持自定义和Which-key集成：
 
-### 基础操作
+### 快速开始
 
-- `<leader>qc` - 打开Qt Assistant
-- `<leader>qh` - 显示帮助
+**核心快捷键 (必记)**:
 
-### 项目管理
+- `<leader>qb` - 构建项目 (`:QtBuild`)
+- `<leader>qr` - 运行项目 (`:QtRun`)
+- `<leader>qc` - 清理项目 (`:QtClean`)
+- `<leader>qd` - 调试项目 (`:QtDebug`)
+- `<leader>qt` - 运行测试 (`:QtTest`)
 
-**核心操作:**
+**环境设置 (新功能)**:
 
-- `<leader>qpo` - 智能打开项目 (⭐ 自动)
-- `<leader>qpm` - 项目管理器
+- `<leader>qm` - 设置MSVC环境 (`:QtSetupMsvc`)
+- `<leader>ql` - 设置clangd LSP (`:QtSetupClangd`)
+- `<leader>qk` - 检查MSVC状态 (`:QtCheckMsvc`)
+- `<leader>qf` - 修复.pro文件 (`:QtFixPro`)
 
-**项目切换:**
+**脚本管理**:
 
-- `<leader>qpc` - 选择项目 (手动)
-- `<leader>qpw` - 快速项目切换器 (⚡ 快速)
-- `<leader>qpr` - 最近项目
+- `<leader>qg` - 生成所有脚本 (`:QtScripts`)
+- `<leader>qe` - 编辑脚本
+- `<leader>qs` - 显示状态 (`:QtStatus`)
 
-**项目搜索:**
+**UI设计师**:
 
-- `<leader>qps` - 搜索Qt项目 (本地)
-- `<leader>qpg` - 全局搜索所有驱动器 (🌍 完整)
+- `<leader>qu` - 打开Qt Designer (`:QtDesigner`)
 
-### 构建管理
+**项目管理**:
 
-- `<leader>qb` - 构建项目
-- `<leader>qr` - 运行项目
-- `<leader>qcl` - 清理项目
-- `<leader>qbs` - 构建状态
+- `<leader>qi` - 初始化项目
+- `<leader>qo` - 选择项目
 
-### UI设计师
+### 键盘映射设置
 
-- `<leader>qud` - 打开Qt Designer
-- `<leader>quc` - 打开当前文件的Designer
-- `<leader>qup` - 预览UI文件
-- `<leader>qum` - UI设计师管理器
+**基础设置（自动启用所有默认快捷键）**:
 
-### 脚本管理
+```lua
+require('qt-assistant.core').setup_keymaps()
+```
 
-- `<leader>qsb` - 脚本构建
-- `<leader>qsr` - 脚本运行
-- `<leader>qsd` - 脚本调试
-- `<leader>qsc` - 脚本清理
-- `<leader>qst` - 脚本测试
-- `<leader>qsp` - 脚本部署
-- `<leader>qsg` - 脚本生成器
-- `<leader>qsa` - 生成所有脚本
+**自定义快捷键**:
 
-### 系统和版本信息
+```lua
+require('qt-assistant.core').setup_keymaps({
+    build = "<F5>",     -- 自定义构建快捷键
+    run = "<F6>",       -- 自定义运行快捷键
+    setup_clangd = "<leader>lc",  -- 自定义clangd设置
+})
+```
 
-- `<leader>qsi` - 系统信息
-- `<leader>qvi` - Qt版本信息
-- `<leader>qvd` - 检测Qt版本
+**Which-key集成**:
 
-**注意**: `<leader>` 通常是 `\` 键，可以通过 `let mapleader = ","` 来自定义。
+如果你使用Which-key插件，键盘映射会自动显示说明。插件会自动检测并集成Which-key。
+
+### 默认快捷键完整列表
+
+| 快捷键 | 功能 | 命令 | 描述 |
+|--------|------|------|------|
+| `<leader>qb` | 构建项目 | `:QtBuild` | 构建当前Qt项目 |
+| `<leader>qr` | 运行项目 | `:QtRun` | 运行编译后的可执行文件 |
+| `<leader>qc` | 清理项目 | `:QtClean` | 清理构建文件 |
+| `<leader>qd` | 调试项目 | `:QtDebug` | 使用调试器运行项目 |
+| `<leader>qt` | 运行测试 | `:QtTest` | 执行项目测试 |
+| `<leader>qp` | 部署项目 | `:QtDeploy` | 部署项目文件 |
+| `<leader>qm` | 设置MSVC | `:QtSetupMsvc` | 设置MSVC编译环境 |
+| `<leader>ql` | 设置Clangd | `:QtSetupClangd` | 配置clangd语言服务器 |
+| `<leader>qk` | 检查MSVC | `:QtCheckMsvc` | 检查MSVC环境状态 |
+| `<leader>qg` | 生成脚本 | `:QtScripts` | 生成所有项目脚本 |
+| `<leader>qe` | 编辑脚本 | - | 选择并编辑脚本文件 |
+| `<leader>qs` | 显示状态 | `:QtStatus` | 显示项目和脚本状态 |
+| `<leader>qu` | Qt Designer | `:QtDesigner` | 打开当前UI文件 |
+| `<leader>qi` | 初始化项目 | - | 初始化新的Qt项目 |
+| `<leader>qo` | 选择项目 | - | 项目选择器 |
+
+**注意**: 
+- `<leader>` 默认是 `\` 键，可通过 `let mapleader = ","` 自定义
+- 所有快捷键都有对应的命令形式
+- 支持在终端中运行，提供实时输出
 
 ## 📋 完整快捷键参考
 
@@ -864,6 +925,30 @@ project/
    - 使用 `:QtCreateClangFormat` 创建项目特定的格式化配置
    - 检查文件类型是否支持格式化（.cpp, .h, .hpp等）
 
+10. **Windows MSVC编译错误**
+    - 错误："无法打开包括文件: type_traits"
+    - 解决方案：运行 `:QtSetupMsvc` 或使用快捷键 `<leader>qm`
+    - 确保Visual Studio Build Tools已正确安装
+    - 检查VCINSTALLDIR环境变量是否设置
+    - 使用 `:QtCheckMsvc` 检查MSVC环境状态
+
+11. **Clangd LSP问题**
+    - Qt Creator生成的compile_commands.json与Neovim clangd不兼容
+    - 解决方案：运行 `:QtSetupClangd` 或使用快捷键 `<leader>ql`
+    - 插件会自动生成适合Neovim的.clangd配置文件
+    - 在Neovim中运行 `:LspRestart` 重启语言服务器
+    - 使用 `:LspInfo` 检查clangd状态
+
+12. **键盘映射冲突**
+    - 如果快捷键冲突，可以自定义映射：
+    ```lua
+    require('qt-assistant.core').setup_keymaps({
+        build = "<F5>",  -- 使用F5代替<leader>qb
+        run = "<F6>",    -- 使用F6代替<leader>qr
+    })
+    ```
+    - 或者完全禁用快捷键，只使用命令形式
+
 ### 调试信息
 
 启用插件调试模式：
@@ -948,6 +1033,15 @@ MIT License
 
 ## 🆕 版本更新说明
 
+### v1.3.0 主要更新 (当前版本)
+
+- 🔧 **Windows MSVC环境修复**: 解决Windows下编译缺少标准库头文件问题
+- 🛠️ **Clangd LSP完整支持**: 新增clangd语言服务器配置，解决Qt Creator兼容性问题
+- ⌨️ **键盘映射系统**: 全新的40+快捷键系统，支持自定义和Which-key集成
+- 📜 **增强的Windows脚本**: 改进批处理脚本，自动设置MSVC环境
+- 🎯 **智能命令扩展**: 新增20+个Vim命令，如`:QtSetupClangd`、`:QtSetupMsvc`等
+- 🔄 **自动环境配置**: 构建脚本自动调用环境设置，无需手动配置
+
 ### v2.0.0 主要更新
 
 - ✨ **Qt5/Qt6双版本支持**: 全面支持Qt5和Qt6项目开发
@@ -959,4 +1053,11 @@ MIT License
 - ⚡ **性能优化**: 改进项目检测和脚本生成速度
 - 🔧 **错误处理增强**: 更完善的错误处理和用户反馈
 
-**注意**: 这个插件专为Qt C++开发设计，支持CMake、qmake等多种构建系统，对Qt5和Qt6项目均可获得最佳体验。
+### 即将发布 (v1.4.0)
+
+- 🎮 **模板引擎增强**: 支持更多自定义模板变量
+- 🔄 **项目模板系统**: 内置多种Qt项目模板
+- 📊 **构建状态监控**: 实时构建状态和进度显示
+- 🌐 **多语言界面**: 支持中英文界面切换
+
+**注意**: 这个插件专为Qt C++开发设计，支持CMake、qmake等多种构建系统，对Qt5和Qt6项目均可获得最佳体验。对Windows用户的MSVC环境支持特别优化。

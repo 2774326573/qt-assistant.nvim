@@ -299,6 +299,7 @@ REM Qt Project Build Script
 
 setlocal enabledelayedexpansion
 
+cd /d "%~dp0.."
 set "PROJECT_DIR=%~dp0.."
 set "BUILD_DIR=%PROJECT_DIR%\build"
 
@@ -602,9 +603,133 @@ echo Tests completed!
 pause
 ]]
 
+    -- 修复.pro文件Windows路径脚本
+    local fix_pro_script = [[@echo off
+REM Fix .pro file for Windows MSVC compilation
+
+setlocal enabledelayedexpansion
+
+cd /d "%~dp0.."
+
+echo === Fixing .pro file for Windows MSVC ===
+
+REM Find .pro files
+for %%f in (*.pro) do (
+    set "PRO_FILE=%%f"
+    echo Found .pro file: !PRO_FILE!
+    
+    REM Check if already has VC_IncludePath
+    findstr /i "VC_IncludePath" "!PRO_FILE!" >nul
+    if errorlevel 1 (
+        echo Adding MSVC include paths to !PRO_FILE!...
+        echo. >> "!PRO_FILE!"
+        echo # Windows MSVC paths - added by qt-assistant >> "!PRO_FILE!"
+        echo win32:INCLUDEPATH += $$(VC_IncludePath^) >> "!PRO_FILE!"
+        echo win32:INCLUDEPATH += $$(WindowsSdkDir^)Include\$$(WindowsSDKVersion^)\ucrt >> "!PRO_FILE!"
+        echo win32:INCLUDEPATH += $$(WindowsSdkDir^)Include\$$(WindowsSDKVersion^)\shared >> "!PRO_FILE!"
+        echo win32:INCLUDEPATH += $$(WindowsSdkDir^)Include\$$(WindowsSDKVersion^)\um >> "!PRO_FILE!"
+        echo win32:INCLUDEPATH += $$(WindowsSdkDir^)Include\$$(WindowsSDKVersion^)\winrt >> "!PRO_FILE!"
+        echo. >> "!PRO_FILE!"
+        echo MSVC include paths added to !PRO_FILE!
+    ) else (
+        echo !PRO_FILE! already contains MSVC paths.
+    )
+)
+
+echo .pro file fix completed!
+echo.
+echo Next steps:
+echo 1. Clean and rebuild your project
+echo 2. Run: qmake and then nmake
+echo.
+pause
+]]
+
+    -- 生成clangd兼容的compile_commands.json脚本
+    local generate_clangd_script = [[@echo off
+REM Generate clangd-compatible compile_commands.json
+
+setlocal enabledelayedexpansion
+
+cd /d "%~dp0.."
+set "PROJECT_DIR=%~dp0.."
+
+echo === Generating clangd-compatible compile_commands.json ===
+
+REM 检查是否存在Qt Creator生成的compile_commands.json
+if exist "compile_commands.json" (
+    echo Backing up existing compile_commands.json...
+    copy "compile_commands.json" "compile_commands.json.qtcreator.bak" >nul
+)
+
+REM 检查bear工具是否可用
+where bear >nul 2>&1
+if not errorlevel 1 (
+    echo Using bear to generate compile_commands.json...
+    
+    REM 清理之前的构建
+    if exist "build" rmdir /s /q build
+    
+    REM 生成Makefile
+    qmake CONFIG+=debug
+    if errorlevel 1 (
+        echo qmake failed!
+        pause
+        exit /b 1
+    )
+    
+    REM 使用bear生成compile_commands.json
+    bear -- nmake
+    
+    echo compile_commands.json generated successfully!
+) else (
+    echo Bear tool not found. Creating simplified .clangd config instead...
+    
+    REM 创建.clangd配置文件
+    echo CompileFlags: > .clangd
+    echo   Add: >> .clangd
+    echo     - -std=c++14 >> .clangd
+    echo     - -DQT_WIDGETS_LIB >> .clangd
+    echo     - -DQT_GUI_LIB >> .clangd
+    echo     - -DQT_CORE_LIB >> .clangd
+    echo     - -DQT_SQL_LIB >> .clangd
+    echo     - -DQT_XML_LIB >> .clangd
+    echo     - -DUNICODE >> .clangd
+    echo     - -D_UNICODE >> .clangd
+    echo     - -DWIN32 >> .clangd
+    echo     - -DWIN64 >> .clangd
+    echo   Remove: >> .clangd
+    echo     - --driver-mode=* >> .clangd
+    echo     - /Zs >> .clangd
+    echo     - /TP >> .clangd
+    echo     - -nostdinc >> .clangd
+    echo     - -nostdinc++ >> .clangd
+    echo     - /clang:* >> .clangd
+    echo     - -fms-compatibility-version=* >> .clangd
+    
+    echo .clangd config file created successfully!
+    echo Install bear tool for better compile_commands.json generation:
+    echo   pip install bear
+)
+
+echo.
+echo === Instructions for Neovim ===
+echo 1. Make sure Neovim is started from this project directory
+echo 2. Run :LspRestart in Neovim to reload clangd
+echo 3. Check :LspInfo to verify clangd is working
+echo.
+pause
+]]
+
     -- MSVC环境设置脚本
     local setup_msvc_script = [[@echo off
 REM Setup MSVC Environment
+
+REM Check if already setup
+if defined VCINSTALLDIR (
+    echo MSVC environment already configured.
+    goto :end
+)
 
 setlocal enabledelayedexpansion
 
@@ -667,6 +792,10 @@ echo - cl.exe (C++ compiler)
 echo - nmake.exe (build tool)
 echo - devenv.exe (Visual Studio IDE)
 echo.
+
+:end
+REM Don't pause when called from other scripts
+if "%1"=="nopause" goto :eof
 pause
 ]]
 
@@ -791,7 +920,9 @@ pause
         ["debug.bat"] = debug_script,
         ["test.bat"] = test_script,
         ["setup-msvc.bat"] = setup_msvc_script,
-        ["check-msvc.bat"] = check_msvc_script
+        ["check-msvc.bat"] = check_msvc_script,
+        ["setup-clangd.bat"] = generate_clangd_script,
+        ["fix-pro.bat"] = fix_pro_script
     }
     
     for filename, content in pairs(scripts) do
@@ -1031,6 +1162,16 @@ local script_types = {
     deploy = {
         name = "部署脚本",
         description = "部署项目的脚本",
+        executable = true
+    },
+    setup_clangd = {
+        name = "Clangd设置脚本",
+        description = "为Neovim配置clangd语言服务器",
+        executable = true
+    },
+    fix_pro = {
+        name = ".pro文件修复脚本",
+        description = "修复Windows下.pro文件的MSVC路径问题",
         executable = true
     }
 }
@@ -1407,6 +1548,7 @@ pause]]
 
         templates.run = [[@echo off
 echo Running Qt project...
+cd /d "%~dp0.."
 if not exist "build" (
     echo Build directory not found! Please build first.
     pause
@@ -1425,6 +1567,7 @@ pause]]
 
         templates.clean = [[@echo off
 echo Cleaning Qt project...
+cd /d "%~dp0.."
 if exist "build" (
     rmdir /s /q build
     echo Build directory removed.
@@ -1437,6 +1580,16 @@ pause]]
         templates.build = [[@echo off
 chcp 65001 >nul
 echo Building Qt project with qmake...
+cd /d "%~dp0.."
+
+REM Setup MSVC environment first
+call "%~dp0setup-msvc.bat" nopause
+if errorlevel 1 (
+    echo Failed to setup MSVC environment!
+    pause
+    exit /b 1
+)
+
 if not exist "build" mkdir build
 cd build
 
@@ -1477,6 +1630,7 @@ pause]]
 
     templates.debug = [[@echo off
 echo Debugging Qt project...
+cd /d "%~dp0.."
 if not exist "build" (
     echo Build directory not found! Please build first.
     pause
@@ -1493,6 +1647,7 @@ pause]]
 
     templates.test = [[@echo off
 echo Running tests...
+cd /d "%~dp0.."
 if not exist "build" (
     echo Build directory not found! Please build first.
     pause
@@ -1505,6 +1660,7 @@ pause]]
 
     templates.deploy = [[@echo off
 echo Deploying Qt{{QT_VERSION}} project...
+cd /d "%~dp0.."
 if not exist "build" (
     echo Build directory not found! Please build first.
     pause
@@ -1519,6 +1675,69 @@ REM Use appropriate deployment tool based on Qt version
 echo Using Qt{{QT_VERSION}} deployment tool...
 windeployqt deploy\
 echo Deployment completed!
+pause]]
+
+    templates.setup_clangd = [[@echo off
+echo Setting up clangd for Neovim...
+cd /d "%~dp0.."
+
+REM Backup existing compile_commands.json if it exists
+if exist "compile_commands.json" (
+    echo Backing up Qt Creator compile_commands.json...
+    copy "compile_commands.json" "compile_commands.json.qtcreator.bak" >nul
+)
+
+REM Create .clangd config file
+echo Creating .clangd configuration...
+(
+echo CompileFlags:
+echo   Add:
+echo     - -std=c++14
+echo     - -DQT_WIDGETS_LIB
+echo     - -DQT_GUI_LIB
+echo     - -DQT_CORE_LIB
+echo     - -DQT_SQL_LIB
+echo     - -DQT_XML_LIB
+echo     - -DUNICODE
+echo     - -D_UNICODE
+echo     - -DWIN32
+echo     - -DWIN64
+echo   Remove:
+echo     - --driver-mode=*
+echo     - /Zs
+echo     - /TP
+echo     - -nostdinc
+echo     - -nostdinc++
+echo     - /clang:*
+echo     - -fms-compatibility-version=*
+) > .clangd
+
+echo .clangd configuration created!
+echo.
+echo Next steps:
+echo 1. Start Neovim from this directory
+echo 2. Run :LspRestart to reload clangd
+echo 3. Check :LspInfo to verify clangd is working
+echo.
+pause]]
+
+    templates.fix_pro = [[@echo off
+echo Fixing .pro file for Windows MSVC...
+cd /d "%~dp0.."
+
+for %%f in (*.pro) do (
+    findstr /i "VC_IncludePath" "%%f" >nul
+    if errorlevel 1 (
+        echo Adding MSVC paths to %%f...
+        echo. >> "%%f"
+        echo # Windows MSVC paths >> "%%f"
+        echo win32:INCLUDEPATH += $$(VC_IncludePath^) >> "%%f"
+        echo win32:INCLUDEPATH += $$(WindowsSdkDir^)Include\$$(WindowsSDKVersion^)\ucrt >> "%%f"
+    ) else (
+        echo %%f already has MSVC paths
+    )
+)
+echo .pro file fix completed!
 pause]]
 
     templates.default = [[@echo off

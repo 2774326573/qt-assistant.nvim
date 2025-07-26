@@ -1,0 +1,249 @@
+-- Qt Assistant Plugin - 键盘映射模块
+-- Keyboard mapping module
+
+local M = {}
+
+-- 获取插件配置
+local function get_config()
+    return require('qt-assistant.config').get()
+end
+
+-- 默认键盘映射配置
+local default_keymaps = {
+    -- Qt项目操作
+    build = "<leader>qb",           -- 构建项目
+    run = "<leader>qr",             -- 运行项目
+    clean = "<leader>qc",           -- 清理项目
+    debug = "<leader>qd",           -- 调试项目
+    test = "<leader>qt",            -- 运行测试
+    deploy = "<leader>qp",          -- 部署项目
+    
+    -- 环境设置
+    setup_msvc = "<leader>qm",      -- 设置MSVC环境
+    setup_clangd = "<leader>ql",    -- 设置clangd
+    check_msvc = "<leader>qk",      -- 检查MSVC状态
+    fix_pro = "<leader>qf",         -- 修复.pro文件
+    
+    -- 脚本管理
+    generate_scripts = "<leader>qg", -- 生成脚本
+    edit_scripts = "<leader>qe",     -- 编辑脚本
+    show_status = "<leader>qs",      -- 显示状态
+    
+    -- Qt Designer
+    open_designer = "<leader>qu",    -- 打开Qt Designer
+    
+    -- 项目管理
+    init_project = "<leader>qi",     -- 初始化项目
+    select_project = "<leader>qo",   -- 选择项目
+}
+
+-- 设置键盘映射
+function M.setup_keymaps(user_keymaps)
+    user_keymaps = user_keymaps or {}
+    
+    -- 合并用户配置和默认配置
+    local keymaps = vim.tbl_deep_extend("force", default_keymaps, user_keymaps)
+    
+    -- Qt项目构建相关
+    vim.keymap.set('n', keymaps.build, function()
+        require('qt-assistant.scripts').run_script('build', {in_terminal = true})
+    end, {desc = "Qt: Build project"})
+    
+    vim.keymap.set('n', keymaps.run, function()
+        require('qt-assistant.scripts').run_script('run', {in_terminal = true})
+    end, {desc = "Qt: Run project"})
+    
+    vim.keymap.set('n', keymaps.clean, function()
+        require('qt-assistant.scripts').run_script('clean', {in_terminal = true})
+    end, {desc = "Qt: Clean project"})
+    
+    vim.keymap.set('n', keymaps.debug, function()
+        require('qt-assistant.scripts').run_script('debug', {in_terminal = true})
+    end, {desc = "Qt: Debug project"})
+    
+    vim.keymap.set('n', keymaps.test, function()
+        require('qt-assistant.scripts').run_script('test', {in_terminal = true})
+    end, {desc = "Qt: Run tests"})
+    
+    vim.keymap.set('n', keymaps.deploy, function()
+        require('qt-assistant.scripts').run_script('deploy', {in_terminal = true})
+    end, {desc = "Qt: Deploy project"})
+    
+    -- 环境设置相关
+    vim.keymap.set('n', keymaps.setup_msvc, function()
+        require('qt-assistant.scripts').generate_single_script('setup_msvc')
+        vim.cmd('terminal scripts\\setup-msvc.bat')
+    end, {desc = "Qt: Setup MSVC environment"})
+    
+    vim.keymap.set('n', keymaps.setup_clangd, function()
+        require('qt-assistant.scripts').generate_single_script('setup_clangd')
+        vim.cmd('terminal scripts\\setup-clangd.bat')
+    end, {desc = "Qt: Setup clangd for Neovim"})
+    
+    vim.keymap.set('n', keymaps.check_msvc, function()
+        require('qt-assistant.scripts').generate_single_script('check_msvc')
+        vim.cmd('terminal scripts\\check-msvc.bat')
+    end, {desc = "Qt: Check MSVC status"})
+    
+    vim.keymap.set('n', keymaps.fix_pro, function()
+        require('qt-assistant.scripts').generate_single_script('fix_pro')
+        vim.cmd('terminal scripts\\fix-pro.bat')
+    end, {desc = "Qt: Fix .pro file MSVC paths"})
+    
+    -- 脚本管理相关
+    vim.keymap.set('n', keymaps.generate_scripts, function()
+        require('qt-assistant.scripts').quick_generate_scripts()
+    end, {desc = "Qt: Generate all scripts"})
+    
+    vim.keymap.set('n', keymaps.edit_scripts, function()
+        M.show_script_selector()
+    end, {desc = "Qt: Edit scripts"})
+    
+    vim.keymap.set('n', keymaps.show_status, function()
+        require('qt-assistant.scripts').show_script_status()
+    end, {desc = "Qt: Show script status"})
+    
+    -- Qt Designer
+    vim.keymap.set('n', keymaps.open_designer, function()
+        require('qt-assistant.designer').open_current_ui_file()
+    end, {desc = "Qt: Open current .ui file in Designer"})
+    
+    -- 项目管理
+    vim.keymap.set('n', keymaps.init_project, function()
+        require('qt-assistant.project_manager').init_project()
+    end, {desc = "Qt: Initialize Qt project"})
+    
+    vim.keymap.set('n', keymaps.select_project, function()
+        M.show_project_selector()
+    end, {desc = "Qt: Select Qt project"})
+    
+    -- 快速访问命令
+    vim.api.nvim_create_user_command('QtBuild', function()
+        require('qt-assistant.scripts').run_script('build', {in_terminal = true})
+    end, {desc = "Build Qt project"})
+    
+    vim.api.nvim_create_user_command('QtRun', function()
+        require('qt-assistant.scripts').run_script('run', {in_terminal = true})
+    end, {desc = "Run Qt project"})
+    
+    vim.api.nvim_create_user_command('QtClean', function()
+        require('qt-assistant.scripts').run_script('clean', {in_terminal = true})
+    end, {desc = "Clean Qt project"})
+    
+    vim.api.nvim_create_user_command('QtDebug', function()
+        require('qt-assistant.scripts').run_script('debug', {in_terminal = true})
+    end, {desc = "Debug Qt project"})
+    
+    vim.api.nvim_create_user_command('QtTest', function()
+        require('qt-assistant.scripts').run_script('test', {in_terminal = true})
+    end, {desc = "Run Qt tests"})
+    
+    vim.api.nvim_create_user_command('QtSetupClangd', function()
+        require('qt-assistant.scripts').generate_single_script('setup_clangd')
+        vim.cmd('terminal scripts\\setup-clangd.bat')
+    end, {desc = "Setup clangd for Qt project"})
+    
+    vim.api.nvim_create_user_command('QtSetupMsvc', function()
+        require('qt-assistant.scripts').generate_single_script('setup_msvc')
+        vim.cmd('terminal scripts\\setup-msvc.bat')
+    end, {desc = "Setup MSVC environment"})
+    
+    vim.api.nvim_create_user_command('QtFixPro', function()
+        require('qt-assistant.scripts').generate_single_script('fix_pro')
+        vim.cmd('terminal scripts\\fix-pro.bat')
+    end, {desc = "Fix .pro file MSVC paths"})
+    
+    vim.api.nvim_create_user_command('QtScripts', function()
+        require('qt-assistant.scripts').quick_generate_scripts()
+    end, {desc = "Generate all Qt scripts"})
+    
+    vim.api.nvim_create_user_command('QtStatus', function()
+        require('qt-assistant.scripts').show_script_status()
+    end, {desc = "Show Qt project status"})
+    
+    vim.api.nvim_create_user_command('QtDesigner', function()
+        require('qt-assistant.designer').open_current_ui_file()
+    end, {desc = "Open current .ui file in Qt Designer"})
+end
+
+-- 显示脚本选择器
+function M.show_script_selector()
+    local scripts = require('qt-assistant.scripts').list_scripts()
+    
+    if #scripts == 0 then
+        vim.notify("No scripts found. Run :QtScripts to generate them.", vim.log.levels.WARN)
+        return
+    end
+    
+    vim.ui.select(scripts, {
+        prompt = "Select script to edit:",
+        format_item = function(item)
+            return item
+        end,
+    }, function(choice)
+        if choice then
+            local scripts_dir = require('qt-assistant.scripts').get_scripts_directory()
+            local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+            local script_ext = is_windows and ".bat" or ".sh"
+            local script_path = scripts_dir .. "/" .. choice .. script_ext
+            vim.cmd("edit " .. vim.fn.fnameescape(script_path))
+        end
+    end)
+end
+
+-- 显示项目选择器
+function M.show_project_selector()
+    -- 这里可以集成项目管理功能
+    local projects = {"Current Project"} -- 可以从配置文件读取项目列表
+    
+    vim.ui.select(projects, {
+        prompt = "Select Qt project:",
+        format_item = function(item)
+            return item
+        end,
+    }, function(choice)
+        if choice then
+            vim.notify("Selected project: " .. choice, vim.log.levels.INFO)
+        end
+    end)
+end
+
+-- 创建Which-key集成
+function M.setup_which_key()
+    local ok, wk = pcall(require, "which-key")
+    if not ok then
+        return
+    end
+    
+    wk.register({
+        q = {
+            name = "Qt Assistant",
+            b = { "<cmd>QtBuild<cr>", "Build Project" },
+            r = { "<cmd>QtRun<cr>", "Run Project" },
+            c = { "<cmd>QtClean<cr>", "Clean Project" },
+            d = { "<cmd>QtDebug<cr>", "Debug Project" },
+            t = { "<cmd>QtTest<cr>", "Run Tests" },
+            p = { "<cmd>QtDeploy<cr>", "Deploy Project" },
+            
+            m = { "<cmd>QtSetupMsvc<cr>", "Setup MSVC" },
+            l = { "<cmd>QtSetupClangd<cr>", "Setup Clangd" },
+            k = { "<cmd>QtCheckMsvc<cr>", "Check MSVC" },
+            f = { "<cmd>QtFixPro<cr>", "Fix .pro File" },
+            
+            g = { "<cmd>QtScripts<cr>", "Generate Scripts" },
+            e = { function() M.show_script_selector() end, "Edit Scripts" },
+            s = { "<cmd>QtStatus<cr>", "Show Status" },
+            
+            u = { "<cmd>QtDesigner<cr>", "Qt Designer" },
+            i = { function() require('qt-assistant.project_manager').init_project() end, "Init Project" },
+            o = { function() M.show_project_selector() end, "Select Project" },
+        }
+    }, { prefix = "<leader>" })
+end
+
+-- 获取默认键盘映射
+function M.get_default_keymaps()
+    return default_keymaps
+end
+
+return M
