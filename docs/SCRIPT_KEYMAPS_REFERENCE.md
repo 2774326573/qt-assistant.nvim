@@ -15,8 +15,9 @@
 
 | 快捷键 | 功能 | 描述 |
 |--------|------|------|
-| `<leader>qsg` | Script Generator | 交互式脚本生成器 |
 | `<leader>qsa` | Generate All Scripts | 一键生成所有脚本 |
+| `<leader>qsg` | Generate Scripts | 生成项目脚本 |
+| `<leader>qsG` | Script Generator | 交互式脚本生成器 |
 
 ## 对应的 Vim 命令
 
@@ -28,8 +29,16 @@
 | `<leader>qsc` | `:QtScript clean` | 清理项目 |
 | `<leader>qst` | `:QtScript test` | 运行测试 |
 | `<leader>qsp` | `:QtScript deploy` | 部署项目 |
-| `<leader>qsg` | `:QtScriptGenerator` | 脚本生成器 |
 | `<leader>qsa` | `:QtGenerateAllScripts` | 生成所有脚本 |
+| `<leader>qsg` | `:QtGenerateScripts` | 生成项目脚本 |
+| `<leader>qsG` | `:QtScriptGenerator` | 脚本生成器 |
+
+## 系统信息快捷键
+
+| 快捷键 | Vim 命令 | 说明 |
+|--------|----------|------|
+| `<leader>qis` | `:QtSystemInfo` | 显示系统信息 |
+| `<leader>qik` | `:QtKeymaps` | 显示快捷键映射 |
 
 ## 典型工作流程
 
@@ -60,8 +69,12 @@
 - `c` = **C**lean (清理)
 - `t` = **T**est (测试)
 - `p` = De**p**loy (部署)
-- `g` = **G**enerator (生成器)
-- `a` = **A**ll (全部)
+- `a` = **A**ll (全部生成脚本)
+- `g` = **G**enerate (生成脚本)
+- `G` = **G**enerator (交互式生成器)
+- `qi` = **Q**t **I**nfo (系统信息)
+- `s` = **S**ystem (系统)
+- `k` = **K**eymaps (快捷键)
 
 ## 脚本位置
 

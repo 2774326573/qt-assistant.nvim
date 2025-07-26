@@ -160,6 +160,11 @@ vim.api.nvim_create_user_command('QtGenerateScripts', function()
     require('qt-assistant').generate_scripts()
 end, { desc = 'Generate all Qt project scripts' })
 
+vim.api.nvim_create_user_command('QtGenerateAllScripts', function()
+    ensure_loaded()
+    require('qt-assistant').generate_scripts()
+end, { desc = 'Generate all Qt project scripts (alias)' })
+
 vim.api.nvim_create_user_command('QtScriptGenerator', function()
     ensure_loaded()
     require('qt-assistant').show_script_generator()
@@ -391,14 +396,18 @@ local function setup_keymaps()
     map('n', '<leader>qsb', '<cmd>QtScript build<cr>', { desc = 'Script Build' })
     map('n', '<leader>qsr', '<cmd>QtScript run<cr>', { desc = 'Script Run' })
     map('n', '<leader>qsd', '<cmd>QtScript debug<cr>', { desc = 'Script Debug' })
+    map('n', '<leader>qsc', '<cmd>QtScript clean<cr>', { desc = 'Script Clean' })
+    map('n', '<leader>qst', '<cmd>QtScript test<cr>', { desc = 'Script Test' })
+    map('n', '<leader>qsp', '<cmd>QtScript deploy<cr>', { desc = 'Script Deploy' })
+    map('n', '<leader>qsa', '<cmd>QtGenerateAllScripts<cr>', { desc = 'Generate All Scripts' })
     map('n', '<leader>qsI', '<cmd>QtInitScripts<cr>', { desc = 'Init Scripts' })
-    map('n', '<leader>qsg', '<cmd>QtGenerateScripts<cr>', { desc = 'Generate All Scripts' })
+    map('n', '<leader>qsg', '<cmd>QtGenerateScripts<cr>', { desc = 'Generate Scripts' })
     map('n', '<leader>qsG', '<cmd>QtScriptGenerator<cr>', { desc = 'Script Generator' })
     map('n', '<leader>qse', '<cmd>QtEditScript<cr>', { desc = 'Edit Script' })
     
     -- 系统信息
-    map('n', '<leader>qsi', '<cmd>QtSystemInfo<cr>', { desc = 'System Info' })
-    map('n', '<leader>qsk', '<cmd>QtKeymaps<cr>', { desc = 'Show Keymaps' })
+    map('n', '<leader>qis', '<cmd>QtSystemInfo<cr>', { desc = 'System Info' })
+    map('n', '<leader>qik', '<cmd>QtKeymaps<cr>', { desc = 'Show Keymaps' })
 end
 
 -- 自动设置快捷键

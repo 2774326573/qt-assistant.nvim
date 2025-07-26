@@ -101,7 +101,16 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 
 # 编译项目
 echo "Building project..."
-make -j$(nproc)
+if command -v nproc >/dev/null 2>&1; then
+    # Linux
+    make -j$(nproc)
+elif command -v sysctl >/dev/null 2>&1; then
+    # macOS
+    make -j$(sysctl -n hw.ncpu)
+else
+    # 默认4个并行任务
+    make -j4
+fi
 
 echo "Build completed successfully!"
 ]]
@@ -1293,7 +1302,16 @@ echo "Clean completed!"]]
 echo "Building Qt project with qmake..."
 mkdir -p build && cd build
 qmake ..
-make -j $(nproc)
+if command -v nproc >/dev/null 2>&1; then
+    # Linux
+    make -j $(nproc)
+elif command -v sysctl >/dev/null 2>&1; then
+    # macOS
+    make -j $(sysctl -n hw.ncpu)
+else
+    # 默认4个并行任务
+    make -j 4
+fi
 echo "Build completed successfully!"]]
 
         templates.run = [[#!/bin/bash

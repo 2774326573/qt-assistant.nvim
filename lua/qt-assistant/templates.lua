@@ -55,6 +55,25 @@ local template_configs = {
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 -- 内置模板
 local builtin_templates = {}
 
@@ -470,6 +489,25 @@ private:
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 void {{CLASS_NAME}}::startWork()
 {
     if (!isRunning()) {
@@ -477,6 +515,25 @@ void {{CLASS_NAME}}::startWork()
         m_paused = 0;
         start();
         emit workStarted();
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -498,6 +555,25 @@ void {{CLASS_NAME}}::pauseWork()
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 void {{CLASS_NAME}}::resumeWork()
 {
     if (isRunning() && isPaused()) {
@@ -505,6 +581,25 @@ void {{CLASS_NAME}}::resumeWork()
         m_paused = 0;
         m_condition.wakeAll();
         emit workResumed();
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -571,6 +666,25 @@ void {{CLASS_NAME}}::doWork()
     if (m_running.loadAcquire()) {
         emit progressChanged(100);
         emit resultReady(QVariant("Work completed successfully"));
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -707,6 +821,25 @@ QWidget *{{CLASS_NAME}}::createEditor(QWidget *parent, const QStyleOptionViewIte
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 void {{CLASS_NAME}}::setEditorData(QWidget *editor, const QModelIndex &index) const
 {
     if (!editor || !index.isValid()) {
@@ -719,6 +852,25 @@ void {{CLASS_NAME}}::setEditorData(QWidget *editor, const QModelIndex &index) co
         lineEdit->setText(data.toString());
     } else if (QSpinBox *spinBox = qobject_cast<QSpinBox *>(editor)) {
         spinBox->setValue(data.toInt());
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -741,12 +893,50 @@ void {{CLASS_NAME}}::setModelData(QWidget *editor, QAbstractItemModel *model, co
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 void {{CLASS_NAME}}::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     Q_UNUSED(index)
     
     if (editor) {
         editor->setGeometry(option.rect);
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -772,6 +962,25 @@ void {{CLASS_NAME}}::drawBackground(QPainter *painter, const QStyleOptionViewIte
         painter->fillRect(option.rect, option.palette.highlight());
     } else {
         painter->fillRect(option.rect, option.palette.base());
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -1476,6 +1685,21 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1585,6 +1809,21 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1652,6 +1891,21 @@ if(MSVC)
     
     # 设置运行时库
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
 endif()
 
 # 包含目录
@@ -1815,6 +2069,21 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1906,6 +2175,21 @@ if(MSVC)
     
     # 设置运行时库
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
 endif()
 
 # 包含目录
@@ -2001,6 +2285,21 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -2075,6 +2374,21 @@ if(MSVC)
     
     # 设置运行时库
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
+# macOS 编译器设置
+if(APPLE)
+    # 设置最低macOS版本
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+    
+    # 启用ARC (如果使用Objective-C++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc")
+    
+    # macOS特定优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # 设置架构支持 (Apple Silicon + Intel)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
 endif()
 
 # 包含目录
@@ -2194,6 +2508,25 @@ ApplicationWindow {
             text: "Welcome to {{PROJECT_NAME}}"
             font.pointSize: 24
         }
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 ]]
@@ -2395,6 +2728,25 @@ win32-msvc* {
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 TARGET = {{PROJECT_NAME}}
 TEMPLATE = app
 
@@ -2473,6 +2825,25 @@ win32-msvc* {
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 TARGET = {{PROJECT_NAME}}
 TEMPLATE = app
 
@@ -2536,6 +2907,25 @@ win32-msvc* {
     # Debug设置
     CONFIG(debug, debug|release) {
         QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
@@ -2613,6 +3003,25 @@ win32-msvc* {
     }
 }
 
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
+    }
+}
+
 TARGET = {{PROJECT_NAME}}
 TEMPLATE = app
 
@@ -2677,6 +3086,25 @@ win32-msvc* {
     # Debug设置
     CONFIG(debug, debug|release) {
         QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+# macOS编译器设置
+macx {
+    # 设置最低macOS版本
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    
+    # 支持Apple Silicon和Intel
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+    
+    # 优化设置
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += -O3
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += -g -O0
     }
 }
 
