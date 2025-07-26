@@ -296,13 +296,70 @@ echo === Building Qt Project ===
 echo Project directory: %PROJECT_DIR%
 echo Build directory: %BUILD_DIR%
 
+REM 询问构建类型
+echo.
+echo Select build configuration:
+echo 1. Debug
+echo 2. Release (default)
+echo.
+set /p choice="Enter your choice (1-2, default 2): "
+
+if "%choice%"=="" set choice=2
+if "%choice%"=="1" (
+    set BUILD_CONFIG=Debug
+) else (
+    set BUILD_CONFIG=Release
+)
+
+echo Building in %BUILD_CONFIG% mode...
+
 REM 创建构建目录
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 cd /d "%BUILD_DIR%"
 
+REM 检测编译器并设置生成器
+echo Detecting compiler...
+set "CMAKE_GENERATOR="
+
+REM 检查Visual Studio
+where cl >nul 2>&1
+if not errorlevel 1 (
+    echo MSVC compiler detected.
+    REM 检测Visual Studio版本
+    where devenv >nul 2>&1
+    if not errorlevel 1 (
+        for /f "tokens=*" %%i in ('dir "%ProgramFiles%\Microsoft Visual Studio" /b /ad 2^>nul ^| findstr "2022"') do set CMAKE_GENERATOR=Visual Studio 17 2022
+        if "!CMAKE_GENERATOR!"=="" (
+            for /f "tokens=*" %%i in ('dir "%ProgramFiles(x86)%\Microsoft Visual Studio" /b /ad 2^>nul ^| findstr "2019"') do set CMAKE_GENERATOR=Visual Studio 16 2019
+        )
+        if "!CMAKE_GENERATOR!"=="" (
+            for /f "tokens=*" %%i in ('dir "%ProgramFiles(x86)%\Microsoft Visual Studio" /b /ad 2^>nul ^| findstr "2017"') do set CMAKE_GENERATOR=Visual Studio 15 2017
+        )
+    )
+    if "!CMAKE_GENERATOR!"=="" set CMAKE_GENERATOR=NMake Makefiles
+) else (
+    REM 检查MinGW
+    where gcc >nul 2>&1
+    if not errorlevel 1 (
+        echo MinGW compiler detected.
+        set CMAKE_GENERATOR=MinGW Makefiles
+    ) else (
+        echo No supported compiler found!
+        pause
+        exit /b 1
+    )
+)
+
+echo Using generator: !CMAKE_GENERATOR!
+
 REM 运行CMake配置
 echo Running CMake configuration...
-cmake .. -DCMAKE_BUILD_TYPE=Release
+if "!CMAKE_GENERATOR!"=="NMake Makefiles" (
+    cmake .. -G "!CMAKE_GENERATOR!" -DCMAKE_BUILD_TYPE=%BUILD_CONFIG%
+) else (
+    cmake .. -G "!CMAKE_GENERATOR!" -A x64
+)
+
 if errorlevel 1 (
     echo CMake configuration failed!
     pause
@@ -311,7 +368,7 @@ if errorlevel 1 (
 
 REM 编译项目
 echo Building project...
-cmake --build . --config Release
+cmake --build . --config %BUILD_CONFIG%
 if errorlevel 1 (
     echo Build failed!
     pause
@@ -376,6 +433,7 @@ if not exist "%BUILD_DIR%" (
 cd /d "%BUILD_DIR%"
 
 REM 查找可执行文件
+REM 首先在根目录查找
 for %%f in (*.exe) do (
     set "EXECUTABLE=%%f"
     goto :found
@@ -383,18 +441,24 @@ for %%f in (*.exe) do (
 
 REM 在Release目录中查找
 if exist "Release" (
-    cd Release
-    for %%f in (*.exe) do (
-        set "EXECUTABLE=%%f"
+    for %%f in (Release\*.exe) do (
+        set "EXECUTABLE=Release\%%~nxf"
         goto :found
     )
 )
 
 REM 在Debug目录中查找
-if exist "..\Debug" (
-    cd ..\Debug
-    for %%f in (*.exe) do (
-        set "EXECUTABLE=%%f"
+if exist "Debug" (
+    for %%f in (Debug\*.exe) do (
+        set "EXECUTABLE=Debug\%%~nxf"
+        goto :found
+    )
+)
+
+REM 在bin目录中查找
+if exist "bin" (
+    for %%f in (bin\*.exe) do (
+        set "EXECUTABLE=bin\%%~nxf"
         goto :found
     )
 )
@@ -431,17 +495,33 @@ if not exist "%BUILD_DIR%" (
 
 cd /d "%BUILD_DIR%"
 
-REM 查找可执行文件
+REM 查找可执行文件（优先Debug版本）
+REM 在Debug目录中查找
+if exist "Debug" (
+    for %%f in (Debug\*.exe) do (
+        set "EXECUTABLE=Debug\%%~nxf"
+        goto :found
+    )
+)
+
+REM 在根目录查找
 for %%f in (*.exe) do (
     set "EXECUTABLE=%%f"
     goto :found
 )
 
-REM 在Debug目录中查找
-if exist "Debug" (
-    cd Debug
-    for %%f in (*.exe) do (
-        set "EXECUTABLE=%%f"
+REM 在Release目录中查找
+if exist "Release" (
+    for %%f in (Release\*.exe) do (
+        set "EXECUTABLE=Release\%%~nxf"
+        goto :found
+    )
+)
+
+REM 在bin目录中查找
+if exist "bin" (
+    for %%f in (bin\*.exe) do (
+        set "EXECUTABLE=bin\%%~nxf"
         goto :found
     )
 )
@@ -512,13 +592,196 @@ echo Tests completed!
 pause
 ]]
 
+    -- MSVC环境设置脚本
+    local setup_msvc_script = [[@echo off
+REM Setup MSVC Environment
+
+setlocal enabledelayedexpansion
+
+echo === Setting up MSVC Environment ===
+
+REM 查找vcvarsall.bat
+set "VCVARSALL="
+
+REM Visual Studio 2022
+if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+    set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+) else if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat" (
+    set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+) else if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" (
+    set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
+)
+
+REM Visual Studio 2019
+if "!VCVARSALL!"=="" (
+    if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+    ) else if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+    ) else if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
+    )
+)
+
+REM Visual Studio 2017
+if "!VCVARSALL!"=="" (
+    if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+    ) else if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+    ) else if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VCVARSALL=%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat"
+    )
+)
+
+if "!VCVARSALL!"=="" (
+    echo Visual Studio not found! Please install Visual Studio 2017, 2019, or 2022.
+    pause
+    exit /b 1
+)
+
+echo Found Visual Studio at: !VCVARSALL!
+echo Setting up x64 environment...
+call "!VCVARSALL!" x64
+
+if errorlevel 1 (
+    echo Failed to setup MSVC environment!
+    pause
+    exit /b 1
+)
+
+echo MSVC environment setup completed!
+echo.
+echo Available tools:
+echo - cl.exe (C++ compiler)
+echo - nmake.exe (build tool)
+echo - devenv.exe (Visual Studio IDE)
+echo.
+pause
+]]
+
+    -- 快速Debug构建脚本
+    local build_debug_script = [[@echo off
+REM Qt项目Debug构建脚本
+
+setlocal enabledelayedexpansion
+
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+echo === Building Qt Project (Debug) ===
+echo Project directory: %PROJECT_DIR%
+echo Build directory: %BUILD_DIR%
+
+REM 创建构建目录
+if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+cd /d "%BUILD_DIR%"
+
+REM 运行CMake配置
+echo Running CMake configuration...
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+if errorlevel 1 (
+    echo CMake configuration failed!
+    pause
+    exit /b 1
+)
+
+REM 编译项目
+echo Building project...
+cmake --build . --config Debug
+if errorlevel 1 (
+    echo Build failed!
+    pause
+    exit /b 1
+)
+
+echo Debug build completed successfully!
+pause
+]]
+
+    -- MSVC状态检查脚本
+    local check_msvc_script = [[@echo off
+REM Check MSVC Status
+
+echo === MSVC Environment Status ===
+echo.
+
+REM 检查编译器
+echo [1] Checking C++ Compiler (cl.exe)...
+where cl >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ cl.exe found
+    cl 2>nul | findstr /i "Microsoft" | head -n 1
+) else (
+    echo     ✗ cl.exe not found
+)
+echo.
+
+REM 检查nmake
+echo [2] Checking Build Tool (nmake.exe)...
+where nmake >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ nmake.exe found
+    nmake /? 2>nul | findstr /i "Microsoft" | head -n 1
+) else (
+    echo     ✗ nmake.exe not found
+)
+echo.
+
+REM 检查devenv
+echo [3] Checking Visual Studio IDE (devenv.exe)...
+where devenv >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ devenv.exe found
+) else (
+    echo     ✗ devenv.exe not found
+)
+echo.
+
+REM 检查Qt
+echo [4] Checking Qt installation...
+where qmake >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ qmake.exe found
+    qmake -v 2>nul | findstr /i "Qt version"
+) else (
+    echo     ✗ qmake.exe not found
+)
+echo.
+
+REM 检查CMake
+echo [5] Checking CMake...
+where cmake >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ cmake.exe found
+    cmake --version 2>nul | head -n 1
+) else (
+    echo     ✗ cmake.exe not found
+)
+echo.
+
+echo === Environment Variables ===
+echo VCINSTALLDIR=%VCINSTALLDIR%
+echo INCLUDE=%INCLUDE%
+echo LIB=%LIB%
+echo PATH (Qt paths):
+echo %PATH% | findstr /i qt
+echo.
+
+echo To setup MSVC environment, run: setup-msvc.bat
+pause
+]]
+
     -- 写入Windows脚本文件
     local scripts = {
         ["build.bat"] = build_script,
+        ["build-debug.bat"] = build_debug_script,
         ["clean.bat"] = clean_script,
         ["run.bat"] = run_script,
         ["debug.bat"] = debug_script,
-        ["test.bat"] = test_script
+        ["test.bat"] = test_script,
+        ["setup-msvc.bat"] = setup_msvc_script,
+        ["check-msvc.bat"] = check_msvc_script
     }
     
     for filename, content in pairs(scripts) do
@@ -1156,8 +1419,38 @@ pause]]
 echo Building Qt project with qmake...
 if not exist "build" mkdir build
 cd build
-qmake ..
-mingw32-make -j 4
+
+REM 检测编译器并使用相应的make工具
+qmake .. -spec win32-msvc
+if errorlevel 1 (
+    echo qmake configuration failed!
+    pause
+    exit /b 1
+)
+
+REM 尝试使用不同的make工具
+where nmake >nul 2>&1
+if not errorlevel 1 (
+    echo Using nmake...
+    nmake
+) else (
+    where mingw32-make >nul 2>&1
+    if not errorlevel 1 (
+        echo Using mingw32-make...
+        mingw32-make -j 4
+    ) else (
+        where make >nul 2>&1
+        if not errorlevel 1 (
+            echo Using make...
+            make -j 4
+        ) else (
+            echo No make tool found! Please install nmake or mingw32-make.
+            pause
+            exit /b 1
+        )
+    )
+)
+
 echo Build completed successfully!
 pause]]
     end

@@ -112,6 +112,7 @@ private:
 
     -- Main Window 源文件模板
     builtin_templates.main_window_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 {{#INCLUDE_UI}}
 #include "ui_{{FILE_NAME}}.h"
@@ -221,6 +222,7 @@ private:
 
     -- Dialog 源文件模板
     builtin_templates.dialog_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 {{#INCLUDE_UI}}
 #include "ui_{{FILE_NAME}}.h"
@@ -319,6 +321,7 @@ private:
 
     -- Widget 源文件模板
     builtin_templates.widget_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 
 #include <QPainter>
@@ -444,6 +447,7 @@ private:
 
     -- Thread 源文件模板
     builtin_templates.thread_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 #include <QDebug>
 #include <QThread>
@@ -627,6 +631,7 @@ private:
 
     -- Delegate 源文件模板
     builtin_templates.delegate_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 #include <QPainter>
 #include <QApplication>
@@ -828,6 +833,7 @@ private:
 
     -- Utility 源文件模板
     builtin_templates.utility_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 #include <QRegularExpression>
 #include <QDebug>
@@ -976,6 +982,7 @@ private:
 
     -- Singleton 源文件模板
     builtin_templates.singleton_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 #include <QMutexLocker>
 #include <QDebug>
@@ -1135,6 +1142,7 @@ private:
 ]]
 
     builtin_templates.model_source = [[
+#pragma execution_character_set("utf-8")
 #include "{{FILE_NAME}}.h"
 
 {{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
@@ -1447,6 +1455,27 @@ set(CMAKE_AUTORCC ON)
 # 设置UIC搜索路径
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
 
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1535,6 +1564,27 @@ find_package(Qt5 REQUIRED COMPONENTS Core)
 # 自动处理MOC
 set(CMAKE_AUTOMOC ON)
 
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1583,6 +1633,27 @@ find_package(Qt5 REQUIRED COMPONENTS Core)
 # 自动处理MOC
 set(CMAKE_AUTOMOC ON)
 
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1619,11 +1690,25 @@ if(WIN32)
 endif()
 
 # 设置输出目录
-set_target_properties({{PROJECT_NAME}} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+if(WIN32)
+    # Windows下设置Debug/Release输出目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+    )
+else()
+    # Unix/Linux下输出到lib/bin目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+endif()
+
 
 # 安装
 install(TARGETS {{PROJECT_NAME}}
@@ -1709,6 +1794,27 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 qt6_standard_project_setup()
 
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1746,9 +1852,20 @@ qt6_add_resources({{PROJECT_NAME}} "resources"
 target_link_libraries({{PROJECT_NAME}} PRIVATE Qt6::Core Qt6::Widgets)
 
 # 设置输出目录
-set_target_properties({{PROJECT_NAME}} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+if(WIN32)
+    # Windows下设置Debug/Release输出目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/RelWithDebInfo
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/MinSizeRel
+    )
+else()
+    # Unix/Linux下输出到bin目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+endif()
 
 # 安装
 install(TARGETS {{PROJECT_NAME}}
@@ -1769,6 +1886,27 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Quick)
 
 qt6_standard_project_setup()
+
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
 
 # 包含目录
 include_directories(include)
@@ -1807,9 +1945,20 @@ qt6_add_resources({{PROJECT_NAME}} "qml_resources"
 target_link_libraries({{PROJECT_NAME}} Qt6::Core Qt6::Quick)
 
 # 设置输出目录
-set_target_properties({{PROJECT_NAME}} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+if(WIN32)
+    # Windows下设置Debug/Release输出目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/RelWithDebInfo
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/MinSizeRel
+    )
+else()
+    # Unix/Linux下输出到bin目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+endif()
 
 # 安装
 install(TARGETS {{PROJECT_NAME}}
@@ -1831,6 +1980,27 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt6_standard_project_setup()
 
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
 # 包含目录
 include_directories(include)
 
@@ -1851,9 +2021,20 @@ target_include_directories({{PROJECT_NAME}} PRIVATE include)
 target_link_libraries({{PROJECT_NAME}} Qt6::Core)
 
 # 设置输出目录
-set_target_properties({{PROJECT_NAME}} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+if(WIN32)
+    # Windows下设置Debug/Release输出目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/RelWithDebInfo
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/MinSizeRel
+    )
+else()
+    # Unix/Linux下输出到bin目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+endif()
 
 # 安装
 install(TARGETS {{PROJECT_NAME}}
@@ -1874,6 +2055,27 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt6_standard_project_setup()
+
+# MSVC 编译器设置
+if(MSVC)
+    # UTF-8 编码设置
+    add_compile_options(/utf-8)
+    
+    # 多处理器编译
+    add_compile_options(/MP)
+    
+    # 禁用警告4996 (deprecated functions)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # Release 优化
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+    
+    # Debug 设置
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /RTC1")
+    
+    # 设置运行时库
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
 
 # 包含目录
 include_directories(include)
@@ -1908,11 +2110,24 @@ target_link_libraries({{PROJECT_NAME}} Qt6::Core)
 target_compile_definitions({{PROJECT_NAME}} PRIVATE {{PROJECT_NAME_UPPER}}_LIBRARY)
 
 # 设置输出目录
-set_target_properties({{PROJECT_NAME}} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+if(WIN32)
+    # Windows下设置Debug/Release输出目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+    )
+else()
+    # Unix/Linux下输出到lib/bin目录
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+endif()
 
 # 安装
 install(TARGETS {{PROJECT_NAME}}
@@ -2138,5 +2353,365 @@ function M.list_templates()
     end
     return templates
 end
+
+-- 添加qmake项目模板
+function M.add_qmake_templates()
+    -- qmake Widget应用模板
+    builtin_templates.qmake_widget_app = [[
+QT += core widgets
+
+CONFIG += c++17
+
+# The following define makes your compiler emit warnings if you use
+# any Qt feature that has been marked deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+# MSVC编译器设置
+win32-msvc* {
+    # UTF-8编码
+    QMAKE_CXXFLAGS += /utf-8
+    
+    # 多处理器编译
+    QMAKE_CXXFLAGS += /MP
+    
+    # 禁用警告4996
+    DEFINES += _CRT_SECURE_NO_WARNINGS
+    
+    # Release优化
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += /O2 /Ob2
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+TARGET = {{PROJECT_NAME}}
+TEMPLATE = app
+
+SOURCES += \
+    src/main.cpp \
+    src/{{FILE_NAME}}.cpp
+
+HEADERS += \
+    include/{{FILE_NAME}}.h
+
+FORMS += \
+    ui/{{FILE_NAME}}.ui
+
+INCLUDEPATH += include
+
+# 输出目录
+CONFIG(debug, debug|release) {
+    DESTDIR = build/debug
+    OBJECTS_DIR = build/debug/.obj
+    MOC_DIR = build/debug/.moc
+    RCC_DIR = build/debug/.rcc
+    UI_DIR = build/debug/.ui
+}
+
+CONFIG(release, debug|release) {
+    DESTDIR = build/release
+    OBJECTS_DIR = build/release/.obj
+    MOC_DIR = build/release/.moc
+    RCC_DIR = build/release/.rcc
+    UI_DIR = build/release/.ui
+}
+
+# 安装
+target.path = $$[QT_INSTALL_EXAMPLES]/widgets/{{PROJECT_NAME}}
+INSTALLS += target
+]]
+
+    -- qmake控制台应用模板
+    builtin_templates.qmake_console_app = [[
+QT += core
+QT -= gui
+
+CONFIG += c++17 console
+CONFIG -= app_bundle
+
+# The following define makes your compiler emit warnings if you use
+# any Qt feature that has been marked deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+# MSVC编译器设置
+win32-msvc* {
+    # UTF-8编码
+    QMAKE_CXXFLAGS += /utf-8
+    
+    # 多处理器编译
+    QMAKE_CXXFLAGS += /MP
+    
+    # 禁用警告4996
+    DEFINES += _CRT_SECURE_NO_WARNINGS
+    
+    # Release优化
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += /O2 /Ob2
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+TARGET = {{PROJECT_NAME}}
+TEMPLATE = app
+
+SOURCES += \
+    src/main.cpp
+
+# 输出目录
+CONFIG(debug, debug|release) {
+    DESTDIR = build/debug
+    OBJECTS_DIR = build/debug/.obj
+    MOC_DIR = build/debug/.moc
+    RCC_DIR = build/debug/.rcc
+}
+
+CONFIG(release, debug|release) {
+    DESTDIR = build/release
+    OBJECTS_DIR = build/release/.obj
+    MOC_DIR = build/release/.moc
+    RCC_DIR = build/release/.rcc
+}
+
+# 安装
+target.path = $$[QT_INSTALL_EXAMPLES]/corelib/{{PROJECT_NAME}}
+INSTALLS += target
+]]
+
+    -- qmake库模板
+    builtin_templates.qmake_library = [[
+QT += core
+QT -= gui
+
+CONFIG += c++17
+
+# The following define makes your compiler emit warnings if you use
+# any Qt feature that has been marked deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+# MSVC编译器设置
+win32-msvc* {
+    # UTF-8编码
+    QMAKE_CXXFLAGS += /utf-8
+    
+    # 多处理器编译
+    QMAKE_CXXFLAGS += /MP
+    
+    # 禁用警告4996
+    DEFINES += _CRT_SECURE_NO_WARNINGS
+    
+    # Release优化
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += /O2 /Ob2
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+TARGET = {{PROJECT_NAME}}
+TEMPLATE = lib
+
+DEFINES += {{PROJECT_NAME_UPPER}}_LIBRARY
+
+SOURCES += \
+    src/{{FILE_NAME}}.cpp
+
+HEADERS += \
+    include/{{FILE_NAME}}.h \
+    include/{{FILE_NAME}}_global.h
+
+INCLUDEPATH += include
+
+# 输出目录
+CONFIG(debug, debug|release) {
+    DESTDIR = build/debug
+    OBJECTS_DIR = build/debug/.obj
+    MOC_DIR = build/debug/.moc
+    RCC_DIR = build/debug/.rcc
+}
+
+CONFIG(release, debug|release) {
+    DESTDIR = build/release
+    OBJECTS_DIR = build/release/.obj
+    MOC_DIR = build/release/.moc
+    RCC_DIR = build/release/.rcc
+}
+
+unix {
+    target.path = /usr/lib
+    INSTALLS += target
+}
+]]
+
+    -- qmake Quick应用模板
+    builtin_templates.qmake_quick_app = [[
+QT += quick
+
+CONFIG += c++17
+
+# The following define makes your compiler emit warnings if you use
+# any Qt feature that has been marked deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+# MSVC编译器设置
+win32-msvc* {
+    # UTF-8编码
+    QMAKE_CXXFLAGS += /utf-8
+    
+    # 多处理器编译
+    QMAKE_CXXFLAGS += /MP
+    
+    # 禁用警告4996
+    DEFINES += _CRT_SECURE_NO_WARNINGS
+    
+    # Release优化
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += /O2 /Ob2
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+TARGET = {{PROJECT_NAME}}
+TEMPLATE = app
+
+SOURCES += \
+        src/main.cpp
+
+RESOURCES += qml.qrc
+
+# Additional import path used to resolve QML modules in Qt Creator's code model
+QML_IMPORT_PATH =
+
+# Additional import path used to resolve QML modules just for Qt Quick Designer
+QML_DESIGNER_IMPORT_PATH =
+
+# 输出目录
+CONFIG(debug, debug|release) {
+    DESTDIR = build/debug
+    OBJECTS_DIR = build/debug/.obj
+    MOC_DIR = build/debug/.moc
+    RCC_DIR = build/debug/.rcc
+    UI_DIR = build/debug/.ui
+}
+
+CONFIG(release, debug|release) {
+    DESTDIR = build/release
+    OBJECTS_DIR = build/release/.obj
+    MOC_DIR = build/release/.moc
+    RCC_DIR = build/release/.rcc
+    UI_DIR = build/release/.ui
+}
+
+# Default rules for deployment.
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
+]]
+
+    -- qmake测试项目模板
+    builtin_templates.qmake_test_app = [[
+QT += testlib
+QT -= gui
+
+CONFIG += qt console warn_on depend_includepath testcase
+CONFIG -= app_bundle
+
+# MSVC编译器设置
+win32-msvc* {
+    # UTF-8编码
+    QMAKE_CXXFLAGS += /utf-8
+    
+    # 多处理器编译
+    QMAKE_CXXFLAGS += /MP
+    
+    # 禁用警告4996
+    DEFINES += _CRT_SECURE_NO_WARNINGS
+    
+    # Release优化
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS_RELEASE += /O2 /Ob2
+    }
+    
+    # Debug设置
+    CONFIG(debug, debug|release) {
+        QMAKE_CXXFLAGS_DEBUG += /Od /Zi /RTC1
+    }
+}
+
+TARGET = {{PROJECT_NAME}}_test
+TEMPLATE = app
+
+SOURCES += \
+    tests/test_{{FILE_NAME}}.cpp
+
+HEADERS += \
+    include/{{FILE_NAME}}.h
+
+INCLUDEPATH += include
+
+# Link to the main library if needed
+# LIBS += -L../build/release -l{{PROJECT_NAME}}
+
+# 输出目录
+CONFIG(debug, debug|release) {
+    DESTDIR = build/debug/tests
+    OBJECTS_DIR = build/debug/tests/.obj
+    MOC_DIR = build/debug/tests/.moc
+    RCC_DIR = build/debug/tests/.rcc
+}
+
+CONFIG(release, debug|release) {
+    DESTDIR = build/release/tests
+    OBJECTS_DIR = build/release/tests/.obj
+    MOC_DIR = build/release/tests/.moc
+    RCC_DIR = build/release/tests/.rcc
+}
+]]
+end
+
+-- 在加载时添加qmake模板
+M.add_qmake_templates()
 
 return M

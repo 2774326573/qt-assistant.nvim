@@ -139,13 +139,33 @@ end
 
 -- 写入文件
 function M.write_file(file_path, content)
-    local file = io.open(file_path, "w")
-    if not file then
-        return false, "Failed to open file for writing: " .. file_path
+    local config = get_config()
+    
+    -- 如果启用了禁用写入确认，临时设置vim选项
+    local old_confirm = nil
+    if config.file_handling and config.file_handling.disable_write_confirm then
+        old_confirm = vim.o.confirm
+        vim.o.confirm = false
     end
     
-    file:write(content)
-    file:close()
+    local success, error_msg = pcall(function()
+        local file = io.open(file_path, "w")
+        if not file then
+            error("Failed to open file for writing: " .. file_path)
+        end
+        
+        file:write(content)
+        file:close()
+    end)
+    
+    -- 恢复之前的confirm设置
+    if old_confirm ~= nil then
+        vim.o.confirm = old_confirm
+    end
+    
+    if not success then
+        return false, error_msg
+    end
     
     return true
 end

@@ -73,6 +73,45 @@ local project_templates = {
             "library_global.h",
             "CMakeLists.txt"
         }
+    },
+    qmake_widget_app = {
+        name = "Qt Widgets Application (qmake)",
+        description = "Standard Qt Widgets desktop application using qmake",
+        files = {
+            "main.cpp",
+            "mainwindow.h",
+            "mainwindow.cpp", 
+            "mainwindow.ui",
+            "{{PROJECT_NAME}}.pro"
+        }
+    },
+    qmake_console_app = {
+        name = "Qt Console Application (qmake)",
+        description = "Command-line Qt application using qmake",
+        files = {
+            "main.cpp",
+            "{{PROJECT_NAME}}.pro"
+        }
+    },
+    qmake_library = {
+        name = "Qt Library (qmake)",
+        description = "Qt shared/static library using qmake",
+        files = {
+            "library.h",
+            "library.cpp",
+            "library_global.h",
+            "{{PROJECT_NAME}}.pro"
+        }
+    },
+    qmake_quick_app = {
+        name = "Qt Quick Application (qmake)",
+        description = "Qt Quick/QML application using qmake",
+        files = {
+            "main.cpp",
+            "main.qml",
+            "qml.qrc",
+            "{{PROJECT_NAME}}.pro"
+        }
     }
 }
 
@@ -423,23 +462,34 @@ function M.create_project_files(project_path, template_type, template_vars)
         ["CMakeLists.txt"] = "",  -- 根目录
     }
     
+    -- 动态处理.pro文件
+    local function get_file_dir(file_name, template_vars)
+        if file_name:match("%.pro$") then
+            return ""  -- .pro文件放在根目录
+        end
+        return file_mappings[file_name] or ""
+    end
+    
     for _, file_name in ipairs(template.files) do
+        -- 处理模板变量替换（如{{PROJECT_NAME}}.pro）
+        local actual_file_name = file_name:gsub("{{(.-)}}", template_vars)
+        
         local file_content = M.generate_template_file(file_name, template_type, template_vars)
         if file_content then
             -- 确定文件应该放在哪个目录
-            local target_dir = file_mappings[file_name] or ""
+            local target_dir = get_file_dir(actual_file_name, template_vars)
             local file_path = project_path
             if target_dir ~= "" then
                 file_path = file_path .. "/" .. target_dir
             end
-            file_path = file_path .. "/" .. file_name
+            file_path = file_path .. "/" .. actual_file_name
             
             local write_success = file_manager.write_file(file_path, file_content)
             if write_success then
-                local relative_path = target_dir ~= "" and (target_dir .. "/" .. file_name) or file_name
+                local relative_path = target_dir ~= "" and (target_dir .. "/" .. actual_file_name) or actual_file_name
                 vim.notify("Created: " .. relative_path, vim.log.levels.INFO)
             else
-                vim.notify("Failed to create: " .. file_name, vim.log.levels.ERROR)
+                vim.notify("Failed to create: " .. actual_file_name, vim.log.levels.ERROR)
             end
         end
     end
@@ -672,15 +722,26 @@ function M.generate_template_file(file_name, template_type, vars)
     local template_name = nil
     
     if file_name == "main.cpp" then
-        if template_type == "widget_app" then
+        if template_type == "widget_app" or template_type == "qmake_widget_app" then
             template_name = "main_widget_app"
-        elseif template_type == "quick_app" then
+        elseif template_type == "quick_app" or template_type == "qmake_quick_app" then
             template_name = "main_quick_app"
-        elseif template_type == "console_app" then
+        elseif template_type == "console_app" or template_type == "qmake_console_app" then
             template_name = "main_console_app"
         end
     elseif file_name == "CMakeLists.txt" then
-        template_name = "cmake_" .. template_type
+        template_name = "cmake_" .. template_type:gsub("qmake_", "")
+    elseif file_name:match("%.pro$") then
+        -- 处理qmake .pro文件
+        if template_type == "qmake_widget_app" then
+            template_name = "qmake_widget_app"
+        elseif template_type == "qmake_console_app" then
+            template_name = "qmake_console_app"
+        elseif template_type == "qmake_library" then
+            template_name = "qmake_library"
+        elseif template_type == "qmake_quick_app" then
+            template_name = "qmake_quick_app"
+        end
     elseif file_name:match("%.h$") then
         if file_name:match("mainwindow") then
             template_name = "main_window_header"

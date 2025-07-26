@@ -42,7 +42,12 @@ function M.setup(user_config)
             log_level = "INFO",
             log_file = vim.fn.stdpath('data') .. '/qt-assistant.log'
         },
-        enable_default_keymaps = true
+        enable_default_keymaps = true,
+        file_handling = {
+            auto_create_backup = false,
+            disable_write_confirm = true,  -- 禁用写入确认对话框
+            preserve_file_permissions = true
+        }
     }
     
     M._config = vim.tbl_deep_extend('force', default_config, user_config or {})
