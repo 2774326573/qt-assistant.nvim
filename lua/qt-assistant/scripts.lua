@@ -1263,12 +1263,13 @@ end
 -- 获取脚本目录
 function M.get_scripts_directory()
     local config = get_config()
+    local current_dir = vim.fn.getcwd()  -- 使用当前工作目录而不是配置中的project_root
     local scripts_dir
     
     if config and config.directories and config.directories.scripts then
-        scripts_dir = config.project_root .. "/" .. config.directories.scripts
+        scripts_dir = current_dir .. "/" .. config.directories.scripts
     else
-        scripts_dir = vim.fn.getcwd() .. "/scripts"
+        scripts_dir = current_dir .. "/scripts"
     end
     
     return scripts_dir
