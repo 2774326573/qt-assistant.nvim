@@ -55,25 +55,6 @@ local template_configs = {
     }
 }
 
-# macOS编译器设置
-macx {
-    # 设置最低macOS版本
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
-    
-    # 支持Apple Silicon和Intel
-    QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
-    
-    # 优化设置
-    CONFIG(release, debug|release) {
-        QMAKE_CXXFLAGS_RELEASE += -O3
-    }
-    
-    # Debug设置
-    CONFIG(debug, debug|release) {
-        QMAKE_CXXFLAGS_DEBUG += -g -O0
-    }
-}
-
 -- 内置模板
 local builtin_templates = {}
 

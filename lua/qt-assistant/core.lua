@@ -5,7 +5,7 @@ local M = {}
 local file_manager = require('qt-assistant.file_manager')
 local templates = require('qt-assistant.templates')
 local cmake = require('qt-assistant.cmake')
-local keymaps = require('qt-assistant.keymaps')
+-- local keymaps = require('qt-assistant.keymaps') -- 已移除独立的keymaps模块
 
 -- 验证类名格式
 function M.validate_class_name(class_name)
@@ -208,15 +208,7 @@ function M.get_class_type_info(class_type)
     return class_info[class_type]
 end
 
--- 设置键盘映射
-function M.setup_keymaps(user_keymaps)
-    keymaps.setup_keymaps(user_keymaps)
-    -- setup_which_key 已经在 keymaps.setup_keymaps 中调用了
-end
-
--- 获取默认键盘映射
-function M.get_default_keymaps()
-    return keymaps.get_default_keymaps()
-end
+-- 键盘映射功能已移至主模块 qt-assistant.lua
+-- 不再需要独立的 keymaps 模块
 
 return M

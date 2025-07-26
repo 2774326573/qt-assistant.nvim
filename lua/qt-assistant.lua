@@ -87,12 +87,7 @@ function M.setup(user_config)
 
 	-- 设置快捷键（如果用户配置了）
 	if M._config.enable_default_keymaps then
-		-- 设置旧的键盘映射
 		M.setup_keymaps()
-		
-		-- 设置新的四键组合系统
-		local core = require('qt-assistant.core')
-		core.setup_keymaps()
 	end
 	
 	-- 设置自动格式化（如果启用）
@@ -225,6 +220,139 @@ function M.setup_keymaps()
 	map("n", "<leader>qvd", function()
 		M.detect_qt_version()
 	end, { desc = "Detect Qt Version" })
+	
+	-- ==================== 新的四键组合系统 ====================
+	-- 检测 leader 键类型
+	local leader = vim.g.mapleader or "\\"
+	local leader_prefix = leader == " " and "<Space>" or "<leader>"
+	
+	-- 任务管理 (qt)
+	map("n", leader_prefix .. "qt", function()
+		vim.notify("Qt Tasks:\nb - Build Project\nr - Run Project\nc - Clean Project\nd - Debug Project\nt - Run Tests\np - Deploy Project", 
+			vim.log.levels.INFO, {title = "Qt Assistant - Tasks"})
+	end, { desc = "Qt: Tasks menu" })
+	
+	map("n", leader_prefix .. "qtb", function() M.build_project() end, { desc = "Qt: Build project" })
+	map("n", leader_prefix .. "qtr", function() M.run_project() end, { desc = "Qt: Run project" })
+	map("n", leader_prefix .. "qtc", function() M.clean_project() end, { desc = "Qt: Clean project" })
+	map("n", leader_prefix .. "qtd", function() M.run_script("debug") end, { desc = "Qt: Debug project" })
+	map("n", leader_prefix .. "qtt", function() M.run_script("test") end, { desc = "Qt: Run tests" })
+	map("n", leader_prefix .. "qtp", function() M.run_script("deploy") end, { desc = "Qt: Deploy project" })
+	
+	-- 环境设置 (qe)
+	map("n", leader_prefix .. "qe", function()
+		vim.notify("Qt Environment:\nm - Setup MSVC\nl - Setup Clangd\nk - Check MSVC\nf - Fix .pro File", 
+			vim.log.levels.INFO, {title = "Qt Assistant - Environment"})
+	end, { desc = "Qt: Environment menu" })
+	
+	map("n", leader_prefix .. "qem", function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('setup_msvc')
+		vim.cmd('terminal scripts/setup-msvc.bat')
+	end, { desc = "Qt: Setup MSVC" })
+	
+	map("n", leader_prefix .. "qel", function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('setup_clangd')
+		vim.cmd('terminal scripts/setup-clangd.bat')
+	end, { desc = "Qt: Setup Clangd" })
+	
+	map("n", leader_prefix .. "qek", function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('check_msvc')
+		vim.cmd('terminal scripts/check-msvc.bat')
+	end, { desc = "Qt: Check MSVC" })
+	
+	map("n", leader_prefix .. "qef", function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('fix_pro')
+		vim.cmd('terminal scripts/fix-pro.bat')
+	end, { desc = "Qt: Fix .pro file" })
+	
+	-- 脚本管理 (qs)
+	map("n", leader_prefix .. "qs", function()
+		vim.notify("Qt Scripts:\ng - Generate Scripts\ne - Edit Scripts\ns - Show Status", 
+			vim.log.levels.INFO, {title = "Qt Assistant - Scripts"})
+	end, { desc = "Qt: Scripts menu" })
+	
+	map("n", leader_prefix .. "qsg", function() M.quick_generate_all_scripts() end, { desc = "Qt: Generate scripts" })
+	map("n", leader_prefix .. "qse", function() M.show_script_selector() end, { desc = "Qt: Edit scripts" })
+	map("n", leader_prefix .. "qss", function() M.show_script_status() end, { desc = "Qt: Show status" })
+	
+	-- UI设计师 (qd)
+	map("n", leader_prefix .. "qd", function()
+		vim.notify("Qt Designer:\nu - Open Qt Designer", 
+			vim.log.levels.INFO, {title = "Qt Assistant - Designer"})
+	end, { desc = "Qt: Designer menu" })
+	
+	map("n", leader_prefix .. "qdu", function() M.open_designer_current() end, { desc = "Qt: Qt Designer" })
+	
+	-- 项目管理 (qp)
+	map("n", leader_prefix .. "qp", function()
+		vim.notify("Qt Project:\ni - Init Project\no - Select Project", 
+			vim.log.levels.INFO, {title = "Qt Assistant - Project"})
+	end, { desc = "Qt: Project menu" })
+	
+	map("n", leader_prefix .. "qpi", function() M.new_project() end, { desc = "Qt: Init project" })
+	map("n", leader_prefix .. "qpo", function() M.smart_project_selector() end, { desc = "Qt: Select project" })
+	
+	-- 添加对应的用户命令
+	vim.api.nvim_create_user_command('QtBuild', function() M.build_project() end, {desc = "Build Qt project"})
+	vim.api.nvim_create_user_command('QtRun', function() M.run_project() end, {desc = "Run Qt project"})
+	vim.api.nvim_create_user_command('QtClean', function() M.clean_project() end, {desc = "Clean Qt project"})
+	vim.api.nvim_create_user_command('QtSetupMsvc', function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('setup_msvc')
+		vim.cmd('terminal scripts/setup-msvc.bat')
+	end, {desc = "Setup MSVC environment"})
+	vim.api.nvim_create_user_command('QtSetupClangd', function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('setup_clangd')
+		vim.cmd('terminal scripts/setup-clangd.bat')
+	end, {desc = "Setup Clangd LSP"})
+	vim.api.nvim_create_user_command('QtFixPro', function()
+		local scripts = require('qt-assistant.scripts')
+		scripts.generate_single_script('fix_pro')
+		vim.cmd('terminal scripts/fix-pro.bat')
+	end, {desc = "Fix .pro file MSVC paths"})
+	vim.api.nvim_create_user_command('QtScripts', function() M.quick_generate_all_scripts() end, {desc = "Generate all scripts"})
+	
+	-- 提示信息
+	if leader == " " then
+		vim.notify("Qt Assistant: 已设置空格键快捷键 (Space+qt, Space+qe, etc.)", vim.log.levels.INFO)
+	else
+		vim.notify("Qt Assistant: 已设置快捷键 (" .. leader .. "qt, " .. leader .. "qe, etc.)", vim.log.levels.INFO)
+	end
+end
+
+-- 脚本选择器
+function M.show_script_selector()
+	local scripts = require('qt-assistant.scripts')
+	local script_list = scripts.list_scripts()
+	
+	if #script_list == 0 then
+		vim.notify("No scripts found. Run :QtScripts to generate them.", vim.log.levels.WARN)
+		return
+	end
+	
+	vim.ui.select(script_list, {
+		prompt = "Select script to edit:",
+		format_item = function(item) return item end,
+	}, function(choice)
+		if choice then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and ".bat" or ".sh"
+			local script_path = scripts_dir .. "/" .. choice .. script_ext
+			vim.cmd("edit " .. vim.fn.fnameescape(script_path))
+		end
+	end)
+end
+
+-- 显示脚本状态
+function M.show_script_status()
+	local scripts = require('qt-assistant.scripts')
+	scripts.show_script_status()
 end
 
 -- ==================== 接口函数 ====================
