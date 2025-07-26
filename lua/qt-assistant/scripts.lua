@@ -791,6 +791,7 @@ function M.force_generate_scripts(scripts_dir, build_system)
     -- 为每种脚本类型生成文件
     for script_type, config in pairs(script_types) do
         local script_content = M.generate_script_content(script_type, build_system, is_windows)
+        local system = require('qt-assistant.system')
         local script_path = system.join_path(scripts_dir, script_type .. script_ext)
         
         if M.write_script_file(script_path, script_content, is_windows) then
@@ -821,6 +822,7 @@ function M.generate_single_script(script_type)
     local script_ext = is_windows and ".bat" or ".sh"
     
     local script_content = M.generate_script_content(script_type, build_system, is_windows)
+    local system = require('qt-assistant.system')
     local script_path = system.join_path(scripts_dir, script_type .. script_ext)
     
     if M.write_script_file(script_path, script_content, is_windows) then
@@ -903,52 +905,122 @@ end
 
 -- 生成脚本内容
 function M.generate_script_content(script_type, build_system, is_windows)
-    local templates = M.get_script_templates(build_system, is_windows)
-    return templates[script_type] or templates.default
+    -- 检测Qt版本
+    local qt_version = M.detect_qt_version()
+    local templates = M.get_script_templates(build_system, is_windows, qt_version)
+    local content = templates[script_type] or templates.default
+    
+    -- 替换项目名称变量
+    local project_name = M.get_project_name()
+    content = content:gsub("{{PROJECT_NAME}}", project_name)
+    
+    -- 替换Qt版本相关变量
+    content = content:gsub("{{QT_VERSION}}", tostring(qt_version))
+    
+    return content
+end
+
+-- 检测Qt版本
+function M.detect_qt_version()
+    -- 尝试使用Qt版本检测模块
+    local ok, qt_version_module = pcall(require, "qt-assistant.qt_version")
+    if ok then
+        local detected_version = qt_version_module.get_recommended_qt_version(vim.fn.getcwd())
+        if detected_version then
+            return detected_version
+        end
+    end
+    
+    -- 从CMakeLists.txt检测Qt版本
+    local cmake_file = vim.fn.getcwd() .. "/CMakeLists.txt"
+    if vim.fn.filereadable(cmake_file) == 1 then
+        local content = vim.fn.readfile(cmake_file)
+        for _, line in ipairs(content) do
+            if line:match("find_package%s*%(%s*Qt6") then
+                return 6
+            elseif line:match("find_package%s*%(%s*Qt5") then
+                return 5
+            end
+        end
+    end
+    
+    -- 默认返回Qt6
+    return 6
+end
+
+-- 获取项目名称
+function M.get_project_name()
+    -- 尝试从CMakeLists.txt获取项目名称
+    local cmake_file = vim.fn.getcwd() .. "/CMakeLists.txt"
+    if vim.fn.filereadable(cmake_file) == 1 then
+        local content = vim.fn.readfile(cmake_file)
+        for _, line in ipairs(content) do
+            local project_match = line:match("project%s*%(%s*([%w_%-]+)")
+            if project_match then
+                return project_match
+            end
+        end
+    end
+    
+    -- 尝试从.pro文件获取项目名称
+    local pro_files = vim.fn.glob(vim.fn.getcwd() .. "/*.pro", false, true)
+    if #pro_files > 0 then
+        local pro_name = vim.fn.fnamemodify(pro_files[1], ":t:r")
+        return pro_name
+    end
+    
+    -- 默认使用当前目录名称
+    return vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
 end
 
 -- 获取脚本模板
-function M.get_script_templates(build_system, is_windows)
+function M.get_script_templates(build_system, is_windows, qt_version)
+    qt_version = qt_version or 6
     if is_windows then
-        return M.get_windows_templates(build_system)
+        return M.get_windows_templates(build_system, qt_version)
     else
-        return M.get_unix_templates(build_system)
+        return M.get_unix_templates(build_system, qt_version)
     end
 end
 
 -- Unix/Linux脚本模板（简化版）
-function M.get_unix_templates(build_system)
+function M.get_unix_templates(build_system, qt_version)
     local templates = {}
     
     if build_system == "cmake" then
         templates.build = [[#!/bin/bash
 echo "Building Qt project with CMake..."
+cd "$(dirname "$0")/.." || exit 1
 mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-cmake --build . --config Debug -j $(nproc)
+cmake -DCMAKE_BUILD_TYPE=Debug .. || exit 1
+cmake --build . --config Debug -j $(nproc) || exit 1
 echo "Build completed successfully!"]]
 
         templates.run = [[#!/bin/bash
 echo "Running Qt project..."
+cd "$(dirname "$0")/.." || exit 1
 if [ ! -d "build" ]; then
-    echo "Build directory not found! Please build first."
-    exit 1
+  echo "Build directory not found! Please build first."
+  exit 1
 fi
 cd build
-for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
-    if [ -f "$exe" ]; then
-        echo "Running $exe..."
-        "$exe"
-        exit 0
-    fi
-done
-echo "No executable found!"]]
+if [ -x "./bin/{{PROJECT_NAME}}" ]; then
+  echo "Running ./bin/{{PROJECT_NAME}}..."
+  ./bin/{{PROJECT_NAME}}
+elif [ -x "./{{PROJECT_NAME}}" ]; then
+  echo "Running ./{{PROJECT_NAME}}..."
+  ./{{PROJECT_NAME}}
+else
+  echo "Executable {{PROJECT_NAME}} not found!"
+  exit 1
+fi]]
 
         templates.clean = [[#!/bin/bash
 echo "Cleaning Qt project..."
+cd "$(dirname "$0")/.." || exit 1
 if [ -d "build" ]; then
-    rm -rf build
-    echo "Build directory removed."
+  rm -rf build
+  echo "Build directory removed."
 fi
 rm -f *.tmp *.log
 echo "Clean completed!"]]
@@ -988,42 +1060,45 @@ echo "Clean completed!"]]
 
     templates.debug = [[#!/bin/bash
 echo "Debugging Qt project..."
+cd "$(dirname "$0")/.." || exit 1
 if [ ! -d "build" ]; then
-    echo "Build directory not found! Please build first."
-    exit 1
+  echo "Build directory not found! Please build first."
+  exit 1
 fi
 cd build
 for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
-    if [ -f "$exe" ]; then
-        echo "Debugging $exe with gdb..."
-        gdb "$exe"
-        exit 0
-    fi
+  if [ -f "$exe" ]; then
+    echo "Debugging $exe with gdb..."
+    gdb "$exe"
+    exit 0
+  fi
 done
 echo "No executable found!"]]
 
     templates.test = [[#!/bin/bash
 echo "Running tests..."
+cd "$(dirname "$0")/.." || exit 1
 if [ ! -d "build" ]; then
-    echo "Build directory not found! Please build first."
-    exit 1
+  echo "Build directory not found! Please build first."
+  exit 1
 fi
 cd build
-ctest --output-on-failure
+ctest --output-on-failure || exit 1
 echo "Tests completed!"]]
 
     templates.deploy = [[#!/bin/bash
 echo "Deploying Qt project..."
+cd "$(dirname "$0")/.." || exit 1
 if [ ! -d "build" ]; then
-    echo "Build directory not found! Please build first."
-    exit 1
+  echo "Build directory not found! Please build first."
+  exit 1
 fi
 cd build
 mkdir -p deploy
 for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
-    if [ -f "$exe" ]; then
-        cp "$exe" deploy/
-    fi
+  if [ -f "$exe" ]; then
+    cp "$exe" deploy/
+  fi
 done
 echo "Deployment completed!"]]
 
@@ -1035,7 +1110,7 @@ echo "Modify this script for your specific needs"]]
 end
 
 -- Windows脚本模板（简化版）
-function M.get_windows_templates(build_system)
+function M.get_windows_templates(build_system, qt_version)
     local templates = {}
     
     if build_system == "cmake" then
@@ -1116,7 +1191,7 @@ echo Tests completed!
 pause]]
 
     templates.deploy = [[@echo off
-echo Deploying Qt project...
+echo Deploying Qt{{QT_VERSION}} project...
 if not exist "build" (
     echo Build directory not found! Please build first.
     pause
@@ -1127,6 +1202,8 @@ if not exist "deploy" mkdir deploy
 for %%f in (*.exe) do (
     copy "%%f" deploy\
 )
+REM Use appropriate deployment tool based on Qt version
+echo Using Qt{{QT_VERSION}} deployment tool...
 windeployqt deploy\
 echo Deployment completed!
 pause]]
@@ -1181,6 +1258,20 @@ end
 -- 获取脚本类型信息
 function M.get_script_types()
     return script_types
+end
+
+-- 获取脚本目录
+function M.get_scripts_directory()
+    local config = get_config()
+    local scripts_dir
+    
+    if config and config.directories and config.directories.scripts then
+        scripts_dir = config.project_root .. "/" .. config.directories.scripts
+    else
+        scripts_dir = vim.fn.getcwd() .. "/scripts"
+    end
+    
+    return scripts_dir
 end
 
 return M

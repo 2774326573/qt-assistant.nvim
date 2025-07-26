@@ -20,9 +20,9 @@ local build_systems = {
         end,
         build_cmd = function(build_dir, parallel_jobs)
             if parallel_jobs and parallel_jobs > 1 then
-                return {"cmake", "--build", ".", "--parallel", tostring(parallel_jobs)}
+                return {"cmake", "--build", ".", "--config", build_type, "-j", tostring(parallel_jobs)}
             else
-                return {"cmake", "--build", "."}
+                return {"cmake", "--build", ".", "--config", build_type}
             end
         end,
         clean_cmd = function(build_dir)
@@ -94,10 +94,55 @@ function M.detect_build_system(project_path)
     return nil, nil
 end
 
+-- 检测Qt版本
+function M.detect_qt_version(project_path)
+    local qt_version_module = require('qt-assistant.qt_version')
+    return qt_version_module.detect_qt_version_from_cmake(project_path)
+end
+
+-- 设置Qt环境
+function M.setup_qt_environment(qt_version, config)
+    local qt_version_module = require('qt-assistant.qt_version')
+    local system = require('qt-assistant.system')
+    local sys = system.detect_os()
+    
+    if not sys.is_windows then
+        return true -- Linux/macOS通常不需要特殊设置
+    end
+    
+    -- Windows环境设置
+    local qt_path = nil
+    if qt_version == 5 and config.qt_project.qt5_path ~= "" then
+        qt_path = config.qt_project.qt5_path
+    elseif qt_version == 6 and config.qt_project.qt6_path ~= "" then
+        qt_path = config.qt_project.qt6_path
+    else
+        -- 自动检测Qt安装路径
+        local detected = qt_version_module.auto_detect_qt_version()
+        if detected.system_qt and detected.system_qt[qt_version] then
+            qt_path = detected.system_qt[qt_version].path
+        end
+    end
+    
+    if qt_path then
+        return qt_version_module.setup_qt_environment(qt_version, qt_path)
+    end
+    
+    return true
+end
+
 -- 构建项目
 function M.build_project(build_type)
     local config = get_config()
     local project_root = config.project_root
+    
+    -- 检测Qt版本
+    local qt_version = M.detect_qt_version(project_root)
+    if qt_version then
+        vim.notify("Detected Qt" .. qt_version .. " project", vim.log.levels.INFO)
+        -- 设置Qt环境（Windows）
+        M.setup_qt_environment(qt_version, config)
+    end
     
     -- 检测构建系统
     local system_name, system_config = M.detect_build_system(project_root)
@@ -110,7 +155,7 @@ function M.build_project(build_type)
     build_type = build_type or config.qt_project.build_type
     local build_dir = project_root .. "/" .. config.qt_project.build_dir
     
-    vim.notify(string.format("Building project using %s (%s)...", system_config.name, build_type), vim.log.levels.INFO)
+    vim.notify(string.format("Building Qt%s project using %s (%s)...", qt_version or "?", system_config.name, build_type), vim.log.levels.INFO)
     
     -- 创建构建目录
     local success, error_msg = file_manager.ensure_directory_exists(build_dir)
@@ -120,11 +165,11 @@ function M.build_project(build_type)
     end
     
     -- 执行构建过程
-    return M.execute_build_process(system_config, build_dir, build_type)
+    return M.execute_build_process(system_config, build_dir, build_type, qt_version)
 end
 
 -- 执行构建过程
-function M.execute_build_process(system_config, build_dir, build_type)
+function M.execute_build_process(system_config, build_dir, build_type, qt_version)
     local config = get_config()
     local system = require('qt-assistant.system')
     
@@ -134,10 +179,20 @@ function M.execute_build_process(system_config, build_dir, build_type)
     
     local build_success = true
     
-    -- 配置阶段
+    -- 配置阶段 - 添加Qt版本相关的CMAKE参数
     local configure_cmd = system_config.configure_cmd(build_dir, build_type)
+    
+    -- 为Windows Qt5/Qt6添加特殊的CMAKE参数
+    if qt_version and vim.loop.os_uname().sysname == "Windows_NT" then
+        if qt_version == 5 and config.qt_project.qt5_path ~= "" then
+            table.insert(configure_cmd, "-DQt5_DIR=" .. config.qt_project.qt5_path .. "/lib/cmake/Qt5")
+        elseif qt_version == 6 and config.qt_project.qt6_path ~= "" then
+            table.insert(configure_cmd, "-DQt6_DIR=" .. config.qt_project.qt6_path .. "/lib/cmake/Qt6")
+        end
+    end
+    
     local adapted_configure_cmd = system.adapt_build_command(configure_cmd)
-    vim.notify("Configuring project...", vim.log.levels.INFO)
+    vim.notify("Configuring Qt" .. (qt_version or "") .. " project...", vim.log.levels.INFO)
     
     local configure_success = M.run_build_command(adapted_configure_cmd, "Configure")
     if not configure_success then

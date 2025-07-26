@@ -25,6 +25,11 @@ end
 function M.create_qt_class(class_name, class_type, options)
     options = options or {}
     
+    -- 检测Qt版本
+    local qt_version_module = require('qt-assistant.qt_version')
+    local project_path = file_manager.get_project_root()
+    local qt_version = qt_version_module.get_recommended_qt_version(project_path)
+    
     -- 获取模板配置
     local template_config = templates.get_template_config(class_type)
     if not template_config then
@@ -34,8 +39,8 @@ function M.create_qt_class(class_name, class_type, options)
     -- 确定目标目录
     local target_dirs = file_manager.determine_target_directories(class_type)
     
-    -- 生成文件内容
-    local files = M.generate_class_files(class_name, class_type, template_config, options)
+    -- 生成文件内容（传递Qt版本信息）
+    local files = M.generate_class_files(class_name, class_type, template_config, options, qt_version)
     
     -- 创建文件
     local success, error_msg = file_manager.create_files(files, target_dirs)
@@ -54,8 +59,9 @@ function M.create_qt_class(class_name, class_type, options)
 end
 
 -- 生成类文件内容
-function M.generate_class_files(class_name, class_type, template_config, options)
+function M.generate_class_files(class_name, class_type, template_config, options, qt_version)
     local files = {}
+    qt_version = qt_version or 6
     
     -- 模板变量
     local template_vars = {
@@ -66,6 +72,7 @@ function M.generate_class_files(class_name, class_type, template_config, options
         HEADER_GUARD = M.generate_header_guard(class_name),
         DATE = os.date('%Y-%m-%d'),
         YEAR = os.date('%Y'),
+        QT_VERSION = qt_version,
         INCLUDE_UI = template_config.has_ui and options.generate_ui ~= false
     }
     

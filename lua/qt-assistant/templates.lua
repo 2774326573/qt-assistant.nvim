@@ -66,12 +66,15 @@ end
 
 -- 加载内置模板
 function M.load_builtin_templates()
-    -- Main Window 头文件模板
+    -- Main Window 头文件模板 (Qt6)
     builtin_templates.main_window_header = [[
 #ifndef {{HEADER_GUARD}}
 #define {{HEADER_GUARD}}
 
 #include <QMainWindow>
+{{#INCLUDE_UI}}
+#include "ui_{{FILE_NAME}}.h"
+{{/INCLUDE_UI}}
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -79,9 +82,6 @@ class QMenu;
 class QMenuBar;
 class QStatusBar;
 class QToolBar;
-{{#INCLUDE_UI}}
-QT_FORWARD_DECLARE_CLASS(Ui::{{CLASS_NAME}})
-{{/INCLUDE_UI}}
 QT_END_NAMESPACE
 
 class {{CLASS_NAME}} : public QMainWindow
@@ -178,16 +178,18 @@ void {{CLASS_NAME}}::connectSignals()
 }
 ]]
 
-    -- Dialog 头文件模板
+    -- Dialog 头文件模板 (Qt6)
     builtin_templates.dialog_header = [[
-#ifndef {{HEADER_GUARD}}
-#define {{HEADER_GUARD}}
+#pragma once
 
 #include <QDialog>
+{{#INCLUDE_UI}}
+#include "ui_{{FILE_NAME}}.h"
+{{/INCLUDE_UI}}
 
 QT_BEGIN_NAMESPACE
 {{#INCLUDE_UI}}
-QT_FORWARD_DECLARE_CLASS(Ui::{{CLASS_NAME}})
+class Ui_{{CLASS_NAME}};
 {{/INCLUDE_UI}}
 QT_END_NAMESPACE
 
@@ -199,7 +201,7 @@ public:
     explicit {{CLASS_NAME}}(QWidget *parent = nullptr);
     ~{{CLASS_NAME}}();
 
-public slots:
+protected:
     void accept() override;
     void reject() override;
 
@@ -215,8 +217,6 @@ private:
     Ui::{{CLASS_NAME}} *ui;
 {{/INCLUDE_UI}}
 };
-
-#endif // {{HEADER_GUARD}}
 ]]
 
     -- Dialog 源文件模板
@@ -1084,6 +1084,7 @@ void {{CLASS_NAME}}::setupSingleton()
 ]]
 
     -- 添加更多模板...
+    M.add_qt5_templates()
     M.add_model_templates()
     M.add_ui_templates()
     M.add_project_templates()
@@ -1339,6 +1340,304 @@ function M.add_ui_templates()
 ]]
 end
 
+-- 添加Qt5模板
+function M.add_qt5_templates()
+    -- Qt5 Main Window 头文件模板
+    builtin_templates.qt5_main_window_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QMainWindow>
+
+QT_BEGIN_NAMESPACE
+class QAction;
+class QMenu;
+class QMenuBar;
+class QStatusBar;
+class QToolBar;
+{{#INCLUDE_UI}}
+namespace Ui { class {{CLASS_NAME}}; }
+{{/INCLUDE_UI}}
+QT_END_NAMESPACE
+
+class {{CLASS_NAME}} : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QWidget *parent = nullptr);
+    ~{{CLASS_NAME}}();
+
+private slots:
+    void onActionTriggered();
+
+private:
+    void setupUI();
+    void setupMenus();
+    void setupToolBars();
+    void setupStatusBar();
+    void connectSignals();
+
+{{#INCLUDE_UI}}
+    Ui::{{CLASS_NAME}} *ui;
+{{/INCLUDE_UI}}
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    -- Qt5 Dialog 头文件模板
+    builtin_templates.qt5_dialog_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QDialog>
+
+QT_BEGIN_NAMESPACE
+{{#INCLUDE_UI}}
+namespace Ui { class {{CLASS_NAME}}; }
+{{/INCLUDE_UI}}
+QT_END_NAMESPACE
+
+class {{CLASS_NAME}} : public QDialog
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QWidget *parent = nullptr);
+    ~{{CLASS_NAME}}();
+
+public slots:
+    void accept() override;
+    void reject() override;
+
+private slots:
+    void onOkClicked();
+    void onCancelClicked();
+
+private:
+    void setupUI();
+    void connectSignals();
+
+{{#INCLUDE_UI}}
+    Ui::{{CLASS_NAME}} *ui;
+{{/INCLUDE_UI}}
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    -- Qt5 CMake模板 - Widget应用
+    builtin_templates.qt5_cmake_widget_app = [[
+cmake_minimum_required(VERSION 3.5)
+
+project({{PROJECT_NAME}} VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt5 modules
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
+
+# 自动处理MOC、UIC、RCC
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+# 设置UIC搜索路径
+set(CMAKE_AUTOUIC_SEARCH_PATHS ui)
+
+# 包含目录
+include_directories(include)
+
+# 源文件
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+
+# 头文件
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h)
+
+# UI文件
+file(GLOB UI_FILES CONFIGURE_DEPENDS ui/*.ui)
+
+# 资源文件
+file(GLOB QRC_FILES CONFIGURE_DEPENDS resources/*.qrc)
+
+# 创建可执行文件
+add_executable({{PROJECT_NAME}}
+    ${SOURCES}
+    ${HEADERS}
+    ${UI_FILES}
+    ${QRC_FILES}
+)
+
+# 添加包含目录
+target_include_directories({{PROJECT_NAME}} PRIVATE 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    include
+)
+
+# 链接Qt5库
+target_link_libraries({{PROJECT_NAME}} 
+    Qt5::Core
+    Qt5::Widgets
+)
+
+# Windows特定设置
+if(WIN32)
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+    
+    # 复制Qt5 DLL到输出目录
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        get_target_property(QT5_QMAKE_EXECUTABLE Qt5::qmake IMPORTED_LOCATION)
+        get_filename_component(QT5_WINDEPLOYQT_EXECUTABLE ${QT5_QMAKE_EXECUTABLE} PATH)
+        set(QT5_WINDEPLOYQT_EXECUTABLE "${QT5_WINDEPLOYQT_EXECUTABLE}/windeployqt.exe")
+        
+        add_custom_command(TARGET {{PROJECT_NAME}} POST_BUILD
+            COMMAND ${QT5_WINDEPLOYQT_EXECUTABLE} --debug $<TARGET_FILE:{{PROJECT_NAME}}>
+            COMMENT "Deploying Qt5 libraries")
+    else()
+        get_target_property(QT5_QMAKE_EXECUTABLE Qt5::qmake IMPORTED_LOCATION)
+        get_filename_component(QT5_WINDEPLOYQT_EXECUTABLE ${QT5_QMAKE_EXECUTABLE} PATH)
+        set(QT5_WINDEPLOYQT_EXECUTABLE "${QT5_WINDEPLOYQT_EXECUTABLE}/windeployqt.exe")
+        
+        add_custom_command(TARGET {{PROJECT_NAME}} POST_BUILD
+            COMMAND ${QT5_WINDEPLOYQT_EXECUTABLE} --release $<TARGET_FILE:{{PROJECT_NAME}}>
+            COMMENT "Deploying Qt5 libraries")
+    endif()
+endif()
+
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
+install(TARGETS {{PROJECT_NAME}}
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION bin
+)
+]]
+
+    -- Qt5 CMake模板 - 控制台应用
+    builtin_templates.qt5_cmake_console_app = [[
+cmake_minimum_required(VERSION 3.5)
+
+project({{PROJECT_NAME}} VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt5 modules
+find_package(Qt5 REQUIRED COMPONENTS Core)
+
+# 自动处理MOC
+set(CMAKE_AUTOMOC ON)
+
+# 包含目录
+include_directories(include)
+
+# 源文件
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+
+# 头文件
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h)
+
+# 创建可执行文件
+add_executable({{PROJECT_NAME}}
+    ${SOURCES}
+    ${HEADERS}
+)
+
+# 添加包含目录
+target_include_directories({{PROJECT_NAME}} PRIVATE include)
+
+# 链接Qt5库
+target_link_libraries({{PROJECT_NAME}} Qt5::Core)
+
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
+install(TARGETS {{PROJECT_NAME}}
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION bin
+)
+]]
+
+    -- Qt5 CMake模板 - 库
+    builtin_templates.qt5_cmake_library = [[
+cmake_minimum_required(VERSION 3.5)
+
+project({{PROJECT_NAME}} VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt5 modules
+find_package(Qt5 REQUIRED COMPONENTS Core)
+
+# 自动处理MOC
+set(CMAKE_AUTOMOC ON)
+
+# 包含目录
+include_directories(include)
+
+# 源文件
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+
+# 头文件
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h)
+
+# 创建共享库
+add_library({{PROJECT_NAME}} SHARED
+    ${SOURCES}
+    ${HEADERS}
+)
+
+# 添加包含目录
+target_include_directories({{PROJECT_NAME}} 
+    PUBLIC include
+    PRIVATE src
+)
+
+# 链接Qt5库
+target_link_libraries({{PROJECT_NAME}} Qt5::Core)
+
+# 导出符号
+target_compile_definitions({{PROJECT_NAME}} PRIVATE {{PROJECT_NAME_UPPER}}_LIBRARY)
+
+# Windows特定设置
+if(WIN32)
+    # 生成导入库
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+    )
+endif()
+
+# 设置输出目录
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# 安装
+install(TARGETS {{PROJECT_NAME}}
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(FILES ${HEADERS}
+    DESTINATION include/{{PROJECT_NAME}}
+)
+]]
+end
+
 -- 添加项目模板
 function M.add_project_templates()
     -- Widget应用主程序模板
@@ -1396,12 +1695,13 @@ int main(int argc, char *argv[])
 }
 ]]
 
-    -- CMake模板 - Widget应用
+    -- CMake模板 - Widget应用 (Qt6)
     builtin_templates.cmake_widget_app = [[
 cmake_minimum_required(VERSION 3.16)
 
 project({{PROJECT_NAME}} VERSION 1.0.0 LANGUAGES CXX)
 
+set(CMAKE_AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/ui")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -1413,30 +1713,20 @@ qt6_standard_project_setup()
 include_directories(include)
 
 # 源文件
-set(SOURCES
-    src/main.cpp
-    src/mainwindow.cpp
-)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 # 头文件
-set(HEADERS
-    include/mainwindow.h
-)
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS include/*.h)
 
 # UI文件
-set(UI_FILES
-    ui/mainwindow.ui
-)
+file(GLOB UI_FILES CONFIGURE_DEPENDS ui/*.ui)
 
-# 创建可执行文件
+# 创建可执行文件，并让AUTOUIC自动处理UI文件
 qt6_add_executable({{PROJECT_NAME}}
     ${SOURCES}
     ${HEADERS}
+    ${UI_FILES}
 )
-
-# 处理UI文件
-qt6_wrap_ui(UI_HEADERS ${UI_FILES})
-target_sources({{PROJECT_NAME}} PRIVATE ${UI_HEADERS})
 
 # 添加生成的UI头文件目录到包含路径
 target_include_directories({{PROJECT_NAME}} PRIVATE 
@@ -1453,7 +1743,7 @@ qt6_add_resources({{PROJECT_NAME}} "resources"
 )
 
 # 链接Qt库
-target_link_libraries({{PROJECT_NAME}} Qt6::Core Qt6::Widgets)
+target_link_libraries({{PROJECT_NAME}} PRIVATE Qt6::Core Qt6::Widgets)
 
 # 设置输出目录
 set_target_properties({{PROJECT_NAME}} PROPERTIES
@@ -1775,9 +2065,21 @@ end
 
 -- 渲染模板
 function M.render_template(template_name, vars)
-    local template = builtin_templates[template_name]
+    -- 根据Qt版本选择模板
+    local qt_version = vars.QT_VERSION or 6
+    local versioned_template_name = template_name
+    
+    -- 如果是Qt5，尝试查找Qt5特定模板
+    if qt_version == 5 then
+        local qt5_template_name = "qt5_" .. template_name
+        if builtin_templates[qt5_template_name] then
+            versioned_template_name = qt5_template_name
+        end
+    end
+    
+    local template = builtin_templates[versioned_template_name]
     if not template then
-        return nil, "Template not found: " .. template_name
+        return nil, "Template not found: " .. versioned_template_name
     end
     
     local result = template
@@ -1791,6 +2093,17 @@ function M.render_template(template_name, vars)
     result = M.process_conditionals(result, vars)
     
     return result
+end
+
+-- 获取模板名称（支持Qt版本）
+function M.get_template_name(base_template_name, qt_version)
+    if qt_version == 5 then
+        local qt5_template_name = "qt5_" .. base_template_name
+        if builtin_templates[qt5_template_name] then
+            return qt5_template_name
+        end
+    end
+    return base_template_name
 end
 
 -- 处理条件语句

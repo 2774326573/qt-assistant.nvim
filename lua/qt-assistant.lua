@@ -15,19 +15,26 @@ function M.setup(user_config)
 			source = "src",
 			include = "include",
 			ui = "ui",
-			resource = "resource",
+			resource = "resources",
 			scripts = "scripts",
+			tests = "tests",
+			docs = "docs",
 		},
 		naming_convention = "snake_case",
 		auto_update_cmake = true,
 		generate_comments = true,
 		template_path = vim.fn.stdpath("config") .. "/qt-templates",
 		qt_project = {
+			version = "auto", -- "auto", "Qt5", "Qt6"
+			qt5_path = "", -- Windows Qt5 installation path
+			qt6_path = "", -- Windows Qt6 installation path
 			auto_detect = true,
 			build_type = "Debug",
 			build_dir = "build",
 			parallel_build = true,
-			build_jobs = 4,
+			build_jobs = vim.loop.os_uname().sysname == "Windows_NT" and os.getenv("NUMBER_OF_PROCESSORS") or vim.fn.system("nproc"):gsub("%s+", ""),
+			cmake_minimum_version = "3.5", -- Qt5 compatible
+			cxx_standard = "14", -- Qt5 compatible, will be updated based on detected version
 		},
 		global_search = {
 			enabled = true,
@@ -157,11 +164,34 @@ function M.setup_keymaps()
 		map("n", "<leader>qsd", function()
 			M.run_script("debug")
 		end, { desc = "Script Debug" })
+		map("n", "<leader>qsc", function()
+			M.run_script("clean")
+		end, { desc = "Script Clean" })
+		map("n", "<leader>qst", function()
+			M.run_script("test")
+		end, { desc = "Script Test" })
+		map("n", "<leader>qsp", function()
+			M.run_script("deploy")
+		end, { desc = "Script Deploy" })
+		map("n", "<leader>qsg", function()
+			M.show_script_generator()
+		end, { desc = "Script Generator" })
+		map("n", "<leader>qsa", function()
+			M.quick_generate_all_scripts()
+		end, { desc = "Generate All Scripts" })
 
 		-- 系统信息
 		map("n", "<leader>qsi", function()
 			M.show_system_info()
 		end, { desc = "System Info" })
+
+		-- Qt版本管理
+		map("n", "<leader>qvi", function()
+			M.show_qt_version_info()
+		end, { desc = "Qt Version Info" })
+		map("n", "<leader>qvd", function()
+			M.detect_qt_version()
+		end, { desc = "Detect Qt Version" })
 	end
 end
 
@@ -364,6 +394,20 @@ function M.show_script_generator()
 	return scripts.interactive_script_generator()
 end
 
+-- 快速生成所有脚本（基于当前项目模板）
+function M.quick_generate_all_scripts()
+	local scripts = require("qt-assistant.scripts")
+	return scripts.quick_generate_scripts()
+end
+
+-- 检测项目构建系统
+function M.detect_build_system()
+	local scripts = require("qt-assistant.scripts")
+	local build_system = scripts.detect_build_system()
+	vim.notify("Detected build system: " .. build_system, vim.log.levels.INFO)
+	return build_system
+end
+
 -- 编辑脚本
 function M.edit_script(script_name)
 	local scripts = require("qt-assistant.scripts")
@@ -406,6 +450,24 @@ end
 function M.show_system_info()
 	local system = require("qt-assistant.system")
 	system.show_system_info()
+end
+
+-- Qt版本管理
+function M.show_qt_version_info()
+	local qt_version = require("qt-assistant.qt_version")
+	qt_version.show_qt_version_info(M._config.project_root)
+end
+
+function M.detect_qt_version()
+	local qt_version = require("qt-assistant.qt_version")
+	local detected_version = qt_version.get_recommended_qt_version(M._config.project_root)
+	vim.notify("Detected Qt version: Qt" .. detected_version, vim.log.levels.INFO)
+	return detected_version
+end
+
+function M.setup_qt_environment(version, path)
+	local qt_version = require("qt-assistant.qt_version")
+	return qt_version.setup_qt_environment(version, path)
 end
 
 -- 快捷键帮助
@@ -451,10 +513,15 @@ function M.show_keymaps()
 		"",
 		"Scripts:",
 		"  :QtInitScripts       - Initialize project scripts",
-		"  :QtScript <name>     - Run project script",
+		"  :QtScript <name>     - Run project script (build/run/debug/clean/test/deploy)",
+		"  :QtScriptGenerator   - Interactive script generator",
+		"  :QtGenerateAllScripts - Generate all scripts quickly",
+		"  :QtDetectBuildSystem - Detect project build system",
 		"",
 		"System:",
 		"  :QtSystemInfo        - Show system information",
+		"  :QtVersionInfo       - Show Qt version information",
+		"  :QtDetectVersion     - Detect Qt version",
 		"  :QtKeymaps          - Show this help",
 		"",
 	}
@@ -502,9 +569,16 @@ function M.show_keymaps()
 			"  <leader>qsb         - Script Build",
 			"  <leader>qsr         - Script Run",
 			"  <leader>qsd         - Script Debug",
+			"  <leader>qsc         - Script Clean",
+			"  <leader>qst         - Script Test",
+			"  <leader>qsp         - Script Deploy",
+			"  <leader>qsg         - Script Generator",
+			"  <leader>qsa         - Generate All Scripts",
 			"",
-			"System:",
+			"System & Qt Version:",
 			"  <leader>qsi         - System Info",
+			"  <leader>qvi         - Qt Version Info",
+			"  <leader>qvd         - Detect Qt Version",
 		})
 	else
 		vim.list_extend(keymaps, {
