@@ -1,9 +1,9 @@
--- Qt Assistant Plugin - 模板管理模块 (简化版)
+-- Qt Assistant Plugin - Template management module (simplified)
 -- Template management module (simplified)
 
 local M = {}
 
--- 模板配置
+-- Template configuration
 local template_configs = {
     main_window = {
         has_header = true,
@@ -55,18 +55,18 @@ local template_configs = {
     }
 }
 
--- 内置模板
+-- Builtin templates
 local builtin_templates = {}
 
--- 初始化模板系统
+-- Initialize template system
 function M.init(template_path)
     M.template_path = template_path
     M.load_builtin_templates()
 end
 
--- 加载内置模板
+-- Load builtin templates
 function M.load_builtin_templates()
-    -- 简化的主窗口头文件模板
+    -- Simplified main window header template
     builtin_templates.main_window_header = [[
 #ifndef {{HEADER_GUARD}}
 #define {{HEADER_GUARD}}
@@ -91,7 +91,7 @@ private:
 #endif // {{HEADER_GUARD}}
 ]]
 
-    -- 简化的主窗口源文件模板
+    -- Simplified main window source template
     builtin_templates.main_window_source = [[
 #include "{{FILE_NAME}}.h"
 
@@ -116,7 +116,7 @@ void {{CLASS_NAME}}::onActionTriggered()
 }
 ]]
 
-    -- 简化的对话框头文件模板
+    -- Simplified dialog header template
     builtin_templates.dialog_header = [[
 #ifndef {{HEADER_GUARD}}
 #define {{HEADER_GUARD}}
@@ -142,7 +142,7 @@ private:
 #endif // {{HEADER_GUARD}}
 ]]
 
-    -- 简化的对话框源文件模板
+    -- Simplified dialog source template
     builtin_templates.dialog_source = [[
 #include "{{FILE_NAME}}.h"
 
@@ -174,7 +174,7 @@ void {{CLASS_NAME}}::reject()
 }
 ]]
 
-    -- Widget 模板
+    -- Widget template
     builtin_templates.widget_header = [[
 #ifndef {{HEADER_GUARD}}
 #define {{HEADER_GUARD}}
@@ -226,7 +226,7 @@ void {{CLASS_NAME}}::paintEvent(QPaintEvent *event)
 }
 ]]
 
-    -- 添加基本的UI模板
+    -- Add basic UI templates
     builtin_templates.main_window_ui = [[
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
@@ -284,12 +284,12 @@ void {{CLASS_NAME}}::paintEvent(QPaintEvent *event)
 ]]
 end
 
--- 获取模板配置
+-- Get template configuration
 function M.get_template_config(class_type)
     return template_configs[class_type]
 end
 
--- 渲染模板
+-- Render template
 function M.render_template(template_name, variables)
     local template = builtin_templates[template_name]
     if not template then
@@ -305,7 +305,7 @@ function M.render_template(template_name, variables)
     return rendered
 end
 
--- 获取所有可用模板
+-- Get all available templates
 function M.get_available_templates()
     local templates = {}
     for name, _ in pairs(builtin_templates) do
@@ -314,12 +314,12 @@ function M.get_available_templates()
     return templates
 end
 
--- 检查模板是否存在
+-- Check if template exists
 function M.template_exists(template_name)
     return builtin_templates[template_name] ~= nil
 end
 
--- 在模块加载时初始化
+-- Initialize on module load
 M.load_builtin_templates()
 
 return M
