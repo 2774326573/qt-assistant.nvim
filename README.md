@@ -8,22 +8,29 @@
 
 ## 目录
 
-- [功能特性](#功能特性)
-- [安装](#安装)
-- [使用方法](#使用方法)
+<details>
+<summary>📋 点击展开完整目录</summary>
+
+- [🆕 v1.3.0 更新](#-v130-更新-2025-01-26)
+- [🚀 功能特性](#-功能特性)
+- [🌍 多系统支持](#-多系统支持)
+- [📦 安装](#-安装)
+- [🎯 使用方法](#-使用方法)
 - [支持的类类型](#支持的类类型)
-- [配置选项](#配置选项)
-- [项目结构](#项目结构)
-- [交互式界面](#交互式界面)
-- [脚本管理系统](#脚本管理系统)
-- [模板系统](#模板系统)
-- [快捷键映射](#快捷键映射)
-- [完整快捷键参考](#完整快捷键参考)
-- [故障排除](#故障排除)
-- [贡献](#贡献)
-- [许可证](#许可证)
-- [致谢](#致谢)
-- [版本更新说明](#版本更新说明)
+- [⚙️ 配置选项](#️-配置选项)
+- [📁 项目结构](#-项目结构)
+- [🎨 交互式界面](#-交互式界面)
+- [🔧 脚本管理系统](#-脚本管理系统)
+- [📚 模板系统](#-模板系统)
+- [🎹 快捷键映射](#-快捷键映射)
+- [📋 完整快捷键参考](#-完整快捷键参考)
+- [🐛 故障排除](#-故障排除)
+- [🤝 贡献](#-贡献)
+- [📄 许可证](#-许可证)
+- [🙏 致谢](#-致谢)
+- [🆕 版本更新说明](#-版本更新说明)
+
+</details>
 
 一个专为Qt C++开发设计的Neovim插件，提供快速类创建、智能文件管理、代码模板、项目脚本管理和Qt5/Qt6跨版本支持功能。
 
@@ -36,6 +43,35 @@
 - ✅ **交互式配置界面**: 通过 `leader + q + p + c` 或 `:QtConfig` 快速配置
 - ✅ **兼容性优化**: 解决Qt 5.12与VS2022的兼容性问题
 - ✅ **首选版本设置**: 支持设置首选VS版本，优先使用适合的编译器
+
+<details>
+<summary>🔧 VS路径配置示例</summary>
+
+```lua
+-- 在Neovim配置中添加
+require('qt-assistant').setup({
+    build_environment = {
+        -- 自定义VS安装路径（根据实际安装位置修改）
+        vs2017_path = "D:\\install\\visualStudio\\2017\\Community",
+        vs2019_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community", 
+        vs2022_path = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community",
+        
+        -- 设置首选版本（Qt 5.12建议使用2017）
+        prefer_vs_version = "2017",
+        
+        -- 可选：MinGW路径
+        mingw_path = "C:\\mingw64",
+        qt_version = "auto"
+    }
+})
+```
+
+**配置后使用**：
+1. 运行 `:QtScripts` 重新生成脚本
+2. 使用 `leader + q + e + m` 设置MSVC环境
+3. 使用 `leader + q + e + c` 修复编译问题
+
+</details>
 
 ### 脚本系统重构
 - 🛠️ **统一命名规范**: 修复脚本文件名不一致问题
@@ -692,11 +728,16 @@ project/
 
 **环境设置 (新功能)** (`<leader>qe`):
 
+<details>
+<summary>🔧 环境设置快捷键</summary>
+
 - `<leader>qem` - 设置MSVC环境 (`:QtSetupMsvc`)
 - `<leader>qel` - 设置clangd LSP (`:QtSetupClangd`)
 - `<leader>qek` - 检查MSVC状态 (`:QtCheckMsvc`)
 - `<leader>qef` - 修复.pro文件 (`:QtFixPro`)
 - `<leader>qec` - **修复编译环境** (`:QtFixCompile`) 🆕
+
+</details>
 
 **脚本管理** (`<leader>qs`):
 
@@ -739,7 +780,9 @@ require('qt-assistant.core').setup_keymaps({
 
 ### 默认快捷键完整列表
 
-#### 项目构建 (`<leader>qt`)
+<details>
+<summary>📋 项目构建快捷键 (`<leader>qt`)</summary>
+
 | 快捷键 | 功能 | 命令 | 描述 |
 |--------|------|------|------|
 | `<leader>qtb` | 构建项目 | `:QtBuild` | 构建当前Qt项目 |
@@ -749,7 +792,11 @@ require('qt-assistant.core').setup_keymaps({
 | `<leader>qtt` | 运行测试 | `:QtTest` | 执行项目测试 |
 | `<leader>qtp` | 部署项目 | `:QtDeploy` | 部署项目文件 |
 
-#### 环境设置 (`<leader>qe`)
+</details>
+
+<details>
+<summary>🔧 环境设置快捷键 (`<leader>qe`)</summary>
+
 | 快捷键 | 功能 | 命令 | 描述 |
 |--------|------|------|------|
 | `<leader>qem` | 设置MSVC | `:QtSetupMsvc` | 设置MSVC编译环境 |
@@ -758,24 +805,38 @@ require('qt-assistant.core').setup_keymaps({
 | `<leader>qef` | 修复.pro文件 | `:QtFixPro` | 修复.pro文件的MSVC路径 |
 | `<leader>qec` | **修复编译环境** | `:QtFixCompile` | **一键修复所有编译问题** 🆕 |
 
-#### 脚本管理 (`<leader>qs`)
+</details>
+
+<details>
+<summary>📜 脚本管理快捷键 (`<leader>qs`)</summary>
+
 | 快捷键 | 功能 | 命令 | 描述 |
 |--------|------|------|------|
 | `<leader>qsg` | 生成脚本 | `:QtScripts` | 生成所有项目脚本 |
 | `<leader>qse` | 编辑脚本 | - | 选择并编辑脚本文件 |
 | `<leader>qss` | 显示状态 | `:QtStatus` | 显示项目和脚本状态 |
 
-#### UI设计师 (`<leader>qd`)
+</details>
+
+<details>
+<summary>🎨 UI设计师快捷键 (`<leader>qd`)</summary>
+
 | 快捷键 | 功能 | 命令 | 描述 |
 |--------|------|------|------|
 | `<leader>qdu` | Qt Designer | `:QtDesigner` | 打开当前UI文件 |
 
-#### 项目管理 (`<leader>qp`)
+</details>
+
+<details>
+<summary>📂 项目管理快捷键 (`<leader>qp`)</summary>
+
 | 快捷键 | 功能 | 命令 | 描述 |
 |--------|------|------|------|
 | `<leader>qpi` | 初始化项目 | - | 初始化新的Qt项目 |
 | `<leader>qpo` | 选择项目 | - | 项目选择器 |
 | `<leader>qpc` | **配置构建环境** | `:QtConfig` | **设置VS路径和编译器** (🆕) |
+
+</details>
 
 **注意**: 
 - `<leader>` 默认是 `\` 键，可通过 `let mapleader = ","` 自定义
@@ -926,6 +987,9 @@ require('qt-assistant.core').setup_keymaps({
 
 ## 🐛 故障排除
 
+<details>
+<summary>🔍 点击查看常见问题解决方案</summary>
+
 ### 常见问题
 
 1. **配置函数不存在错误** (v1.0.0新增)
@@ -1060,6 +1124,8 @@ require('qt-assistant').setup({
 ```vim
 :e ~/.local/share/nvim/qt-assistant.log
 ```
+
+</details>
 
 ## 🤝 贡献
 
