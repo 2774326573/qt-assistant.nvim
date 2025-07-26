@@ -317,12 +317,12 @@ function M.setup_keymaps()
 	end, {desc = "Fix .pro file MSVC paths"})
 	vim.api.nvim_create_user_command('QtScripts', function() M.quick_generate_all_scripts() end, {desc = "Generate all scripts"})
 	
-	-- 提示信息
-	if leader == " " then
-		vim.notify("Qt Assistant: 已设置空格键快捷键 (Space+qt, Space+qe, etc.)", vim.log.levels.INFO)
-	else
-		vim.notify("Qt Assistant: 已设置快捷键 (" .. leader .. "qt, " .. leader .. "qe, etc.)", vim.log.levels.INFO)
-	end
+	-- 提示信息 (已禁用)
+	-- if leader == " " then
+	--	vim.notify("Qt Assistant: 已设置空格键快捷键 (Space+qt, Space+qe, etc.)", vim.log.levels.INFO)
+	-- else
+	--	vim.notify("Qt Assistant: 已设置快捷键 (" .. leader .. "qt, " .. leader .. "qe, etc.)", vim.log.levels.INFO)
+	-- end
 end
 
 -- 脚本选择器
