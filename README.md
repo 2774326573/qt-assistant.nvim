@@ -48,6 +48,7 @@
 - 🔍 **路径验证**: 实时验证用户输入的编译器路径
 - 🌐 **跨平台支持**: 统一的Windows/Linux/macOS脚本模板
 - ⚙️ **环境变量管理**: 智能设置编译环境变量
+- 🛠️ **一键修复**: 新增编译环境修复功能，自动解决标准库路径等问题
 
 **🔧 新增配置选项**：
 ```lua
@@ -64,6 +65,8 @@ build_environment = {
 - 修复：脚本文件名不匹配导致的调用失败
 - 修复：中文注释导致的Lua语法错误
 - 修复：Qt 5.12与VS2022兼容性问题
+- 修复：type_traits头文件缺失导致的编译失败
+- 修复：标准库路径配置问题
 
 **推荐升级**: 此版本彻底解决了Windows下Qt开发的编译环境问题，强烈建议所有用户升级。
 
@@ -390,6 +393,7 @@ use {
 :QtSetupMsvc           # 设置MSVC编译环境
 :QtCheckMsvc           # 检查MSVC状态
 :QtFixPro              # 修复.pro文件的Windows MSVC路径
+:QtFixCompile          # 一键修复编译环境（🆕 v1.3.0）
 
 # 脚本管理
 :QtScripts             # 生成所有脚本
@@ -692,6 +696,7 @@ project/
 - `<leader>qel` - 设置clangd LSP (`:QtSetupClangd`)
 - `<leader>qek` - 检查MSVC状态 (`:QtCheckMsvc`)
 - `<leader>qef` - 修复.pro文件 (`:QtFixPro`)
+- `<leader>qec` - **修复编译环境** (`:QtFixCompile`) 🆕
 
 **脚本管理** (`<leader>qs`):
 
@@ -751,6 +756,7 @@ require('qt-assistant.core').setup_keymaps({
 | `<leader>qel` | 设置Clangd | `:QtSetupClangd` | 配置clangd语言服务器 |
 | `<leader>qek` | 检查MSVC | `:QtCheckMsvc` | 检查MSVC环境状态 |
 | `<leader>qef` | 修复.pro文件 | `:QtFixPro` | 修复.pro文件的MSVC路径 |
+| `<leader>qec` | **修复编译环境** | `:QtFixCompile` | **一键修复所有编译问题** 🆕 |
 
 #### 脚本管理 (`<leader>qs`)
 | 快捷键 | 功能 | 命令 | 描述 |
