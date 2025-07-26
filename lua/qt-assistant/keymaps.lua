@@ -272,8 +272,12 @@ end
 
 -- 为没有which-key的用户提供备用菜单
 function M.setup_fallback_menus()
+    -- 获取当前的 leader 键，如果是空格键需要特殊处理
+    local leader = vim.g.mapleader or "\\"
+    local leader_key = leader == " " and "<Space>" or "<leader>"
+    
     -- 创建中间键的映射来显示菜单
-    vim.keymap.set('n', '<leader>qt', function()
+    vim.keymap.set('n', leader_key .. 'qt', function()
         local menu_items = {
             "Qt Tasks:",
             "b - Build Project",
@@ -283,10 +287,10 @@ function M.setup_fallback_menus()
             "t - Run Tests",
             "p - Deploy Project"
         }
-        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant - Tasks"})
     end, {desc = "Qt: Task menu"})
     
-    vim.keymap.set('n', '<leader>qe', function()
+    vim.keymap.set('n', leader_key .. 'qe', function()
         local menu_items = {
             "Qt Environment:",
             "m - Setup MSVC",
@@ -294,35 +298,38 @@ function M.setup_fallback_menus()
             "k - Check MSVC",
             "f - Fix .pro File"
         }
-        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant - Environment"})
     end, {desc = "Qt: Environment menu"})
     
-    vim.keymap.set('n', '<leader>qs', function()
+    vim.keymap.set('n', leader_key .. 'qs', function()
         local menu_items = {
             "Qt Scripts:",
             "g - Generate Scripts",
             "e - Edit Scripts",
             "s - Show Status"
         }
-        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant - Scripts"})
     end, {desc = "Qt: Scripts menu"})
     
-    vim.keymap.set('n', '<leader>qd', function()
+    vim.keymap.set('n', leader_key .. 'qd', function()
         local menu_items = {
             "Qt Designer:",
             "u - Open Qt Designer"
         }
-        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant - Designer"})
     end, {desc = "Qt: Designer menu"})
     
-    vim.keymap.set('n', '<leader>qp', function()
+    vim.keymap.set('n', leader_key .. 'qp', function()
         local menu_items = {
             "Qt Project:",
             "i - Init Project",
             "o - Select Project"
         }
-        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant - Project"})
     end, {desc = "Qt: Project menu"})
+    
+    -- 调试信息
+    vim.notify("Qt Assistant: 备用菜单已设置 (leader=" .. leader .. ")", vim.log.levels.INFO)
 end
 
 -- 获取默认键盘映射

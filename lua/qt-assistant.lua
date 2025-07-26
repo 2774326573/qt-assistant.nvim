@@ -86,7 +86,14 @@ function M.setup(user_config)
 	end
 
 	-- 设置快捷键（如果用户配置了）
-	M.setup_keymaps()
+	if M._config.enable_default_keymaps then
+		-- 设置旧的键盘映射
+		M.setup_keymaps()
+		
+		-- 设置新的四键组合系统
+		local core = require('qt-assistant.core')
+		core.setup_keymaps()
+	end
 	
 	-- 设置自动格式化（如果启用）
 	if M._config.auto_format and M._config.auto_format.enabled then
@@ -104,10 +111,10 @@ end
 
 -- 设置快捷键映射
 function M.setup_keymaps()
-	if M._config and M._config.enable_default_keymaps then
-		local map = vim.keymap.set
+	-- 条件检查已经在调用处处理了，这里直接设置
+	local map = vim.keymap.set
 
-		-- 基础操作
+	-- 基础操作
 		map("n", "<leader>qC", function()
 			M.show_main_interface()
 		end, { desc = "Qt Assistant" })
@@ -215,10 +222,9 @@ function M.setup_keymaps()
 		map("n", "<leader>qvi", function()
 			M.show_qt_version_info()
 		end, { desc = "Qt Version Info" })
-		map("n", "<leader>qvd", function()
-			M.detect_qt_version()
-		end, { desc = "Detect Qt Version" })
-	end
+	map("n", "<leader>qvd", function()
+		M.detect_qt_version()
+	end, { desc = "Detect Qt Version" })
 end
 
 -- ==================== 接口函数 ====================
