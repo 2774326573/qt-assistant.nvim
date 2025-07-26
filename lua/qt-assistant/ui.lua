@@ -657,6 +657,36 @@ function M.show_build_manager()
 end
 
 -- 显示插件帮助信息
+function M.show_info_window(info_lines)
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, info_lines)
+    
+    local config = vim.tbl_extend('force', float_win_config, {
+        width = 80,
+        height = math.min(#info_lines + 2, 30)
+    })
+    local win = vim.api.nvim_open_win(buf, true, config)
+    
+    vim.api.nvim_win_set_option(win, 'number', false)
+    vim.api.nvim_win_set_option(win, 'relativenumber', false)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    
+    local function close_window()
+        vim.api.nvim_win_close(win, true)
+    end
+    
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'q', '', {
+        callback = close_window,
+        noremap = true,
+        silent = true
+    })
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<Esc>', '', {
+        callback = close_window,
+        noremap = true,
+        silent = true
+    })
+end
+
 function M.show_help()
     local help_items = {
         "Qt Assistant Plugin - Help",

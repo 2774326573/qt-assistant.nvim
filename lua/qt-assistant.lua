@@ -207,7 +207,7 @@ function M.setup_keymaps()
 		end, { desc = "Create .clang-format" })
 
 		-- 系统信息
-		map("n", "<leader>qsi", function()
+		map("n", "<leader>qis", function()
 			M.show_system_info()
 		end, { desc = "System Info" })
 
@@ -635,7 +635,7 @@ function M.show_keymaps()
 			"  <leader>qfc         - Create .clang-format",
 			"",
 			"System & Qt Version:",
-			"  <leader>qsi         - System Info",
+			"  <leader>qis         - System Info",
 			"  <leader>qvi         - Qt Version Info",
 			"  <leader>qvd         - Detect Qt Version",
 		})
