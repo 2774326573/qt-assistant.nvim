@@ -1080,13 +1080,39 @@ pause
 pause]]
 
 		templates.clean = [[@echo off
-echo Cleaning Qt project...
-if exist "build" (
-    rmdir /s /q build
+chcp 65001 >nul
+REM Qt项目清理脚本
+
+setlocal enabledelayedexpansion
+
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+echo === Cleaning Qt Project ===
+echo Project directory: %PROJECT_DIR%
+
+REM 清理构建目录
+if exist "%BUILD_DIR%" (
+    echo Removing build directory: %BUILD_DIR%
+    rmdir /s /q "%BUILD_DIR%"
     echo Build directory removed.
+) else (
+    echo Build directory does not exist.
 )
-if exist "*.tmp" del /q *.tmp
-echo Clean completed!
+
+REM 清理临时文件
+echo Cleaning temporary files...
+cd /d "%PROJECT_DIR%"
+for /r %%i in (*.obj *.exe *.dll *.lib *.pdb *.ilk *.exp *.tmp *.log) do (
+    if exist "%%i" del /q "%%i"
+)
+
+REM 清理Qt特定文件
+for /r %%i in (*.pro.user* Makefile* moc_*.cpp moc_*.h ui_*.h qrc_*.cpp) do (
+    if exist "%%i" del /q "%%i"
+)
+
+echo Clean completed successfully!
 pause]]
 	elseif build_system == "qmake" then
 		templates.build = [[@echo off
@@ -1108,6 +1134,42 @@ REM Run qmake and build
 qmake "%PROJECT_DIR%"
 mingw32-make -j 4
 echo Build completed successfully!
+pause]]
+
+		templates.clean = [[@echo off
+chcp 65001 >nul
+REM Qt项目清理脚本
+
+setlocal enabledelayedexpansion
+
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+echo === Cleaning Qt Project ===
+echo Project directory: %PROJECT_DIR%
+
+REM 清理构建目录
+if exist "%BUILD_DIR%" (
+    echo Removing build directory: %BUILD_DIR%
+    rmdir /s /q "%BUILD_DIR%"
+    echo Build directory removed.
+) else (
+    echo Build directory does not exist.
+)
+
+REM 清理qmake特定文件
+echo Cleaning qmake files...
+cd /d "%PROJECT_DIR%"
+for /r %%i in (Makefile* *.pro.user* *.obj *.exe *.dll *.lib *.pdb *.ilk *.exp *.tmp *.log) do (
+    if exist "%%i" del /q "%%i"
+)
+
+REM 清理moc和uic生成的文件
+for /r %%i in (moc_*.cpp moc_*.h ui_*.h qrc_*.cpp) do (
+    if exist "%%i" del /q "%%i"
+)
+
+echo Clean completed successfully!
 pause]]
 	end
 
