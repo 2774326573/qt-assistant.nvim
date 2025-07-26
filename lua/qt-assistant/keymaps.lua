@@ -11,30 +11,30 @@ end
 -- 默认键盘映射配置
 local default_keymaps = {
     -- Qt项目操作
-    build = "<leader>qb",           -- 构建项目
-    run = "<leader>qr",             -- 运行项目
-    clean = "<leader>qc",           -- 清理项目
-    debug = "<leader>qd",           -- 调试项目
-    test = "<leader>qt",            -- 运行测试
-    deploy = "<leader>qp",          -- 部署项目
+    build = "<leader>qtb",           -- 构建项目
+    run = "<leader>qtr",             -- 运行项目
+    clean = "<leader>qtc",           -- 清理项目
+    debug = "<leader>qtd",           -- 调试项目
+    test = "<leader>qtt",            -- 运行测试
+    deploy = "<leader>qtp",          -- 部署项目
     
     -- 环境设置
-    setup_msvc = "<leader>qm",      -- 设置MSVC环境
-    setup_clangd = "<leader>ql",    -- 设置clangd
-    check_msvc = "<leader>qk",      -- 检查MSVC状态
-    fix_pro = "<leader>qf",         -- 修复.pro文件
+    setup_msvc = "<leader>qem",      -- 设置MSVC环境
+    setup_clangd = "<leader>qel",    -- 设置clangd
+    check_msvc = "<leader>qek",      -- 检查MSVC状态
+    fix_pro = "<leader>qef",         -- 修复.pro文件
     
     -- 脚本管理
-    generate_scripts = "<leader>qg", -- 生成脚本
-    edit_scripts = "<leader>qe",     -- 编辑脚本
-    show_status = "<leader>qs",      -- 显示状态
+    generate_scripts = "<leader>qsg", -- 生成脚本
+    edit_scripts = "<leader>qse",     -- 编辑脚本
+    show_status = "<leader>qss",      -- 显示状态
     
     -- Qt Designer
-    open_designer = "<leader>qu",    -- 打开Qt Designer
+    open_designer = "<leader>qdu",    -- 打开Qt Designer
     
     -- 项目管理
-    init_project = "<leader>qi",     -- 初始化项目
-    select_project = "<leader>qo",   -- 选择项目
+    init_project = "<leader>qpi",     -- 初始化项目
+    select_project = "<leader>qpo",   -- 选择项目
 }
 
 -- 设置键盘映射
@@ -218,25 +218,37 @@ function M.setup_which_key()
     wk.register({
         q = {
             name = "Qt Assistant",
-            b = { "<cmd>QtBuild<cr>", "Build Project" },
-            r = { "<cmd>QtRun<cr>", "Run Project" },
-            c = { "<cmd>QtClean<cr>", "Clean Project" },
-            d = { "<cmd>QtDebug<cr>", "Debug Project" },
-            t = { "<cmd>QtTest<cr>", "Run Tests" },
-            p = { "<cmd>QtDeploy<cr>", "Deploy Project" },
-            
-            m = { "<cmd>QtSetupMsvc<cr>", "Setup MSVC" },
-            l = { "<cmd>QtSetupClangd<cr>", "Setup Clangd" },
-            k = { "<cmd>QtCheckMsvc<cr>", "Check MSVC" },
-            f = { "<cmd>QtFixPro<cr>", "Fix .pro File" },
-            
-            g = { "<cmd>QtScripts<cr>", "Generate Scripts" },
-            e = { function() M.show_script_selector() end, "Edit Scripts" },
-            s = { "<cmd>QtStatus<cr>", "Show Status" },
-            
-            u = { "<cmd>QtDesigner<cr>", "Qt Designer" },
-            i = { function() require('qt-assistant.project_manager').init_project() end, "Init Project" },
-            o = { function() M.show_project_selector() end, "Select Project" },
+            t = {
+                name = "Tasks",
+                b = { "<cmd>QtBuild<cr>", "Build Project" },
+                r = { "<cmd>QtRun<cr>", "Run Project" },
+                c = { "<cmd>QtClean<cr>", "Clean Project" },
+                d = { "<cmd>QtDebug<cr>", "Debug Project" },
+                t = { "<cmd>QtTest<cr>", "Run Tests" },
+                p = { "<cmd>QtDeploy<cr>", "Deploy Project" },
+            },
+            e = {
+                name = "Environment",
+                m = { "<cmd>QtSetupMsvc<cr>", "Setup MSVC" },
+                l = { "<cmd>QtSetupClangd<cr>", "Setup Clangd" },
+                k = { "<cmd>QtCheckMsvc<cr>", "Check MSVC" },
+                f = { "<cmd>QtFixPro<cr>", "Fix .pro File" },
+            },
+            s = {
+                name = "Scripts",
+                g = { "<cmd>QtScripts<cr>", "Generate Scripts" },
+                e = { function() M.show_script_selector() end, "Edit Scripts" },
+                s = { "<cmd>QtStatus<cr>", "Show Status" },
+            },
+            d = {
+                name = "Designer",
+                u = { "<cmd>QtDesigner<cr>", "Qt Designer" },
+            },
+            p = {
+                name = "Project",
+                i = { function() require('qt-assistant.project_manager').init_project() end, "Init Project" },
+                o = { function() M.show_project_selector() end, "Select Project" },
+            },
         }
     }, { prefix = "<leader>" })
 end

@@ -648,34 +648,36 @@ project/
 
 ### 快速开始
 
-**核心快捷键 (必记)**:
+**核心快捷键 (必记)** - 项目构建 (`<leader>qt`):
 
-- `<leader>qb` - 构建项目 (`:QtBuild`)
-- `<leader>qr` - 运行项目 (`:QtRun`)
-- `<leader>qc` - 清理项目 (`:QtClean`)
-- `<leader>qd` - 调试项目 (`:QtDebug`)
-- `<leader>qt` - 运行测试 (`:QtTest`)
+- `<leader>qtb` - 构建项目 (`:QtBuild`)
+- `<leader>qtr` - 运行项目 (`:QtRun`)
+- `<leader>qtc` - 清理项目 (`:QtClean`)
+- `<leader>qtd` - 调试项目 (`:QtDebug`)
+- `<leader>qtt` - 运行测试 (`:QtTest`)
+- `<leader>qtp` - 部署项目 (`:QtDeploy`)
 
-**环境设置 (新功能)**:
+**环境设置 (新功能)** (`<leader>qe`):
 
-- `<leader>qm` - 设置MSVC环境 (`:QtSetupMsvc`)
-- `<leader>ql` - 设置clangd LSP (`:QtSetupClangd`)
-- `<leader>qk` - 检查MSVC状态 (`:QtCheckMsvc`)
-- `<leader>qf` - 修复.pro文件 (`:QtFixPro`)
+- `<leader>qem` - 设置MSVC环境 (`:QtSetupMsvc`)
+- `<leader>qel` - 设置clangd LSP (`:QtSetupClangd`)
+- `<leader>qek` - 检查MSVC状态 (`:QtCheckMsvc`)
+- `<leader>qef` - 修复.pro文件 (`:QtFixPro`)
 
-**脚本管理**:
+**脚本管理** (`<leader>qs`):
 
-- `<leader>qg` - 生成所有脚本 (`:QtScripts`)
-- `<leader>qe` - 编辑脚本
-- `<leader>qs` - 显示状态 (`:QtStatus`)
+- `<leader>qsg` - 生成所有脚本 (`:QtScripts`)
+- `<leader>qse` - 编辑脚本
+- `<leader>qss` - 显示状态 (`:QtStatus`)
 
-**UI设计师**:
+**UI设计师** (`<leader>qd`):
 
-- `<leader>qu` - 打开Qt Designer (`:QtDesigner`)
+- `<leader>qdu` - 打开Qt Designer (`:QtDesigner`)
 
-**项目管理**:
+**项目管理** (`<leader>qp`):
 
-- `<leader>qi` - 初始化项目
+- `<leader>qpi` - 初始化项目
+- `<leader>qpo` - 选择项目
 - `<leader>qo` - 选择项目
 
 ### 键盘映射设置
@@ -702,23 +704,41 @@ require('qt-assistant.core').setup_keymaps({
 
 ### 默认快捷键完整列表
 
+#### 项目构建 (`<leader>qt`)
 | 快捷键 | 功能 | 命令 | 描述 |
 |--------|------|------|------|
-| `<leader>qb` | 构建项目 | `:QtBuild` | 构建当前Qt项目 |
-| `<leader>qr` | 运行项目 | `:QtRun` | 运行编译后的可执行文件 |
-| `<leader>qc` | 清理项目 | `:QtClean` | 清理构建文件 |
-| `<leader>qd` | 调试项目 | `:QtDebug` | 使用调试器运行项目 |
-| `<leader>qt` | 运行测试 | `:QtTest` | 执行项目测试 |
-| `<leader>qp` | 部署项目 | `:QtDeploy` | 部署项目文件 |
-| `<leader>qm` | 设置MSVC | `:QtSetupMsvc` | 设置MSVC编译环境 |
-| `<leader>ql` | 设置Clangd | `:QtSetupClangd` | 配置clangd语言服务器 |
-| `<leader>qk` | 检查MSVC | `:QtCheckMsvc` | 检查MSVC环境状态 |
-| `<leader>qg` | 生成脚本 | `:QtScripts` | 生成所有项目脚本 |
-| `<leader>qe` | 编辑脚本 | - | 选择并编辑脚本文件 |
-| `<leader>qs` | 显示状态 | `:QtStatus` | 显示项目和脚本状态 |
-| `<leader>qu` | Qt Designer | `:QtDesigner` | 打开当前UI文件 |
-| `<leader>qi` | 初始化项目 | - | 初始化新的Qt项目 |
-| `<leader>qo` | 选择项目 | - | 项目选择器 |
+| `<leader>qtb` | 构建项目 | `:QtBuild` | 构建当前Qt项目 |
+| `<leader>qtr` | 运行项目 | `:QtRun` | 运行编译后的可执行文件 |
+| `<leader>qtc` | 清理项目 | `:QtClean` | 清理构建文件 |
+| `<leader>qtd` | 调试项目 | `:QtDebug` | 使用调试器运行项目 |
+| `<leader>qtt` | 运行测试 | `:QtTest` | 执行项目测试 |
+| `<leader>qtp` | 部署项目 | `:QtDeploy` | 部署项目文件 |
+
+#### 环境设置 (`<leader>qe`)
+| 快捷键 | 功能 | 命令 | 描述 |
+|--------|------|------|------|
+| `<leader>qem` | 设置MSVC | `:QtSetupMsvc` | 设置MSVC编译环境 |
+| `<leader>qel` | 设置Clangd | `:QtSetupClangd` | 配置clangd语言服务器 |
+| `<leader>qek` | 检查MSVC | `:QtCheckMsvc` | 检查MSVC环境状态 |
+| `<leader>qef` | 修复.pro文件 | `:QtFixPro` | 修复.pro文件的MSVC路径 |
+
+#### 脚本管理 (`<leader>qs`)
+| 快捷键 | 功能 | 命令 | 描述 |
+|--------|------|------|------|
+| `<leader>qsg` | 生成脚本 | `:QtScripts` | 生成所有项目脚本 |
+| `<leader>qse` | 编辑脚本 | - | 选择并编辑脚本文件 |
+| `<leader>qss` | 显示状态 | `:QtStatus` | 显示项目和脚本状态 |
+
+#### UI设计师 (`<leader>qd`)
+| 快捷键 | 功能 | 命令 | 描述 |
+|--------|------|------|------|
+| `<leader>qdu` | Qt Designer | `:QtDesigner` | 打开当前UI文件 |
+
+#### 项目管理 (`<leader>qp`)
+| 快捷键 | 功能 | 命令 | 描述 |
+|--------|------|------|------|
+| `<leader>qpi` | 初始化项目 | - | 初始化新的Qt项目 |
+| `<leader>qpo` | 选择项目 | - | 项目选择器 |
 
 **注意**: 
 - `<leader>` 默认是 `\` 键，可通过 `let mapleader = ","` 自定义
@@ -943,8 +963,8 @@ require('qt-assistant.core').setup_keymaps({
     - 如果快捷键冲突，可以自定义映射：
     ```lua
     require('qt-assistant.core').setup_keymaps({
-        build = "<F5>",  -- 使用F5代替<leader>qb
-        run = "<F6>",    -- 使用F6代替<leader>qr
+        build = "<F5>",  -- 使用F5代替<leader>qtb
+        run = "<F6>",    -- 使用F6代替<leader>qtr
     })
     ```
     - 或者完全禁用快捷键，只使用命令形式

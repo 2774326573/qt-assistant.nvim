@@ -33,26 +33,26 @@
 
 ```bash
 # 1. 生成项目脚本
-<leader>qg  # 或 :QtScripts
+<leader>qsg  # 或 :QtScripts
 
 # 2. 设置clangd (解决LSP问题)
-<leader>ql  # 或 :QtSetupClangd
+<leader>qel  # 或 :QtSetupClangd
 
 # 3. 设置MSVC环境 (Windows用户)
-<leader>qm  # 或 :QtSetupMsvc
+<leader>qem  # 或 :QtSetupMsvc
 ```
 
 **日常开发流程：**
 
 ```bash
 # 构建项目
-<leader>qb  # 或 :QtBuild
+<leader>qtb  # 或 :QtBuild
 
 # 运行项目
-<leader>qr  # 或 :QtRun
+<leader>qtr  # 或 :QtRun
 
 # 清理项目
-<leader>qc  # 或 :QtClean
+<leader>qtc  # 或 :QtClean
 ```
 
 ## 🔧 解决Windows编译问题
@@ -68,7 +68,7 @@ fatal error C1083: 无法打开包括文件: "type_traits": No such file or dire
 
 1. **使用快捷键** (推荐)：
    ```
-   <leader>qm  # 设置MSVC环境
+   <leader>qem  # 设置MSVC环境
    ```
 
 2. **使用命令**：
@@ -78,12 +78,12 @@ fatal error C1083: 无法打开包括文件: "type_traits": No such file or dire
 
 3. **检查状态**：
    ```vim
-   :QtCheckMsvc  # 或 <leader>qk
+   :QtCheckMsvc  # 或 <leader>qek
    ```
 
 ### 自动化解决方案
 
-v1.3.0版本的构建脚本已经自动集成MSVC环境设置，正常情况下运行 `<leader>qb` 就会自动设置环境。
+v1.3.0版本的构建脚本已经自动集成MSVC环境设置，正常情况下运行 `<leader>qtb` 就会自动设置环境。
 
 ## 🛠️ 解决Clangd LSP问题
 
@@ -101,7 +101,7 @@ Qt Creator生成的 `compile_commands.json` 包含MSVC特有参数，与独立cl
 
 1. **使用快捷键** (推荐)：
    ```
-   <leader>ql  # 设置clangd配置
+   <leader>qel  # 设置clangd配置
    ```
 
 2. **使用命令**：
@@ -152,28 +152,28 @@ CompileFlags:
 
 | 功能 | 快捷键 | 命令 | 说明 |
 |------|---------|------|------|
-| 构建 | `<leader>qb` | `:QtBuild` | 编译项目 |
-| 运行 | `<leader>qr` | `:QtRun` | 运行可执行文件 |
-| 清理 | `<leader>qc` | `:QtClean` | 清理构建文件 |
-| 调试 | `<leader>qd` | `:QtDebug` | 调试模式运行 |
-| 测试 | `<leader>qt` | `:QtTest` | 运行测试 |
+| 构建 | `<leader>qtb` | `:QtBuild` | 编译项目 |
+| 运行 | `<leader>qtr` | `:QtRun` | 运行可执行文件 |
+| 清理 | `<leader>qtc` | `:QtClean` | 清理构建文件 |
+| 调试 | `<leader>qtd` | `:QtDebug` | 调试模式运行 |
+| 测试 | `<leader>qtt` | `:QtTest` | 运行测试 |
 
 ### 环境设置快捷键 (新功能)
 
 | 功能 | 快捷键 | 命令 | 说明 |
 |------|---------|------|------|
-| MSVC环境 | `<leader>qm` | `:QtSetupMsvc` | 设置MSVC编译环境 |
-| Clangd配置 | `<leader>ql` | `:QtSetupClangd` | 配置clangd LSP |
-| 检查MSVC | `<leader>qk` | `:QtCheckMsvc` | 检查MSVC状态 |
-| 修复.pro文件 | `<leader>qf` | `:QtFixPro` | 修复.pro文件的MSVC路径 |
+| MSVC环境 | `<leader>qem` | `:QtSetupMsvc` | 设置MSVC编译环境 |
+| Clangd配置 | `<leader>qel` | `:QtSetupClangd` | 配置clangd LSP |
+| 检查MSVC | `<leader>qek` | `:QtCheckMsvc` | 检查MSVC状态 |
+| 修复.pro文件 | `<leader>qef` | `:QtFixPro` | 修复.pro文件的MSVC路径 |
 
 ### 脚本管理快捷键
 
 | 功能 | 快捷键 | 命令 | 说明 |
 |------|---------|------|------|
-| 生成脚本 | `<leader>qg` | `:QtScripts` | 生成所有脚本 |
-| 编辑脚本 | `<leader>qe` | - | 选择编辑脚本 |
-| 显示状态 | `<leader>qs` | `:QtStatus` | 显示项目状态 |
+| 生成脚本 | `<leader>qsg` | `:QtScripts` | 生成所有脚本 |
+| 编辑脚本 | `<leader>qse` | - | 选择编辑脚本 |
+| 显示状态 | `<leader>qss` | `:QtStatus` | 显示项目状态 |
 
 ## 🛠️ 解决.pro文件路径问题
 
@@ -188,7 +188,7 @@ CompileFlags:
 
 1. **使用快捷键** (推荐)：
    ```
-   <leader>qf  # 修复.pro文件
+   <leader>qef  # 修复.pro文件
    ```
 
 2. **使用命令**：
@@ -221,11 +221,11 @@ win32:INCLUDEPATH += $(WindowsSdkDir)Include\$(WindowsSDKVersion)\winrt
 
 ```lua
 require('qt-assistant.core').setup_keymaps({
-    build = "<F5>",              -- 使用F5构建
-    run = "<F6>",                -- 使用F6运行
-    setup_clangd = "<leader>lc", -- 自定义clangd设置
-    setup_msvc = "<leader>mvc",  -- 自定义MSVC设置
-    fix_pro = "<leader>fp",      -- 自定义.pro文件修复
+    build = "<F5>",              -- 使用F5构建 (替代<leader>qtb)
+    run = "<F6>",                -- 使用F6运行 (替代<leader>qtr)
+    setup_clangd = "<leader>lc", -- 自定义clangd设置 (替代<leader>qel)
+    setup_msvc = "<leader>mvc",  -- 自定义MSVC设置 (替代<leader>qem)
+    fix_pro = "<leader>fp",      -- 自定义.pro文件修复 (替代<leader>qef)
 })
 ```
 
@@ -233,7 +233,12 @@ require('qt-assistant.core').setup_keymaps({
 
 如果你使用[which-key.nvim](https://github.com/folke/which-key.nvim)插件，Qt Assistant会自动集成：
 
-- 按下 `<leader>q` 后会显示所有可用的Qt相关快捷键
+- 按下 `<leader>q` 后会显示分类菜单：
+  - `<leader>qt` - 项目构建任务
+  - `<leader>qe` - 环境设置
+  - `<leader>qs` - 脚本管理
+  - `<leader>qd` - UI设计师
+  - `<leader>qp` - 项目管理
 - 每个快捷键都有详细的功能说明
 - 支持层次化菜单浏览
 
