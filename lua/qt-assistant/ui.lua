@@ -21,8 +21,16 @@ local float_win_config = {
 
 -- 显示类创建器界面
 function M.show_class_creator()
-    local core = require('qt-assistant.core')
-    local class_types = core.get_supported_class_types()
+    local class_types = {
+        'main_window',
+        'dialog', 
+        'widget',
+        'model',
+        'delegate',
+        'thread',
+        'utility',
+        'singleton'
+    }
     
     -- 创建选择菜单内容
     local menu_items = {}
@@ -82,10 +90,64 @@ function M.show_class_creator()
     end
 end
 
+-- 获取类类型信息的本地函数
+local function get_class_type_info(class_type)
+    local class_info = {
+        main_window = {
+            name = "Main Window",
+            description = "继承自QMainWindow的主窗口类",
+            base_class = "QMainWindow",
+            files = {"header", "source", "ui"}
+        },
+        dialog = {
+            name = "Dialog",
+            description = "继承自QDialog的对话框类",
+            base_class = "QDialog", 
+            files = {"header", "source", "ui"}
+        },
+        widget = {
+            name = "Widget",
+            description = "继承自QWidget的自定义控件类",
+            base_class = "QWidget",
+            files = {"header", "source"}
+        },
+        model = {
+            name = "Data Model",
+            description = "继承自QAbstractItemModel的数据模型类",
+            base_class = "QAbstractItemModel",
+            files = {"header", "source"}
+        },
+        delegate = {
+            name = "Item Delegate", 
+            description = "继承自QStyledItemDelegate的代理类",
+            base_class = "QStyledItemDelegate",
+            files = {"header", "source"}
+        },
+        thread = {
+            name = "Thread",
+            description = "继承自QThread的线程类",
+            base_class = "QThread",
+            files = {"header", "source"}
+        },
+        utility = {
+            name = "Utility",
+            description = "实用工具类",
+            base_class = "QObject",
+            files = {"header", "source"}
+        },
+        singleton = {
+            name = "Singleton",
+            description = "单例模式类",
+            base_class = "QObject",
+            files = {"header", "source"}
+        }
+    }
+    return class_info[class_type] or {}
+end
+
 -- 显示类名输入界面
 function M.show_class_input(class_type)
-    local core = require('qt-assistant.core')
-    local class_info = core.get_class_type_info(class_type)
+    local class_info = get_class_type_info(class_type)
     
     -- 创建输入提示
     local prompt = string.format("Create %s\nEnter class name: ", class_info.name)
@@ -100,8 +162,7 @@ end
 
 -- 显示选项配置界面
 function M.show_options_config(class_name, class_type)
-    local core = require('qt-assistant.core')
-    local class_info = core.get_class_type_info(class_type)
+    local class_info = get_class_type_info(class_type)
     
     local options_items = {}
     table.insert(options_items, "Class Configuration")
@@ -226,9 +287,14 @@ end
 
 -- 使用选项创建类
 function M.create_class_with_options(class_name, class_type, options)
-    local core = require('qt-assistant.core')
-    
     vim.notify("Creating " .. class_type .. " class: " .. class_name, vim.log.levels.INFO)
+    
+    -- 延迟加载core模块以避免循环依赖
+    local ok, core = pcall(require, 'qt-assistant.core')
+    if not ok then
+        vim.notify('Error loading qt-assistant.core: ' .. tostring(core), vim.log.levels.ERROR)
+        return
+    end
     
     local success, error_msg = core.create_qt_class(class_name, class_type, options)
     

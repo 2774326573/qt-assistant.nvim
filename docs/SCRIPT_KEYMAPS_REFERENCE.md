@@ -1,4 +1,9 @@
-# Qt Assistant 脚本快捷键参考
+# Qt Assistant 快捷键参考
+
+此文档包含所有 Qt Assistant 插件的快捷键映射和命令参考。
+
+**版本**: v1.2.0  
+**最后更新**: 2025-07-26
 
 ## 脚本执行快捷键
 
@@ -39,6 +44,52 @@
 |--------|----------|------|
 | `<leader>qis` | `:QtSystemInfo` | 显示系统信息 |
 | `<leader>qik` | `:QtKeymaps` | 显示快捷键映射 |
+
+## 基础操作快捷键
+
+| 快捷键 | Vim 命令 | 说明 |
+|--------|----------|------|
+| `<leader>qc` | `:QtAssistant` | 打开主界面 |
+| `<leader>qh` | `:help qt-assistant` | 显示帮助文档 |
+
+## 类创建快捷键
+
+| 快捷键 | Vim 命令 | 说明 |
+|--------|----------|------|
+| `<leader>qcc` | `:QtQuickClass` | 快速类创建器 |
+| `<leader>qcw` | `:QtCreateMainWindow` | 创建主窗口类 |
+| `<leader>qcd` | `:QtCreateDialog` | 创建对话框类 |
+| `<leader>qcv` | `:QtCreateWidget` | 创建控件类 |
+| `<leader>qcm` | `:QtCreateModelClass` | 创建模型类 |
+
+## 项目管理快捷键
+
+| 快捷键 | Vim 命令 | 说明 |
+|--------|----------|------|
+| `<leader>qpo` | `:QtSmartSelector` | 智能项目选择器 |
+| `<leader>qpm` | `:QtProjectManager` | 项目管理器 |
+| `<leader>qpc` | `:QtChooseProject` | 选择项目 |
+| `<leader>qpw` | `:QtQuickSwitcher` | 快速项目切换 |
+| `<leader>qpr` | `:QtRecentProjects` | 最近项目 |
+| `<leader>qps` | `:QtSearchProjects` | 搜索项目 |
+| `<leader>qpg` | `:QtGlobalSearch` | 全局搜索 |
+
+## 构建管理快捷键
+
+| 快捷键 | Vim 命令 | 说明 |
+|--------|----------|------|
+| `<leader>qb` | `:QtBuildProject` | 构建项目 |
+| `<leader>qr` | `:QtRunProject` | 运行项目 |
+| `<leader>qcl` | `:QtCleanProject` | 清理项目 |
+| `<leader>qbs` | `:QtBuildStatus` | 构建状态 |
+
+## UI设计师快捷键
+
+| 快捷键 | Vim 命令 | 说明 |
+|--------|----------|------|
+| `<leader>qud` | `:QtOpenDesigner` | 打开设计师 |
+| `<leader>quc` | `:QtOpenDesignerCurrent` | 打开当前文件设计师 |
+| `<leader>qum` | `:QtDesignerManager` | 设计师管理器 |
 
 ## 典型工作流程
 
@@ -103,3 +154,41 @@
 3. **错误处理**：脚本执行失败时会显示详细错误信息
 4. **终端输出**：脚本在 Neovim 终端中运行，可以看到实时输出
 5. **项目检测**：脚本会自动检测项目名称和 Qt 版本
+
+## 故障排除
+
+### 常见问题
+
+#### 1. 快捷键不工作
+- **症状**：按快捷键没有反应
+- **解决方案**：
+  - 检查 `<leader>` 键设置（通常是 `\` 或空格）
+  - 确认插件已正确加载：`:lua print(vim.g.loaded_qt_assistant)`
+  - 重启 Neovim 并重新加载配置
+
+#### 2. 系统信息显示错误
+- **症状**：执行 `<leader>qis` 报错 "attempt to concatenate field 'hostname' (a nil value)"
+- **状态**：✅ 已修复 (v1.2.0)
+- **说明**：系统信息函数已添加 nil 值保护
+
+#### 3. 主界面循环依赖错误
+- **症状**：执行 `<leader>qc` 报错 "loop or previous error loading module 'qt-assistant.core'"
+- **状态**：✅ 已修复 (v1.2.0) 
+- **说明**：UI 模块已重构避免循环依赖
+
+#### 4. 脚本快捷键缺失
+- **症状**：`<leader>qsc`, `<leader>qst`, `<leader>qsp`, `<leader>qsa` 不工作
+- **状态**：✅ 已修复 (v1.2.0)
+- **说明**：已添加所有缺失的脚本管理快捷键
+
+### 获取帮助
+
+- 使用 `<leader>qh` 查看内置帮助
+- 使用 `<leader>qik` 查看所有快捷键映射
+- 使用 `<leader>qis` 查看系统信息和工具状态
+
+### 版本历史
+
+- **v1.2.0** (2025-07-26): 修复循环依赖和快捷键问题
+- **v1.1.0**: 添加脚本管理功能
+- **v1.0.0**: 初始版本

@@ -1,6 +1,28 @@
 # Qt Assistant 配置故障排除指南
 
-## 🔧 循环依赖修复后的配置问题
+**最后更新**: 2025-07-26 (v1.2.0)  
+**适用版本**: v1.0.0 - v1.2.0
+
+## 🆕 v1.2.0 修复问题
+
+### 1. 模块循环依赖已修复
+- **状态**: ✅ 已完全修复
+- **影响**: 主界面 (`<leader>qc`) 和类创建功能正常工作
+- **无需额外配置**: 升级到 v1.2.0 即可自动修复
+
+### 2. 系统信息显示已修复  
+- **状态**: ✅ 已完全修复
+- **影响**: 系统信息 (`<leader>qis`) 正常显示
+- **无需额外配置**: 升级到 v1.2.0 即可自动修复
+
+### 3. 快捷键映射已补全
+- **状态**: ✅ 已完全修复
+- **影响**: 所有脚本管理快捷键正常工作
+- **无需额外配置**: 升级到 v1.2.0 即可自动使用
+
+---
+
+## 🔧 v1.0.0 循环依赖修复后的配置问题
 
 ### 问题描述
 在v1.0.0版本中，我们修复了循环依赖问题，但某些用户可能遇到配置错误：
@@ -126,147 +148,71 @@ require('qt-assistant').setup({
     -- CMake集成
     auto_update_cmake = true,
     
-    -- 注释生成
-    generate_comments = true,
-    
-    -- Qt项目配置
-    qt_project = {
-        auto_detect = true,
-        build_type = "Debug",
-        build_dir = "build",
-        parallel_build = true,
-        build_jobs = 4
-    },
-    
-    -- UI设计师集成
-    designer = {
-        designer_path = "designer",
-        creator_path = "qtcreator",
-        default_editor = "designer",
-        auto_sync = true,
-        enable_preview = true
-    },
-    
-    -- 调试配置
-    debug = {
-        enabled = false,
-        log_level = "INFO",
-        log_file = vim.fn.stdpath('data') .. '/qt-assistant.log'
-    }
+    -- 快捷键
+    enable_default_keymaps = true,
 })
-```
-
-### 常见配置错误
-
-#### 错误1：模块路径错误
-```lua
--- ❌ 错误
-require('qt-assistant.config').setup()
-
--- ✅ 正确
-require('qt-assistant').setup()
-```
-
-#### 错误2：语法错误
-```lua
--- ❌ 错误（缺少逗号）
-require('qt-assistant').setup({
-    project_root = vim.fn.getcwd()
-    naming_convention = "snake_case"
-})
-
--- ✅ 正确
-require('qt-assistant').setup({
-    project_root = vim.fn.getcwd(),  -- 注意逗号
-    naming_convention = "snake_case"
-})
-```
-
-#### 错误3：函数调用错误
-```lua
--- ❌ 错误（缺少括号）
-require('qt-assistant').setup
-
--- ✅ 正确
-require('qt-assistant').setup()
-```
-
-### 验证配置
-
-运行以下命令验证配置是否成功：
-
-```vim
-:lua print(vim.inspect(require('qt-assistant').get_config()))
-```
-
-### 获取帮助
-
-如果问题仍然存在：
-
-1. 检查 [GitHub Issues](https://github.com/2774326573/qt-assistant.nvim/issues)
-2. 创建新的Issue并提供：
-   - 完整的错误消息
-   - Neovim版本（`:version`）
-   - 配置代码
-   - 操作系统信息
-
-## 📝 配置最佳实践
-
-### 1. 渐进式配置
-从基础配置开始，逐步添加选项：
-
-```lua
--- 第一步：基础配置
-require('qt-assistant').setup()
-
--- 第二步：添加必要选项
-require('qt-assistant').setup({
-    naming_convention = "snake_case"
-})
-
--- 第三步：完整配置
-require('qt-assistant').setup({
-    -- 完整配置选项...
-})
-```
-
-### 2. 条件配置
-根据项目类型动态配置：
-
-```lua
-local config = {
-    project_root = vim.fn.getcwd(),
-}
-
--- 检查是否是Qt项目
-if vim.fn.filereadable("CMakeLists.txt") == 1 then
-    config.auto_update_cmake = true
-end
-
-require('qt-assistant').setup(config)
-```
-
-### 3. 用户特定配置
-为不同用户或环境提供不同配置：
-
-```lua
-local user_config = {
-    project_root = vim.fn.getcwd(),
-    naming_convention = "snake_case",
-}
-
--- Windows用户特定配置
-if vim.fn.has("win32") == 1 then
-    user_config.designer = {
-        designer_path = "C:/Qt/6.5.0/msvc2019_64/bin/designer.exe"
-    }
-end
-
-require('qt-assistant').setup(user_config)
 ```
 
 ---
 
-**版本**: v1.0.0  
-**更新日期**: 2025-07-25  
-**适用范围**: 循环依赖修复后的配置问题
+## 🔍 v1.2.0 快速诊断
+
+### 插件状态检查
+
+运行以下命令检查插件状态：
+
+```vim
+" 1. 检查插件是否加载
+:lua print("Plugin loaded:", vim.g.loaded_qt_assistant or "NO")
+
+" 2. 测试主界面（应该无循环依赖错误）
+<leader>qc
+
+" 3. 测试系统信息（应该正常显示）  
+<leader>qis
+
+" 4. 测试脚本功能
+<leader>qsa
+
+" 5. 列出所有可用命令
+:command Qt<Tab>
+```
+
+### 常见错误及解决方案
+
+#### 1. "loop or previous error loading module"
+- **状态**: ✅ v1.2.0 已修复
+- **临时解决**: 重启 Neovim
+
+#### 2. "attempt to concatenate field 'hostname'"  
+- **状态**: ✅ v1.2.0 已修复
+- **临时解决**: 避免使用 `<leader>qis`
+
+#### 3. "快捷键无响应"
+- **状态**: ✅ v1.2.0 已修复
+- **检查**: 确认 `enable_default_keymaps = true`
+
+### 版本验证
+
+检查您的版本：
+```vim
+:lua print(require('qt-assistant')._VERSION or "Unknown")
+```
+
+如果返回 "Unknown"，说明您使用的是旧版本，建议升级到 v1.2.0。
+
+---
+
+## 📞 获取支持
+
+如果问题仍然存在：
+
+1. **查看日志**: `:messages` 查看错误信息
+2. **重新加载**: 重启 Neovim 并重新测试
+3. **检查依赖**: 确保 Neovim ≥ 0.8.0
+4. **清除缓存**: 删除插件缓存文件
+5. **报告问题**: 提交详细的错误报告
+
+---
+
+**文档版本**: v1.2.0 (2025-07-26)
