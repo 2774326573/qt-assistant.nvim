@@ -406,6 +406,26 @@ function M.get_system_info()
     }
 end
 
+-- 检查目录是否存在
+function M.directory_exists(path)
+    local stat = vim.loop.fs_stat(path)
+    return stat and stat.type == "directory"
+end
+
+-- 检查命令是否存在
+function M.command_exists(command)
+    local sys = M.detect_os()
+    local check_cmd
+    
+    if sys.is_windows then
+        check_cmd = "where " .. command .. " >nul 2>&1"
+    else
+        check_cmd = "command -v " .. command .. " >/dev/null 2>&1"
+    end
+    
+    return os.execute(check_cmd) == 0
+end
+
 -- 显示系统信息
 function M.show_system_info()
     local info = M.get_system_info()

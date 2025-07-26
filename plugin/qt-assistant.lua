@@ -117,6 +117,39 @@ vim.api.nvim_create_user_command('QtCleanProject', function()
     require('qt-assistant').clean_project()
 end, { desc = 'Clean Qt project' })
 
+-- Code formatting commands
+vim.api.nvim_create_user_command('QtFormatFile', function(opts)
+    ensure_loaded()
+    require('qt-assistant').format_current_file(opts.args ~= '' and opts.args or nil)
+end, { 
+    nargs = '?',
+    desc = 'Format current file',
+    complete = function()
+        return {'clang_format', 'astyle'}
+    end
+})
+
+vim.api.nvim_create_user_command('QtFormatProject', function(opts)
+    ensure_loaded()
+    require('qt-assistant').format_project(opts.args ~= '' and opts.args or nil)
+end, { 
+    nargs = '?',
+    desc = 'Format entire project',
+    complete = function()
+        return {'clang_format', 'astyle'}
+    end
+})
+
+vim.api.nvim_create_user_command('QtFormatterStatus', function()
+    ensure_loaded()
+    require('qt-assistant').show_formatter_status()
+end, { desc = 'Show formatter status' })
+
+vim.api.nvim_create_user_command('QtCreateClangFormat', function()
+    ensure_loaded()
+    require('qt-assistant').create_clang_format_config()
+end, { desc = 'Create .clang-format configuration file' })
+
 vim.api.nvim_create_user_command('QtInitScripts', function()
     ensure_loaded()
     require('qt-assistant').init_scripts()

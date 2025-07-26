@@ -68,6 +68,12 @@ function M.setup(user_config)
 			log_level = "INFO",
 			log_file = vim.fn.stdpath("data") .. "/qt-assistant.log",
 		},
+		-- 代码格式化配置
+		auto_format = {
+			enabled = true,  -- 默认启用自动格式化
+			formatter = "clang_format",  -- "clang_format" 或 "astyle"
+			on_save = true,  -- 保存时自动格式化
+		},
 		enable_default_keymaps = true,
 	}
 
@@ -81,6 +87,12 @@ function M.setup(user_config)
 
 	-- 设置快捷键（如果用户配置了）
 	M.setup_keymaps()
+	
+	-- 设置自动格式化（如果启用）
+	if M._config.auto_format and M._config.auto_format.enabled then
+		local formatter = require("qt-assistant.formatter")
+		formatter.setup_auto_format()
+	end
 
 	-- vim.notify("Qt Assistant Plugin loaded successfully!", vim.log.levels.INFO)
 end
@@ -179,6 +191,20 @@ function M.setup_keymaps()
 		map("n", "<leader>qsa", function()
 			M.quick_generate_all_scripts()
 		end, { desc = "Generate All Scripts" })
+
+		-- 代码格式化
+		map("n", "<leader>qff", function()
+			M.format_current_file()
+		end, { desc = "Format Current File" })
+		map("n", "<leader>qfp", function()
+			M.format_project()
+		end, { desc = "Format Project" })
+		map("n", "<leader>qfs", function()
+			M.show_formatter_status()
+		end, { desc = "Formatter Status" })
+		map("n", "<leader>qfc", function()
+			M.create_clang_format_config()
+		end, { desc = "Create .clang-format" })
 
 		-- 系统信息
 		map("n", "<leader>qsi", function()
@@ -470,6 +496,27 @@ function M.setup_qt_environment(version, path)
 	return qt_version.setup_qt_environment(version, path)
 end
 
+-- 代码格式化功能
+function M.format_current_file(formatter_name)
+	local formatter = require("qt-assistant.formatter")
+	formatter.format_current_file(formatter_name)
+end
+
+function M.format_project(formatter_name)
+	local formatter = require("qt-assistant.formatter")
+	formatter.format_project(formatter_name)
+end
+
+function M.show_formatter_status()
+	local formatter = require("qt-assistant.formatter")
+	formatter.show_formatter_status()
+end
+
+function M.create_clang_format_config()
+	local formatter = require("qt-assistant.formatter")
+	formatter.create_clang_format_config()
+end
+
 -- 快捷键帮助
 function M.show_keymaps()
 	local config = M.get_config()
@@ -517,6 +564,12 @@ function M.show_keymaps()
 		"  :QtScriptGenerator   - Interactive script generator",
 		"  :QtGenerateAllScripts - Generate all scripts quickly",
 		"  :QtDetectBuildSystem - Detect project build system",
+		"",
+		"Code Formatting:",
+		"  :QtFormatFile        - Format current file",
+		"  :QtFormatProject     - Format entire project",
+		"  :QtFormatterStatus   - Show formatter status",
+		"  :QtCreateClangFormat - Create .clang-format config",
 		"",
 		"System:",
 		"  :QtSystemInfo        - Show system information",
@@ -574,6 +627,12 @@ function M.show_keymaps()
 			"  <leader>qsp         - Script Deploy",
 			"  <leader>qsg         - Script Generator",
 			"  <leader>qsa         - Generate All Scripts",
+			"",
+			"Code Formatting:",
+			"  <leader>qff         - Format Current File",
+			"  <leader>qfp         - Format Project",
+			"  <leader>qfs         - Formatter Status",
+			"  <leader>qfc         - Create .clang-format",
 			"",
 			"System & Qt Version:",
 			"  <leader>qsi         - System Info",
