@@ -241,7 +241,7 @@ function M.setup_keymaps()
 	
 	-- 环境设置 (qe)
 	map("n", leader_prefix .. "qe", function()
-		vim.notify("Qt Environment:\nm - Setup MSVC\nl - Setup Clangd\nk - Check MSVC\nf - Fix .pro File", 
+		vim.notify("Qt Environment:\nm - Setup MSVC\nl - Setup Clangd\nk - Check MSVC\nf - Fix .pro File\nc - Fix Compilation Environment", 
 			vim.log.levels.INFO, {title = "Qt Assistant - Environment"})
 	end, { desc = "Qt: Environment menu" })
 	
