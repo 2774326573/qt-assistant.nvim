@@ -288,7 +288,8 @@ end
 function M.create_windows_scripts(scripts_dir, file_manager)
 	-- Windows构建脚本
 	local build_script = [[@echo off
-REM Qt项目构建脚本
+chcp 65001 >nul
+REM Qt Project Build Script
 
 setlocal enabledelayedexpansion
 
@@ -299,7 +300,7 @@ echo === Building Qt Project ===
 echo Project directory: %PROJECT_DIR%
 echo Build directory: %BUILD_DIR%
 
-REM 创建构建目录
+REM Create build directory
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 cd /d "%BUILD_DIR%"
 
@@ -1055,13 +1056,19 @@ echo Build completed successfully!
 pause]]
 
 		templates.run = [[@echo off
+chcp 65001 >nul
 echo Running Qt project...
-if not exist "build" (
+
+REM Set project directories  
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+if not exist "%BUILD_DIR%" (
     echo Build directory not found! Please build first.
     pause
     exit /b 1
 )
-cd build
+cd /d "%BUILD_DIR%"
 for %%f in (*.exe) do (
     echo Running %%f...
     %%f
@@ -1083,23 +1090,41 @@ echo Clean completed!
 pause]]
 	elseif build_system == "qmake" then
 		templates.build = [[@echo off
+chcp 65001 >nul
 echo Building Qt project with qmake...
-if not exist "build" mkdir build
-cd build
-qmake ..
+
+REM Set project directories
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+echo Project directory: %PROJECT_DIR%
+echo Build directory: %BUILD_DIR%
+
+REM Create and enter build directory
+if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+cd /d "%BUILD_DIR%"
+
+REM Run qmake and build
+qmake "%PROJECT_DIR%"
 mingw32-make -j 4
 echo Build completed successfully!
 pause]]
 	end
 
 	templates.debug = [[@echo off
+chcp 65001 >nul
 echo Debugging Qt project...
-if not exist "build" (
+
+REM Set project directories
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+if not exist "%BUILD_DIR%" (
     echo Build directory not found! Please build first.
     pause
     exit /b 1
 )
-cd build
+cd /d "%BUILD_DIR%"
 for %%f in (*.exe) do (
     echo Debugging %%f with gdb...
     gdb %%f
@@ -1109,25 +1134,37 @@ for %%f in (*.exe) do (
 pause]]
 
 	templates.test = [[@echo off
+chcp 65001 >nul
 echo Running tests...
-if not exist "build" (
+
+REM Set project directories
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+if not exist "%BUILD_DIR%" (
     echo Build directory not found! Please build first.
     pause
     exit /b 1
 )
-cd build
+cd /d "%BUILD_DIR%"
 ctest --output-on-failure
 echo Tests completed!
 pause]]
 
 	templates.deploy = [[@echo off
+chcp 65001 >nul
 echo Deploying Qt project...
-if not exist "build" (
+
+REM Set project directories
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build"
+
+if not exist "%BUILD_DIR%" (
     echo Build directory not found! Please build first.
     pause
     exit /b 1
 )
-cd build
+cd /d "%BUILD_DIR%"
 if not exist "deploy" mkdir deploy
 for %%f in (*.exe) do (
     copy "%%f" deploy\

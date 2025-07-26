@@ -294,7 +294,8 @@ end
 function M.create_windows_scripts(scripts_dir, file_manager)
     -- Windows构建脚本
     local build_script = [[@echo off
-REM Qt项目构建脚本
+chcp 65001 >nul
+REM Qt Project Build Script
 
 setlocal enabledelayedexpansion
 
@@ -305,7 +306,7 @@ echo === Building Qt Project ===
 echo Project directory: %PROJECT_DIR%
 echo Build directory: %BUILD_DIR%
 
-REM 询问构建类型
+REM Ask for build type
 echo.
 echo Select build configuration:
 echo 1. Debug
@@ -322,7 +323,7 @@ if "%choice%"=="1" (
 
 echo Building in %BUILD_CONFIG% mode...
 
-REM 创建构建目录
+REM Create build directory
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 cd /d "%BUILD_DIR%"
 
@@ -361,7 +362,7 @@ if not errorlevel 1 (
 
 echo Using generator: !CMAKE_GENERATOR!
 
-REM 运行CMake配置
+REM Run CMake configuration
 echo Running CMake configuration...
 if "!CMAKE_GENERATOR!"=="NMake Makefiles" (
     cmake .. -G "!CMAKE_GENERATOR!" -DCMAKE_BUILD_TYPE=%BUILD_CONFIG%
@@ -375,7 +376,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 编译项目
+REM Build project
 echo Building project...
 cmake --build . --config %BUILD_CONFIG%
 if errorlevel 1 (
@@ -431,7 +432,7 @@ set "BUILD_DIR=%PROJECT_DIR%\build"
 
 echo === Running Qt Application ===
 
-REM 检查构建目录是否存在
+REM Check if build directory exists
 if not exist "%BUILD_DIR%" (
     echo Build directory does not exist. Please build the project first.
     echo Run: build.bat
@@ -441,7 +442,7 @@ if not exist "%BUILD_DIR%" (
 
 cd /d "%BUILD_DIR%"
 
-REM 查找可执行文件
+REM Find executable file
 REM 首先在根目录查找
 for %%f in (*.exe) do (
     set "EXECUTABLE=%%f"
@@ -494,7 +495,7 @@ set "BUILD_DIR=%PROJECT_DIR%\build"
 
 echo === Debugging Qt Application ===
 
-REM 检查构建目录是否存在
+REM Check if build directory exists
 if not exist "%BUILD_DIR%" (
     echo Build directory does not exist. Please build the project first.
     echo Run: build.bat
@@ -504,7 +505,7 @@ if not exist "%BUILD_DIR%" (
 
 cd /d "%BUILD_DIR%"
 
-REM 查找可执行文件（优先Debug版本）
+REM Find executable file（优先Debug版本）
 REM 在Debug目录中查找
 if exist "Debug" (
     for %%f in (Debug\*.exe) do (
@@ -573,7 +574,7 @@ set "BUILD_DIR=%PROJECT_DIR%\build"
 
 echo === Running Qt Project Tests ===
 
-REM 检查构建目录是否存在
+REM Check if build directory exists
 if not exist "%BUILD_DIR%" (
     echo Build directory does not exist. Please build the project first.
     echo Run: build.bat
@@ -682,11 +683,11 @@ echo === Building Qt Project (Debug) ===
 echo Project directory: %PROJECT_DIR%
 echo Build directory: %BUILD_DIR%
 
-REM 创建构建目录
+REM Create build directory
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 cd /d "%BUILD_DIR%"
 
-REM 运行CMake配置
+REM Run CMake configuration
 echo Running CMake configuration...
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 if errorlevel 1 (
@@ -695,7 +696,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 编译项目
+REM Build project
 echo Building project...
 cmake --build . --config Debug
 if errorlevel 1 (
@@ -1434,11 +1435,12 @@ pause]]
 
     elseif build_system == "qmake" then
         templates.build = [[@echo off
+chcp 65001 >nul
 echo Building Qt project with qmake...
 if not exist "build" mkdir build
 cd build
 
-REM 检测编译器并使用相应的make工具
+REM Detect compiler and use appropriate make tool
 qmake .. -spec win32-msvc
 if errorlevel 1 (
     echo qmake configuration failed!
@@ -1446,7 +1448,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 尝试使用不同的make工具
+REM Try different make tools
 where nmake >nul 2>&1
 if not errorlevel 1 (
     echo Using nmake...

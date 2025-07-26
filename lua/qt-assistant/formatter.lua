@@ -15,6 +15,7 @@ local formatters = {
 		name = "clang-format",
 		command = "clang-format",
 		args = { "-i" }, -- -i 表示就地格式化
+		args_stdout = {}, -- 输出到标准输出（用于BufWritePre）
 		file_types = { "cpp", "c", "h", "hpp", "cc", "cxx" },
 		check_command = function()
 			return system.command_exists("clang-format")
@@ -450,6 +451,78 @@ function M.show_formatter_window(lines, available_formatters)
 end
 
 -- 设置自动格式化
+-- 在保存前格式化缓冲区内容（不修改磁盘文件）
+function M.format_buffer_content()
+	local config = get_config()
+	if not (config.auto_format and config.auto_format.enabled) then
+		return
+	end
+
+	local file_path = vim.fn.expand("%:p")
+	if not M.is_formattable_file(file_path) then
+		return
+	end
+
+	local available_formatters = M.detect_available_formatters()
+	if #available_formatters == 0 then
+		return
+	end
+
+	-- 选择格式化工具
+	local selected_formatter = nil
+	if config.auto_format.formatter then
+		for _, fmt in ipairs(available_formatters) do
+			if fmt.name == config.auto_format.formatter then
+				selected_formatter = fmt.formatter
+				break
+			end
+		end
+	else
+		selected_formatter = available_formatters[1].formatter
+	end
+
+	if not selected_formatter then
+		return
+	end
+
+	-- 获取缓冲区内容
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local content = table.concat(lines, "\n")
+
+	-- 构建格式化命令（输出到stdout）
+	local cmd = { selected_formatter.command }
+	for _, arg in ipairs(selected_formatter.args_stdout or {}) do
+		table.insert(cmd, arg)
+	end
+
+	-- 执行格式化
+	local job_output = {}
+	local job_id = vim.fn.jobstart(cmd, {
+		on_stdout = function(_, data)
+			if data then
+				for _, line in ipairs(data) do
+					if line ~= "" then
+						table.insert(job_output, line)
+					end
+				end
+			end
+		end,
+		on_exit = function(_, exit_code)
+			if exit_code == 0 and #job_output > 0 then
+				-- 更新缓冲区内容
+				vim.api.nvim_buf_set_lines(0, 0, -1, false, job_output)
+			end
+		end,
+		stdin = "pipe",
+	})
+
+	if job_id > 0 then
+		-- 发送内容到stdin
+		vim.fn.chansend(job_id, content)
+		vim.fn.chanclose(job_id, "stdin")
+	end
+end
+
 function M.setup_auto_format()
 	-- 检查是否有可用的格式化工具
 	local available_formatters = M.detect_available_formatters()
@@ -469,11 +542,7 @@ function M.setup_auto_format()
 		group = "QtAssistantAutoFormat",
 		pattern = { "*.cpp", "*.h", "*.hpp", "*.cc", "*.cxx", "*.c" },
 		callback = function()
-			local config = get_config()
-			if config.auto_format and config.auto_format.enabled then
-				local file_path = vim.fn.expand("%:p")
-				M.format_file(file_path, config.auto_format.formatter)
-			end
+			M.format_buffer_content()
 		end,
 	})
 end

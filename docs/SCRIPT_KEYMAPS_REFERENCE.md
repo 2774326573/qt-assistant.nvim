@@ -110,6 +110,19 @@
 2. `<leader>qst` - 运行测试确保质量
 3. `<leader>qsp` - 部署项目
 
+## 快捷键兼容性
+
+### LazyVim 兼容性
+✅ **完全兼容**: Qt Assistant 与 LazyVim 默认快捷键无冲突
+- Qt Assistant 使用 `<leader>q` 前缀（Qt专用）
+- LazyVim 主要使用 `<leader>f/g/s/w/b/c` 等前缀
+- 不会覆盖 `Ctrl+S` (保存文件) 等系统快捷键
+
+### 其他 Neovim 配置
+- 使用独特的 `<leader>q` 前缀，避免与常见插件冲突
+- 可以通过配置 `enable_default_keymaps = false` 禁用默认快捷键
+- 支持自定义快捷键映射
+
 ## 记忆技巧
 
 快捷键采用助记符设计：
