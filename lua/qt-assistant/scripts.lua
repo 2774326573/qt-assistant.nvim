@@ -1169,6 +1169,16 @@ local script_types = {
         description = "为Neovim配置clangd语言服务器",
         executable = true
     },
+    setup_msvc = {
+        name = "MSVC环境设置脚本",
+        description = "设置MSVC编译环境",
+        executable = true
+    },
+    check_msvc = {
+        name = "MSVC状态检查脚本",
+        description = "检查MSVC编译环境状态",
+        executable = true
+    },
     fix_pro = {
         name = ".pro文件修复脚本",
         description = "修复Windows下.pro文件的MSVC路径问题",
@@ -1524,6 +1534,108 @@ for exe in $(find . -maxdepth 1 -type f -executable -not -name "*.so*"); do
   fi
 done
 echo "Deployment completed!"]]
+
+    templates.setup_msvc = [[#!/bin/bash
+echo "MSVC setup is only needed on Windows."
+echo "On Unix/Linux/macOS, use gcc/clang compiler instead."
+echo "For Qt development, install Qt development packages:"
+echo "  Ubuntu/Debian: sudo apt install qtbase5-dev qttools5-dev"
+echo "  CentOS/RHEL: sudo yum install qt5-qtbase-devel qt5-qttools-devel"
+echo "  macOS: brew install qt"]]
+
+    templates.check_msvc = [[#!/bin/bash
+echo "=== Development Environment Status ==="
+echo
+
+echo "[1] Checking C++ Compiler..."
+if command -v g++ >/dev/null 2>&1; then
+    echo "    ✓ g++ found"
+    g++ --version | head -n 1
+elif command -v clang++ >/dev/null 2>&1; then
+    echo "    ✓ clang++ found"
+    clang++ --version | head -n 1
+else
+    echo "    ✗ No C++ compiler found"
+fi
+echo
+
+echo "[2] Checking Build Tool..."
+if command -v make >/dev/null 2>&1; then
+    echo "    ✓ make found"
+else
+    echo "    ✗ make not found"
+fi
+echo
+
+echo "[3] Checking Qt installation..."
+if command -v qmake >/dev/null 2>&1; then
+    echo "    ✓ qmake found"
+    qmake -v
+else
+    echo "    ✗ qmake not found"
+fi
+echo
+
+echo "[4] Checking CMake..."
+if command -v cmake >/dev/null 2>&1; then
+    echo "    ✓ cmake found"
+    cmake --version | head -n 1
+else
+    echo "    ✗ cmake not found"
+fi]]
+
+    templates.setup_clangd = [[#!/bin/bash
+echo "Setting up clangd for Neovim..."
+cd "$(dirname "$0")/.." || exit 1
+
+# Backup existing compile_commands.json if it exists
+if [ -f "compile_commands.json" ]; then
+    echo "Backing up existing compile_commands.json..."
+    cp "compile_commands.json" "compile_commands.json.backup"
+fi
+
+# Create .clangd config file
+echo "Creating .clangd configuration..."
+cat > .clangd << 'EOF'
+CompileFlags:
+  Add:
+    - -std=c++14
+    - -DQT_WIDGETS_LIB
+    - -DQT_GUI_LIB
+    - -DQT_CORE_LIB
+    - -DQT_SQL_LIB
+    - -DQT_XML_LIB
+  Remove:
+    - -nostdinc
+    - -nostdinc++
+EOF
+
+echo ".clangd configuration created!"
+echo
+echo "Next steps:"
+echo "1. Start Neovim from this directory"
+echo "2. Run :LspRestart to reload clangd"
+echo "3. Check :LspInfo to verify clangd is working"]]
+
+    templates.fix_pro = [[#!/bin/bash
+echo "Fixing .pro file for Unix/Linux/macOS..."
+cd "$(dirname "$0")/.." || exit 1
+
+for pro_file in *.pro; do
+    if [ -f "$pro_file" ]; then
+        if ! grep -q "unix:" "$pro_file"; then
+            echo "Adding Unix-specific configurations to $pro_file..."
+            echo "" >> "$pro_file"
+            echo "# Unix/Linux/macOS configurations" >> "$pro_file"
+            echo "unix:LIBS += -lpthread" >> "$pro_file"
+            echo "unix:CONFIG += link_pkgconfig" >> "$pro_file"
+            echo "$pro_file updated."
+        else
+            echo "$pro_file already has Unix configurations."
+        fi
+    fi
+done
+echo ".pro file fix completed!"]]
 
     templates.default = [[#!/bin/bash
 echo "Custom script template"
