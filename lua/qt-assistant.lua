@@ -247,26 +247,46 @@ function M.setup_keymaps()
 	
 	map("n", leader_prefix .. "qem", function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('setup_msvc')
-		vim.cmd('terminal scripts/setup-msvc.bat')
+		if scripts.generate_single_script('setup_msvc') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/setup_msvc' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, { desc = "Qt: Setup MSVC" })
 	
 	map("n", leader_prefix .. "qel", function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('setup_clangd')
-		vim.cmd('terminal scripts/setup-clangd.bat')
+		if scripts.generate_single_script('setup_clangd') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/setup_clangd' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, { desc = "Qt: Setup Clangd" })
 	
 	map("n", leader_prefix .. "qek", function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('check_msvc')
-		vim.cmd('terminal scripts/check-msvc.bat')
+		if scripts.generate_single_script('check_msvc') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/check_msvc' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, { desc = "Qt: Check MSVC" })
 	
 	map("n", leader_prefix .. "qef", function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('fix_pro')
-		vim.cmd('terminal scripts/fix-pro.bat')
+		if scripts.generate_single_script('fix_pro') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/fix_pro' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, { desc = "Qt: Fix .pro file" })
 	
 	-- 脚本管理 (qs)
@@ -302,18 +322,33 @@ function M.setup_keymaps()
 	vim.api.nvim_create_user_command('QtClean', function() M.clean_project() end, {desc = "Clean Qt project"})
 	vim.api.nvim_create_user_command('QtSetupMsvc', function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('setup_msvc')
-		vim.cmd('terminal scripts/setup-msvc.bat')
+		if scripts.generate_single_script('setup_msvc') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/setup_msvc' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, {desc = "Setup MSVC environment"})
 	vim.api.nvim_create_user_command('QtSetupClangd', function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('setup_clangd')
-		vim.cmd('terminal scripts/setup-clangd.bat')
+		if scripts.generate_single_script('setup_clangd') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/setup_clangd' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, {desc = "Setup Clangd LSP"})
 	vim.api.nvim_create_user_command('QtFixPro', function()
 		local scripts = require('qt-assistant.scripts')
-		scripts.generate_single_script('fix_pro')
-		vim.cmd('terminal scripts/fix-pro.bat')
+		if scripts.generate_single_script('fix_pro') then
+			local scripts_dir = scripts.get_scripts_directory()
+			local is_windows = vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1
+			local script_ext = is_windows and '.bat' or '.sh'
+			local script_path = scripts_dir .. '/fix_pro' .. script_ext
+			vim.cmd('terminal ' .. vim.fn.shellescape(script_path))
+		end
 	end, {desc = "Fix .pro file MSVC paths"})
 	vim.api.nvim_create_user_command('QtScripts', function() M.quick_generate_all_scripts() end, {desc = "Generate all scripts"})
 	

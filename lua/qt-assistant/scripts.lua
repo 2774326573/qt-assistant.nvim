@@ -1740,6 +1740,92 @@ for %%f in (*.pro) do (
 echo .pro file fix completed!
 pause]]
 
+    -- 添加缺失的脚本类型模板
+    templates.setup_msvc = [[@echo off
+REM Setup MSVC Environment
+
+REM Check if already setup
+if defined VCINSTALLDIR (
+    echo MSVC environment already configured.
+    goto :end
+)
+
+setlocal enabledelayedexpansion
+
+echo === Setting up MSVC Environment ===
+
+REM 查找vcvarsall.bat
+set "VCVARSALL="
+
+REM Visual Studio 2022
+if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+    set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+) else if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat" (
+    set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+) else if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" (
+    set "VCVARSALL=%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
+)
+
+if "!VCVARSALL!"=="" (
+    echo Visual Studio not found! Please install Visual Studio 2017, 2019, or 2022.
+    pause
+    exit /b 1
+)
+
+echo Found Visual Studio at: !VCVARSALL!
+echo Setting up x64 environment...
+call "!VCVARSALL!" x64
+
+if errorlevel 1 (
+    echo Failed to setup MSVC environment!
+    pause
+    exit /b 1
+)
+
+echo MSVC environment setup completed!
+
+:end
+pause]]
+
+    templates.check_msvc = [[@echo off
+REM Check MSVC Status
+
+echo === MSVC Environment Status ===
+echo.
+
+REM 检查编译器
+echo [1] Checking C++ Compiler (cl.exe)...
+where cl >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ cl.exe found
+) else (
+    echo     ✗ cl.exe not found
+)
+echo.
+
+REM 检查nmake
+echo [2] Checking Build Tool (nmake.exe)...
+where nmake >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ nmake.exe found
+) else (
+    echo     ✗ nmake.exe not found
+)
+echo.
+
+REM 检查Qt
+echo [3] Checking Qt installation...
+where qmake >nul 2>&1
+if not errorlevel 1 (
+    echo     ✓ qmake.exe found
+) else (
+    echo     ✗ qmake.exe not found
+)
+echo.
+
+echo To setup MSVC environment, run: setup_msvc.bat
+pause]]
+
     templates.default = [[@echo off
 echo Custom script template
 pause]]
