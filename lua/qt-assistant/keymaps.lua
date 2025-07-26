@@ -164,6 +164,9 @@ function M.setup_keymaps(user_keymaps)
     vim.api.nvim_create_user_command('QtDesigner', function()
         require('qt-assistant.designer').open_current_ui_file()
     end, {desc = "Open current .ui file in Qt Designer"})
+    
+    -- 设置 which-key 集成
+    M.setup_which_key()
 end
 
 -- 显示脚本选择器
@@ -212,6 +215,8 @@ end
 function M.setup_which_key()
     local ok, wk = pcall(require, "which-key")
     if not ok then
+        -- 如果没有which-key，创建简单的中间键映射来显示菜单
+        M.setup_fallback_menus()
         return
     end
     
@@ -220,29 +225,41 @@ function M.setup_which_key()
             name = "Qt Assistant",
             t = {
                 name = "Tasks",
-                b = { "<cmd>QtBuild<cr>", "Build Project" },
-                r = { "<cmd>QtRun<cr>", "Run Project" },
-                c = { "<cmd>QtClean<cr>", "Clean Project" },
-                d = { "<cmd>QtDebug<cr>", "Debug Project" },
-                t = { "<cmd>QtTest<cr>", "Run Tests" },
-                p = { "<cmd>QtDeploy<cr>", "Deploy Project" },
+                b = { function() require('qt-assistant.scripts').run_script('build', {in_terminal = true}) end, "Build Project" },
+                r = { function() require('qt-assistant.scripts').run_script('run', {in_terminal = true}) end, "Run Project" },
+                c = { function() require('qt-assistant.scripts').run_script('clean', {in_terminal = true}) end, "Clean Project" },
+                d = { function() require('qt-assistant.scripts').run_script('debug', {in_terminal = true}) end, "Debug Project" },
+                t = { function() require('qt-assistant.scripts').run_script('test', {in_terminal = true}) end, "Run Tests" },
+                p = { function() require('qt-assistant.scripts').run_script('deploy', {in_terminal = true}) end, "Deploy Project" },
             },
             e = {
                 name = "Environment",
-                m = { "<cmd>QtSetupMsvc<cr>", "Setup MSVC" },
-                l = { "<cmd>QtSetupClangd<cr>", "Setup Clangd" },
-                k = { "<cmd>QtCheckMsvc<cr>", "Check MSVC" },
-                f = { "<cmd>QtFixPro<cr>", "Fix .pro File" },
+                m = { function() 
+                    require('qt-assistant.scripts').generate_single_script('setup_msvc')
+                    vim.cmd('terminal scripts\\\\setup-msvc.bat')
+                end, "Setup MSVC" },
+                l = { function()
+                    require('qt-assistant.scripts').generate_single_script('setup_clangd')
+                    vim.cmd('terminal scripts\\\\setup-clangd.bat')
+                end, "Setup Clangd" },
+                k = { function()
+                    require('qt-assistant.scripts').generate_single_script('check_msvc')
+                    vim.cmd('terminal scripts\\\\check-msvc.bat')
+                end, "Check MSVC" },
+                f = { function()
+                    require('qt-assistant.scripts').generate_single_script('fix_pro')
+                    vim.cmd('terminal scripts\\\\fix-pro.bat')
+                end, "Fix .pro File" },
             },
             s = {
                 name = "Scripts",
-                g = { "<cmd>QtScripts<cr>", "Generate Scripts" },
+                g = { function() require('qt-assistant.scripts').quick_generate_scripts() end, "Generate Scripts" },
                 e = { function() M.show_script_selector() end, "Edit Scripts" },
-                s = { "<cmd>QtStatus<cr>", "Show Status" },
+                s = { function() require('qt-assistant.scripts').show_script_status() end, "Show Status" },
             },
             d = {
                 name = "Designer",
-                u = { "<cmd>QtDesigner<cr>", "Qt Designer" },
+                u = { function() require('qt-assistant.designer').open_current_ui_file() end, "Qt Designer" },
             },
             p = {
                 name = "Project",
@@ -251,6 +268,61 @@ function M.setup_which_key()
             },
         }
     }, { prefix = "<leader>" })
+end
+
+-- 为没有which-key的用户提供备用菜单
+function M.setup_fallback_menus()
+    -- 创建中间键的映射来显示菜单
+    vim.keymap.set('n', '<leader>qt', function()
+        local menu_items = {
+            "Qt Tasks:",
+            "b - Build Project",
+            "r - Run Project", 
+            "c - Clean Project",
+            "d - Debug Project",
+            "t - Run Tests",
+            "p - Deploy Project"
+        }
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+    end, {desc = "Qt: Task menu"})
+    
+    vim.keymap.set('n', '<leader>qe', function()
+        local menu_items = {
+            "Qt Environment:",
+            "m - Setup MSVC",
+            "l - Setup Clangd",
+            "k - Check MSVC",
+            "f - Fix .pro File"
+        }
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+    end, {desc = "Qt: Environment menu"})
+    
+    vim.keymap.set('n', '<leader>qs', function()
+        local menu_items = {
+            "Qt Scripts:",
+            "g - Generate Scripts",
+            "e - Edit Scripts",
+            "s - Show Status"
+        }
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+    end, {desc = "Qt: Scripts menu"})
+    
+    vim.keymap.set('n', '<leader>qd', function()
+        local menu_items = {
+            "Qt Designer:",
+            "u - Open Qt Designer"
+        }
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+    end, {desc = "Qt: Designer menu"})
+    
+    vim.keymap.set('n', '<leader>qp', function()
+        local menu_items = {
+            "Qt Project:",
+            "i - Init Project",
+            "o - Select Project"
+        }
+        vim.notify(table.concat(menu_items, "\n"), vim.log.levels.INFO, {title = "Qt Assistant"})
+    end, {desc = "Qt: Project menu"})
 end
 
 -- 获取默认键盘映射

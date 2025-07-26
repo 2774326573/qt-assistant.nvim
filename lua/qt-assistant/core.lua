@@ -211,7 +211,7 @@ end
 -- 设置键盘映射
 function M.setup_keymaps(user_keymaps)
     keymaps.setup_keymaps(user_keymaps)
-    keymaps.setup_which_key()
+    -- setup_which_key 已经在 keymaps.setup_keymaps 中调用了
 end
 
 -- 获取默认键盘映射
