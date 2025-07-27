@@ -34,79 +34,6 @@
 
 一个专为Qt C++开发设计的Neovim插件，提供快速类创建、智能文件管理、代码模板、项目脚本管理和Qt5/Qt6跨版本支持功能。
 
-## 🆕 v1.3.0 更新 (2025-01-26)
-
-**🚀 重大功能更新**：
-
-### 自定义Visual Studio路径配置
-- ✅ **智能编译器检测**: 支持用户自定义VS2017/2019/2022安装路径
-- ✅ **交互式配置界面**: 通过 `leader + q + p + c` 或 `:QtConfig` 快速配置
-- ✅ **兼容性优化**: 解决Qt 5.12与VS2022的兼容性问题
-- ✅ **首选版本设置**: 支持设置首选VS版本，优先使用适合的编译器
-
-<details>
-<summary>🔧 VS路径配置示例</summary>
-
-```lua
--- 在Neovim配置中添加
-require('qt-assistant').setup({
-    build_environment = {
-        -- 自定义VS安装路径（根据实际安装位置修改）
-        vs2017_path = "D:\\install\\visualStudio\\2017\\Community",
-        vs2019_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community", 
-        vs2022_path = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community",
-        
-        -- 设置首选版本（Qt 5.12建议使用2017）
-        prefer_vs_version = "2017",
-        
-        -- 可选：MinGW路径
-        mingw_path = "C:\\mingw64",
-        qt_version = "auto"
-    }
-})
-```
-
-**配置后使用**：
-1. 运行 `:QtScripts` 重新生成脚本
-2. 使用 `leader + q + e + m` 设置MSVC环境
-3. 使用 `leader + q + e + c` 修复编译问题
-
-</details>
-
-### 脚本系统重构
-- 🛠️ **统一命名规范**: 修复脚本文件名不一致问题
-- 🔧 **动态路径生成**: 移除硬编码路径，支持配置驱动的脚本生成
-- ⚡ **自动清理**: 自动清理冲突的旧版本脚本文件
-- 📝 **模板变量系统**: 支持配置文件变量注入到脚本模板
-
-### 构建环境优化
-- 🎯 **错误诊断**: 详细的构建错误诊断和解决方案
-- 🔍 **路径验证**: 实时验证用户输入的编译器路径
-- 🌐 **跨平台支持**: 统一的Windows/Linux/macOS脚本模板
-- ⚙️ **环境变量管理**: 智能设置编译环境变量
-- 🛠️ **一键修复**: 新增编译环境修复功能，自动解决标准库路径等问题
-
-**🔧 新增配置选项**：
-```lua
-build_environment = {
-    vs2017_path = "D:\\install\\visualStudio\\2017\\Community",
-    prefer_vs_version = "2017",
-    mingw_path = "",
-    qt_version = "auto"
-}
-```
-
-**🐛 重要Bug修复**：
-- 修复："'scripts' 不是内部或外部命令"错误
-- 修复：脚本文件名不匹配导致的调用失败
-- 修复：中文注释导致的Lua语法错误
-- 修复：Qt 5.12与VS2022兼容性问题
-- 修复：type_traits头文件缺失导致的编译失败
-- 修复：标准库路径配置问题
-
-**推荐升级**: 此版本彻底解决了Windows下Qt开发的编译环境问题，强烈建议所有用户升级。
-
-📚 **详细信息**: 查看 [修复日志](docs/BUGFIX_CHANGELOG_v1.3.0.md) 和 [快捷键参考](#完整快捷键参考)
 
 ## 🚀 功能特性
 
@@ -711,279 +638,49 @@ project/
 
 可以在配置的模板路径下创建自定义模板文件。
 
-## 🎹 快捷键映射
-
-插件提供了丰富的快捷键映射系统，支持自定义和Which-key集成：
-
-### 快速开始
-
-**核心快捷键 (必记)** - 项目构建 (`<leader>qt`):
-
-- `<leader>qtb` - 构建项目 (`:QtBuild`)
-- `<leader>qtr` - 运行项目 (`:QtRun`)
-- `<leader>qtc` - 清理项目 (`:QtClean`)
-- `<leader>qtd` - 调试项目 (`:QtDebug`)
-- `<leader>qtt` - 运行测试 (`:QtTest`)
-- `<leader>qtp` - 部署项目 (`:QtDeploy`)
-
-**环境设置 (新功能)** (`<leader>qe`):
-
 <details>
-<summary>🔧 环境设置快捷键</summary>
+<summary>🎹 快捷键映射</summary>
 
-- `<leader>qem` - 设置MSVC环境 (`:QtSetupMsvc`)
-- `<leader>qel` - 设置clangd LSP (`:QtSetupClangd`)
-- `<leader>qek` - 检查MSVC状态 (`:QtCheckMsvc`)
-- `<leader>qef` - 修复.pro文件 (`:QtFixPro`)
-- `<leader>qec` - **修复编译环境** (`:QtFixCompile`) 🆕
-
-</details>
-
-**脚本管理** (`<leader>qs`):
-
-- `<leader>qsg` - 生成所有脚本 (`:QtScripts`)
-- `<leader>qse` - 编辑脚本
-- `<leader>qss` - 显示状态 (`:QtStatus`)
-
-**UI设计师** (`<leader>qd`):
-
-- `<leader>qdu` - 打开Qt Designer (`:QtDesigner`)
-
-**项目管理** (`<leader>qp`):
-
-- `<leader>qpi` - 初始化项目
-- `<leader>qpo` - 选择项目
-- `<leader>qpc` - **配置构建环境** (🆕)
-- `<leader>qo` - 选择项目
-
-### 键盘映射设置
-
-**基础设置（自动启用所有默认快捷键）**:
-
-```lua
-require('qt-assistant.core').setup_keymaps()
+### 核心快捷键（必记）
+```
+<leader>qtb  # 构建项目
+<leader>qtr  # 运行项目  
+<leader>qtc  # 清理项目
+<leader>qtd  # 调试项目
 ```
 
-**自定义快捷键**:
+### 环境设置
+```
+<leader>qem  # 设置MSVC环境
+<leader>qel  # 设置clangd LSP
+<leader>qec  # 一键修复编译环境
+```
 
+### 项目管理
+```
+<leader>qpo  # 智能项目选择
+<leader>qpw  # 快速项目切换
+<leader>qpg  # 全局项目搜索
+```
+
+### 设置方法
 ```lua
+-- 基础设置
+require('qt-assistant.core').setup_keymaps()
+
+-- 自定义快捷键
 require('qt-assistant.core').setup_keymaps({
-    build = "<F5>",     -- 自定义构建快捷键
-    run = "<F6>",       -- 自定义运行快捷键
-    setup_clangd = "<leader>lc",  -- 自定义clangd设置
+    build = "<F5>",
+    run = "<F6>",
 })
 ```
 
-**Which-key集成**:
-
-如果你使用Which-key插件，键盘映射会自动显示说明。插件会自动检测并集成Which-key。
-
-### 默认快捷键完整列表
-
-<details>
-<summary>📋 项目构建快捷键 (`<leader>qt`)</summary>
-
-| 快捷键 | 功能 | 命令 | 描述 |
-|--------|------|------|------|
-| `<leader>qtb` | 构建项目 | `:QtBuild` | 构建当前Qt项目 |
-| `<leader>qtr` | 运行项目 | `:QtRun` | 运行编译后的可执行文件 |
-| `<leader>qtc` | 清理项目 | `:QtClean` | 清理构建文件 |
-| `<leader>qtd` | 调试项目 | `:QtDebug` | 使用调试器运行项目 |
-| `<leader>qtt` | 运行测试 | `:QtTest` | 执行项目测试 |
-| `<leader>qtp` | 部署项目 | `:QtDeploy` | 部署项目文件 |
+### Which-key集成
+自动检测并集成Which-key插件，显示快捷键说明。
 
 </details>
 
-<details>
-<summary>🔧 环境设置快捷键 (`<leader>qe`)</summary>
 
-| 快捷键 | 功能 | 命令 | 描述 |
-|--------|------|------|------|
-| `<leader>qem` | 设置MSVC | `:QtSetupMsvc` | 设置MSVC编译环境 |
-| `<leader>qel` | 设置Clangd | `:QtSetupClangd` | 配置clangd语言服务器 |
-| `<leader>qek` | 检查MSVC | `:QtCheckMsvc` | 检查MSVC环境状态 |
-| `<leader>qef` | 修复.pro文件 | `:QtFixPro` | 修复.pro文件的MSVC路径 |
-| `<leader>qec` | **修复编译环境** | `:QtFixCompile` | **一键修复所有编译问题** 🆕 |
-
-</details>
-
-<details>
-<summary>📜 脚本管理快捷键 (`<leader>qs`)</summary>
-
-| 快捷键 | 功能 | 命令 | 描述 |
-|--------|------|------|------|
-| `<leader>qsg` | 生成脚本 | `:QtScripts` | 生成所有项目脚本 |
-| `<leader>qse` | 编辑脚本 | - | 选择并编辑脚本文件 |
-| `<leader>qss` | 显示状态 | `:QtStatus` | 显示项目和脚本状态 |
-
-</details>
-
-<details>
-<summary>🎨 UI设计师快捷键 (`<leader>qd`)</summary>
-
-| 快捷键 | 功能 | 命令 | 描述 |
-|--------|------|------|------|
-| `<leader>qdu` | Qt Designer | `:QtDesigner` | 打开当前UI文件 |
-
-</details>
-
-<details>
-<summary>📂 项目管理快捷键 (`<leader>qp`)</summary>
-
-| 快捷键 | 功能 | 命令 | 描述 |
-|--------|------|------|------|
-| `<leader>qpi` | 初始化项目 | - | 初始化新的Qt项目 |
-| `<leader>qpo` | 选择项目 | - | 项目选择器 |
-| `<leader>qpc` | **配置构建环境** | `:QtConfig` | **设置VS路径和编译器** (🆕) |
-
-</details>
-
-**注意**: 
-- `<leader>` 默认是 `\` 键，可通过 `let mapleader = ","` 自定义
-- 所有快捷键都有对应的命令形式
-- 支持在终端中运行，提供实时输出
-
-## 📋 完整快捷键参考
-
-### 基础操作
-
-| 快捷键       | 功能                | 对应命令             |
-| ------------ | ------------------- | -------------------- |
-| `<leader>qC` | Qt Assistant 主界面 | `:QtAssistant`       |
-| `<leader>qh` | 显示帮助信息        | `:help qt-assistant` |
-
-### 项目管理快捷键
-
-#### 核心操作
-
-| 快捷键        | 功能                | 对应命令            | 推荐度 |
-| ------------- | ------------------- | ------------------- | ------ |
-| `<leader>qpo` | 智能打开项目 (自动) | `:QtSmartSelector`  | ⭐⭐⭐ |
-| `<leader>qpm` | 项目管理器          | `:QtProjectManager` | ⭐⭐   |
-
-#### 项目选择/切换
-
-| 快捷键        | 功能            | 对应命令            | 推荐度   |
-| ------------- | --------------- | ------------------- | -------- |
-| `<leader>qpc` | 选择项目 (手动) | `:QtChooseProject`  | ⭐⭐     |
-| `<leader>qpw` | 快速项目切换器  | `:QtQuickSwitcher`  | ⚡⭐⭐⭐ |
-| `<leader>qpr` | 最近项目        | `:QtRecentProjects` | ⭐⭐     |
-
-#### 项目搜索
-
-| 快捷键        | 功能               | 对应命令            | 推荐度   |
-| ------------- | ------------------ | ------------------- | -------- |
-| `<leader>qps` | 搜索Qt项目 (本地)  | `:QtSearchProjects` | ⭐⭐     |
-| `<leader>qpg` | 全局搜索所有驱动器 | `:QtGlobalSearch`   | 🌍⭐⭐⭐ |
-
-### 构建管理快捷键
-
-| 快捷键        | 功能     | 对应命令          | 描述           |
-| ------------- | -------- | ----------------- | -------------- |
-| `<leader>qb`  | 构建项目 | `:QtBuildProject` | 执行项目构建   |
-| `<leader>qr`  | 运行项目 | `:QtRunProject`   | 运行可执行文件 |
-| `<leader>qcl` | 清理项目 | `:QtCleanProject` | 清理构建文件   |
-| `<leader>qbs` | 构建状态 | `:QtBuildStatus`  | 查看构建状态   |
-
-### 脚本管理快捷键
-
-#### 脚本执行
-
-| 快捷键        | 功能     | 对应命令           | 描述         |
-| ------------- | -------- | ------------------ | ------------ |
-| `<leader>qsb` | 脚本构建 | `:QtScript build`  | 执行构建脚本 |
-| `<leader>qsr` | 脚本运行 | `:QtScript run`    | 执行运行脚本 |
-| `<leader>qsd` | 脚本调试 | `:QtScript debug`  | 执行调试脚本 |
-| `<leader>qsc` | 脚本清理 | `:QtScript clean`  | 执行清理脚本 |
-| `<leader>qst` | 脚本测试 | `:QtScript test`   | 执行测试脚本 |
-| `<leader>qsp` | 脚本部署 | `:QtScript deploy` | 执行部署脚本 |
-
-#### 脚本管理
-
-| 快捷键        | 功能         | 对应命令                | 描述             |
-| ------------- | ------------ | ----------------------- | ---------------- |
-| `<leader>qsg` | 脚本生成器   | `:QtScriptGenerator`    | 交互式脚本生成器 |
-| `<leader>qsa` | 生成所有脚本 | `:QtGenerateAllScripts` | 一键生成所有脚本 |
-
-### UI设计师快捷键
-
-| 快捷键        | 功能             | 对应命令                 | 描述                   |
-| ------------- | ---------------- | ------------------------ | ---------------------- |
-| `<leader>qud` | 打开Designer     | `:QtOpenDesigner`        | 打开Qt Designer        |
-| `<leader>quc` | Designer当前文件 | `:QtOpenDesignerCurrent` | 为当前文件打开Designer |
-| `<leader>qum` | Designer管理器   | `:QtDesignerManager`     | UI设计师管理界面       |
-
-### 代码格式化快捷键
-
-| 快捷键        | 功能                 | 对应命令               | 描述                               |
-| ------------- | -------------------- | ---------------------- | ---------------------------------- |
-| `<leader>qff` | 格式化当前文件       | `:QtFormatFile`        | 使用配置的格式化工具格式化当前文件 |
-| `<leader>qfp` | 格式化项目           | `:QtFormatProject`     | 格式化整个项目的所有C++文件        |
-| `<leader>qfs` | 格式化工具状态       | `:QtFormatterStatus`   | 查看可用的格式化工具状态           |
-| `<leader>qfc` | 创建clang-format配置 | `:QtCreateClangFormat` | 创建.clang-format配置文件          |
-
-### 系统和版本信息快捷键
-
-| 快捷键        | 功能       | 对应命令           | 描述             |
-| ------------- | ---------- | ------------------ | ---------------- |
-| `<leader>qsi` | 系统信息   | `:QtSystemInfo`    | 显示系统环境信息 |
-| `<leader>qvi` | Qt版本信息 | `:QtVersionInfo`   | 显示Qt版本信息   |
-| `<leader>qvd` | 检测Qt版本 | `:QtDetectVersion` | 重新检测Qt版本   |
-
-### 记忆技巧
-
-快捷键采用层次化助记符设计：
-
-**第一层 - 功能分类:**
-
-- `q` = **Qt** (所有快捷键都以q开头)
-
-**第二层 - 功能模块:**
-
-- `p` = **Project** (项目管理)
-- `s` = **Script** (脚本管理)
-- `u` = **UI** (UI设计师)
-- `b` = **Build** (构建相关)
-- `r` = **Run** (运行相关)
-- `f` = **Format** (代码格式化)
-- `v` = **Version** (版本相关)
-- `c` = **Clean/Core** (清理/核心功能)
-
-**第三层 - 具体操作:**
-
-- `o` = **Open** (打开)
-- `m` = **Manager** (管理器)
-- `c` = **Choose** (选择)
-- `w` = **sWitch** (切换)
-- `r` = **Recent** (最近)
-- `s` = **Search** (搜索)
-- `g` = **Global** (全局)
-- `b` = **Build** (构建)
-- `d` = **Debug/Designer** (调试/设计师)
-- `t` = **Test** (测试)
-- `p` = **dePloy** (部署)
-- `f` = **File** (文件)
-- `a` = **All** (全部)
-- `i` = **Info** (信息)
-- `c` = **Config** (配置)
-
-### 使用建议
-
-**日常开发流程:**
-
-1. `<leader>qpo` - 智能打开项目
-2. `<leader>qsa` - 生成项目脚本（首次）
-3. `<leader>qfc` - 创建.clang-format配置（首次）
-4. `<leader>qsb` - 构建项目
-5. `<leader>qsr` - 运行项目
-6. `<leader>qff` - 格式化当前文件（编辑后）
-7. `<leader>qsd` - 调试问题（如需）
-
-**项目切换流程:**
-
-1. `<leader>qpw` - 快速切换（最近项目）
-2. `<leader>qpg` - 全局搜索（新项目）
-3. `<leader>qpc` - 手动选择（精确控制）
 
 ## 🐛 故障排除
 
@@ -1154,33 +851,5 @@ MIT License
 
 ---
 
-## 🆕 版本更新说明
-
-### v1.3.0 主要更新 (当前版本)
-
-- 🔧 **Windows MSVC环境修复**: 解决Windows下编译缺少标准库头文件问题
-- 🛠️ **Clangd LSP完整支持**: 新增clangd语言服务器配置，解决Qt Creator兼容性问题
-- ⌨️ **键盘映射系统**: 全新的40+快捷键系统，支持自定义和Which-key集成
-- 📜 **增强的Windows脚本**: 改进批处理脚本，自动设置MSVC环境
-- 🎯 **智能命令扩展**: 新增20+个Vim命令，如`:QtSetupClangd`、`:QtSetupMsvc`等
-- 🔄 **自动环境配置**: 构建脚本自动调用环境设置，无需手动配置
-
-### v2.0.0 主要更新
-
-- ✨ **Qt5/Qt6双版本支持**: 全面支持Qt5和Qt6项目开发
-- 🔄 **智能版本检测**: 自动识别项目Qt版本并适配相应模板
-- 🖥️ **Windows增强支持**: 自动检测Windows系统Qt安装路径
-- 📜 **脚本系统重构**: 基于实际项目模板的健壮脚本生成
-- 🎯 **模板变量系统**: 支持项目名称和Qt版本自动替换
-- 🎨 **代码自动格式化**: 默认启用clang-format自动格式化，保存时自动格式化C++代码
-- ⚡ **性能优化**: 改进项目检测和脚本生成速度
-- 🔧 **错误处理增强**: 更完善的错误处理和用户反馈
-
-### 即将发布 (v1.4.0)
-
-- 🎮 **模板引擎增强**: 支持更多自定义模板变量
-- 🔄 **项目模板系统**: 内置多种Qt项目模板
-- 📊 **构建状态监控**: 实时构建状态和进度显示
-- 🌐 **多语言界面**: 支持中英文界面切换
 
 **注意**: 这个插件专为Qt C++开发设计，支持CMake、qmake等多种构建系统，对Qt5和Qt6项目均可获得最佳体验。对Windows用户的MSVC环境支持特别优化。
