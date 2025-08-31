@@ -1,5 +1,16 @@
 -- Qt Assistant Plugin - 文件管理模块
 -- File management module
+-- Get the project root directory
+function M.get_project_root()
+    local current_dir = vim.fn.getcwd()
+    while current_dir ~= "" do
+        if vim.fn.isdirectory(current_dir .. "/.git") == 1 or vim.fn.filereadable(current_dir .. "/CMakeLists.txt") == 1 then
+            return current_dir
+        end
+        current_dir = vim.fn.fnamemodify(current_dir, ":h")
+    end
+    return nil -- Project root not found
+end
 
 local M = {}
 
