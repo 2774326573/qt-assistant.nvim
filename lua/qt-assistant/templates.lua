@@ -69,89 +69,85 @@ local builtin_templates = {}
 function M.init(template_path)
 	M.template_path = template_path
 	M.load_builtin_templates()
-end
 
--- Load builtin templates | ch: 加载内置模板
-function M.load_builtin_templates()
-	-- Smiplified CMakeLists.txt template | ch: 最小化CMakeLists.txt模板
+	-- Simplified CMakeLists.txt template
 	builtin_templates.cmakelists = [[
-
-  # ch: cmake最小版本 | en: cmake minimum required version
   cmake_minimum_required(VERSION 3.10)
-
-  # ch: 项目信息 | en: project info
-  # project(project_Name VERSION  LANGUAGES CXX)
   project(fileSystem VERSION 1.0 LANGUAGES CXX)
-
-  # ch: 设置clangd | en: set clangd
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-  # ch: 查找Qt包 | en: find Qt package
   if (Qt6_FOUND)
     find_package(Qt6 COMPONENTS {{QT_COMPONENTS}} REQUIRED)
   else()
     find_package(Qt5 COMPONENTS {{QT_COMPONENTS}} REQUIRED)
   endif()
-
-  # ch: 设置自动生成MOC文件 | en: set automatic MOC file generation
-  # ch: 设置自动生成UIC文件 | en: set automatic UIC file generation
-  # ch: 设置自动生成RCC文件 | en: set automatic RCC file generation
   set(CMAKE_AUTOMOC ON)
   set(CMAKE_AUTOUIC ON)
   set(CMAKE_AUTORCC ON)
-
-  # ch: 设置C++标准 | en: set C++ standard
   set(CMAKE_CXX_STANDARD 11)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-  # ch: 设置Qt的安装路径 | en: set Qt installation path
   set(CMAKE_PREFIX_PATH "D:/Qt/6.5.2/mingw_64/lib/cmake")
-
-  # ch: 设置头文件变量 | en: set header file variable
   set(HEADERS
-  include/mainwindow.h
+    include/mainwindow.h
   )
-
-# ch: 设置源文件变量 | en: set source file variable
   set(SOURCES
-  main.cpp
-  src/mainwindow.cpp
+    main.cpp
+    src/mainwindow.cpp
   )
-
-# ch: 设置UI文件变量 | en: set UI file variable
-    set(UIS
+  set(UIS
     ui/mainwindow.ui
   )
-
-# ch: 设置可执行文件输出路径 | en: set executable output path
-    add_executable(${PROJECT_NAME}
-    ${HEADERS}
-    ${SOURCES}
-    ${UIS}
-  )
-
-# ch: 链接Qt库 | en: link Qt libraries
+  add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES} ${UIS})
   if (Qt6_FOUND)
     target_link_libraries(${PROJECT_NAME} Qt6::Widgets)
   else()
     target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
   endif()
 ]]
-	-- Simplified main source template | ch: 最小化主源代码模板
+
+	-- Simplified main source template
 	builtin_templates.main_source = [[
 	#include <{{APPLICATION_CLASS}}>
 	#include "{{FILE_NAME}}.h"
-	
+
 	int main(int argc, char *argv[]) {
 	  {{APPLICATION_CLASS}} app(argc, argv);
-	
 	  {{CLASS_NAME}} {{MAIN_OBJECT}};
 	  {{MAIN_OBJECT}}.show();
+	  return app.exec();
+	}
+   ]]
+	-- Generate `CMakeLists.txt` file | ch: 生成 `CMakeLists.txt` 文件
+	function M.generate_cmakelists(variables)
+		local content, err = M.render_template("cmakelists", variables)
+		if not content then
+			return nil, "Failed to generate CMakeLists.txt: " .. err
+		end
+		return content
+	end
 
-  return app.exec();
-}
+	-- Generate `main.cpp` file | ch: 生成 `main.cpp` 文件
+	function M.generate_main(variables)
+		local content, err = M.render_template("main_source", variables)
+		if not content then
+			return nil, "Failed to generate main.cpp: " .. err
+		end
+		return content
+	end
 
- ]]
+	-- Save generated content to file | ch: 保存生成的内容到文件
+	function M.save_to_file(file_path, content)
+		local file, err = io.open(file_path, "w")
+		if not file then
+			return nil, "Failed to open file: " .. err
+		end
+		file:write(content)
+		file:close()
+		return true
+	end
+end
+
+-- Load builtin templates | ch: 加载内置模板
+function M.load_builtin_templates()
 	-- Simplified main window header template | ch: 最小化主窗口头文件模板
 	builtin_templates.main_window_header = [[
 #ifndef {{HEADER_GUARD}}
