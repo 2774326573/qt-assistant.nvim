@@ -1,5 +1,8 @@
 -- Qt Assistant Plugin - 文件管理模块
 -- File management module
+
+local M = {}
+
 -- Get the project root directory
 function M.get_project_root()
     local current_dir = vim.fn.getcwd()
@@ -11,8 +14,6 @@ function M.get_project_root()
     end
     return nil -- Project root not found
 end
-
-local M = {}
 
 -- 获取插件配置
 local function get_config()

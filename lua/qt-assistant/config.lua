@@ -1,68 +1,41 @@
--- Qt Assistant Plugin - 简化配置管理模块
--- Simple configuration management module
+-- Qt Assistant Plugin - Configuration Module
+-- 配置管理模块
 
 local M = {}
 
--- 全局配置存储
+-- Global configuration storage
 M._config = nil
 
--- 初始化配置
+-- Initialize configuration
 function M.setup(user_config)
-    -- 默认配置（延迟创建）
     local default_config = {
         project_root = vim.fn.getcwd(),
         directories = {
             source = "src",
             include = "include", 
             ui = "ui",
-            resource = "resource",
-            scripts = "scripts"
+            resource = "resources"
         },
-        naming_convention = "snake_case",
         auto_update_cmake = true,
-        generate_comments = true,
-        template_path = vim.fn.stdpath('config') .. '/qt-templates',
-        qt_project = {
-            auto_detect = true,
-            build_type = "Debug",
-            build_dir = "build",
-            parallel_build = true,
-            build_jobs = 4
+        qt_tools = {
+            designer_path = "designer",
+            uic_path = "uic",
+            qmake_path = "qmake",
+            cmake_path = "cmake"
         },
         designer = {
             designer_path = "designer",
             creator_path = "qtcreator",
-            default_editor = "designer",
-            custom_editor = { command = "", args = {"--file", "{file}"} },
-            auto_sync = true,
-            enable_preview = true
+            default_editor = "designer"
         },
-        debug = {
-            enabled = false,
-            log_level = "INFO",
-            log_file = vim.fn.stdpath('data') .. '/qt-assistant.log'
-        },
-        build_environment = {
-            vs2017_path = "",  -- 用户自定义VS2017路径，例如: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community"
-            vs2019_path = "",  -- 用户自定义VS2019路径  
-            vs2022_path = "",  -- 用户自定义VS2022路径
-            prefer_vs_version = "2017",  -- 首选VS版本: "2017", "2019", "2022"
-            mingw_path = "",   -- MinGW路径
-            qt_version = "auto"  -- Qt版本检测: "auto", "5", "6"
-        },
-        enable_default_keymaps = true,
-        file_handling = {
-            auto_create_backup = false,
-            disable_write_confirm = true,  -- 禁用写入确认对话框
-            preserve_file_permissions = true
-        }
+        enable_default_keymaps = true
     }
     
     M._config = vim.tbl_deep_extend('force', default_config, user_config or {})
     return M._config
 end
 
--- 获取配置
+-- Get configuration
 function M.get()
     if not M._config then
         return M.setup({})
@@ -70,7 +43,7 @@ function M.get()
     return M._config
 end
 
--- 获取配置项
+-- Get configuration value
 function M.get_value(key, default)
     local config = M.get()
     local keys = vim.split(key, '%.')
@@ -87,7 +60,7 @@ function M.get_value(key, default)
     return value
 end
 
--- 设置配置项
+-- Set configuration value
 function M.set_value(key, value)
     local config = M.get()
     local keys = vim.split(key, '%.')
@@ -102,11 +75,6 @@ function M.set_value(key, value)
     end
     
     current[keys[#keys]] = value
-end
-
--- 检查配置是否已初始化
-function M.is_initialized()
-    return M._config ~= nil
 end
 
 return M

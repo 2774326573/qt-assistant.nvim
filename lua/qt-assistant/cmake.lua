@@ -343,6 +343,35 @@ function M.format_cmake_file()
     return M.write_cmake_file(formatted_content)
 end
 
+-- 添加UI文件到CMakeLists.txt
+function M.add_ui_file(ui_file_path)
+    local cmake_content, error_msg = M.read_cmake_file()
+    if not cmake_content then
+        vim.notify("Warning: " .. error_msg, vim.log.levels.WARN)
+        return false
+    end
+    
+    -- 获取相对路径
+    local config = get_config()
+    local relative_path = file_manager.get_relative_path(ui_file_path, config.project_root)
+    
+    if M.is_file_in_cmake(cmake_content, relative_path) then
+        vim.notify("UI file already in CMakeLists.txt: " .. relative_path, vim.log.levels.INFO)
+        return true
+    end
+    
+    local new_content = M.add_ui_file_to_cmake(cmake_content, relative_path)
+    
+    local success, write_error = M.write_cmake_file(new_content)
+    if success then
+        vim.notify("Added UI file to CMakeLists.txt: " .. relative_path, vim.log.levels.INFO)
+        return true
+    else
+        vim.notify("Error updating CMakeLists.txt: " .. write_error, vim.log.levels.ERROR)
+        return false
+    end
+end
+
 -- 备份CMakeLists.txt
 function M.backup_cmake_file()
     local cmake_file = M.find_cmake_file()
