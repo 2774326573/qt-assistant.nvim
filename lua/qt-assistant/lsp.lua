@@ -105,17 +105,19 @@ function M.generate_cmake_compile_commands(project_root, build_dir)
         end,
         on_exit = function(_, exit_code)
             vim.schedule(function()
-                if exit_code == 0 then
-                    local compile_commands_path = system.join_path(build_dir, "compile_commands.json")
-                    if file_manager.file_exists(compile_commands_path) then
-                        -- Create symlink in project root for clangd
-                        M.link_compile_commands(compile_commands_path, project_root)
-                        vim.notify("✅ compile_commands.json generated successfully", vim.log.levels.INFO)
-                    else
-                        vim.notify("⚠️  CMake completed but compile_commands.json not found", vim.log.levels.WARN)
-                    end
+                -- Check if compile_commands.json was generated regardless of exit code
+                local compile_commands_path = system.join_path(build_dir, "compile_commands.json")
+                if file_manager.file_exists(compile_commands_path) then
+                    -- Create symlink in project root for clangd
+                    M.link_compile_commands(compile_commands_path, project_root)
+                    vim.notify("✅ compile_commands.json generated successfully", vim.log.levels.INFO)
                 else
-                    vim.notify("❌ CMake configuration failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    if exit_code == 0 then
+                        vim.notify("⚠️  CMake completed but compile_commands.json not found", vim.log.levels.WARN)
+                        vim.notify("💡 Try building the project first: :QtBuild", vim.log.levels.INFO)
+                    else
+                        vim.notify("❌ CMake configuration failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    end
                 end
             end)
         end

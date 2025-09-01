@@ -67,9 +67,9 @@ include CMakeFiles/TestQtApp_autogen_timestamp_deps.dir/compiler_depend.make
 include CMakeFiles/TestQtApp_autogen_timestamp_deps.dir/progress.make
 
 CMakeFiles/TestQtApp_autogen_timestamp_deps: /usr/lib/qt6/libexec/moc
-CMakeFiles/TestQtApp_autogen_timestamp_deps: /usr/lib/x86_64-linux-gnu/libQt6Core.so.6.4.2
-CMakeFiles/TestQtApp_autogen_timestamp_deps: /usr/lib/qt6/libexec/uic
 CMakeFiles/TestQtApp_autogen_timestamp_deps: /usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6.4.2
+CMakeFiles/TestQtApp_autogen_timestamp_deps: /usr/lib/qt6/libexec/uic
+CMakeFiles/TestQtApp_autogen_timestamp_deps: /usr/lib/x86_64-linux-gnu/libQt6Core.so.6.4.2
 
 TestQtApp_autogen_timestamp_deps: CMakeFiles/TestQtApp_autogen_timestamp_deps
 TestQtApp_autogen_timestamp_deps: CMakeFiles/TestQtApp_autogen_timestamp_deps.dir/build.make
