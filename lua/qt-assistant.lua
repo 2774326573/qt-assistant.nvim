@@ -8,25 +8,9 @@ M._config = nil
 
 -- Initialize plugin
 function M.setup(user_config)
-	local default_config = {
-		project_root = vim.fn.getcwd(),
-		directories = {
-			source = "src",
-			include = "include",
-			ui = "ui",
-			resource = "resources"
-		},
-		auto_update_cmake = true,
-		qt_tools = {
-			designer_path = "designer",
-			uic_path = "uic",
-			qmake_path = "qmake",
-			cmake_path = "cmake"
-		},
-		enable_default_keymaps = true
-	}
-
-	M._config = vim.tbl_deep_extend("force", default_config, user_config or {})
+	-- Use the dedicated config module for centralized configuration
+	local config = require('qt-assistant.config')
+	M._config = config.setup(user_config or {})
 
 	-- Setup keymaps if enabled
 	if M._config.enable_default_keymaps then
@@ -60,7 +44,11 @@ end
 
 -- Get configuration
 function M.get_config()
-	return M._config or {}
+	if not M._config then
+		local config = require('qt-assistant.config')
+		M._config = config.get()
+	end
+	return M._config
 end
 
 -- Setup optimized keymaps for quick development

@@ -1,5 +1,0 @@
-/home/one_wu/neovim-qt-assistant/test_project/build/CMakeFiles/TestQtApp.dir
-/home/one_wu/neovim-qt-assistant/test_project/build/CMakeFiles/edit_cache.dir
-/home/one_wu/neovim-qt-assistant/test_project/build/CMakeFiles/rebuild_cache.dir
-/home/one_wu/neovim-qt-assistant/test_project/build/CMakeFiles/TestQtApp_autogen_timestamp_deps.dir
-/home/one_wu/neovim-qt-assistant/test_project/build/CMakeFiles/TestQtApp_autogen.dir

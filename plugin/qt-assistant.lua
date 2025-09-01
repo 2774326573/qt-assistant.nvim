@@ -12,29 +12,36 @@ if vim.g.loaded_qt_assistant then
 end
 vim.g.loaded_qt_assistant = 1
 
--- Lazy loading helper
+-- Lazy loading helper with error handling
 local function ensure_loaded()
     if not package.loaded['qt-assistant'] then
-        require('qt-assistant')
+        local ok, qt_assistant = pcall(require, 'qt-assistant')
+        if not ok then
+            vim.notify('Failed to load qt-assistant: ' .. qt_assistant, vim.log.levels.ERROR)
+            return false
+        end
     end
+    return true
 end
 
 -- ==================== Core Commands ====================
 
 -- Main interface
 vim.api.nvim_create_user_command('QtAssistant', function()
-    ensure_loaded()
-    require('qt-assistant').show_main_interface()
+    if ensure_loaded() then
+        require('qt-assistant').show_main_interface()
+    end
 end, { desc = 'Open Qt Assistant interface' })
 
 -- Project management
 vim.api.nvim_create_user_command('QtNewProject', function(opts)
-    ensure_loaded()
-    local args = vim.split(opts.args, '%s+')
-    if #args >= 2 then
-        require('qt-assistant').new_project(args[1], args[2])
-    else
-        require('qt-assistant').new_project_interactive()
+    if ensure_loaded() then
+        local args = vim.split(opts.args, '%s+')
+        if #args >= 2 then
+            require('qt-assistant').new_project(args[1], args[2])
+        else
+            require('qt-assistant').new_project_interactive()
+        end
     end
 end, { 
     nargs = '*',
@@ -45,7 +52,7 @@ end, {
 })
 
 vim.api.nvim_create_user_command('QtOpenProject', function(opts)
-    ensure_loaded()
+    if not ensure_loaded() then return end
     if opts.args ~= '' then
         require('qt-assistant').open_project(opts.args)
     else
@@ -60,7 +67,7 @@ end, {
 -- ==================== UI Designer Commands (PRD Core) ====================
 
 vim.api.nvim_create_user_command('QtNewUi', function(opts)
-    ensure_loaded()
+    if not ensure_loaded() then return end
     if opts.args ~= '' then
         require('qt-assistant').create_new_ui(opts.args)
     else
@@ -72,7 +79,7 @@ end, {
 })
 
 vim.api.nvim_create_user_command('QtEditUi', function(opts)
-    ensure_loaded()
+    if not ensure_loaded() then return end
     if opts.args ~= '' then
         require('qt-assistant').edit_ui_file(opts.args)
     else
@@ -93,7 +100,7 @@ end, {
 })
 
 vim.api.nvim_create_user_command('QtDesigner', function(opts)
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').open_designer(opts.args ~= '' and opts.args or nil)
 end, { 
     nargs = '?',
@@ -104,7 +111,7 @@ end, {
 -- ==================== Class Creation Commands ====================
 
 vim.api.nvim_create_user_command('QtCreateClass', function(opts)
-    ensure_loaded()
+    if not ensure_loaded() then return end
     local args = vim.split(opts.args, '%s+')
     if #args >= 2 then
         if #args >= 3 and args[3]:match("%.ui$") then
@@ -138,58 +145,58 @@ end, {
 -- ==================== Build Commands ====================
 
 vim.api.nvim_create_user_command('QtBuild', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').build_project()
 end, { desc = 'Build Qt project' })
 
 vim.api.nvim_create_user_command('QtRun', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').run_project()
 end, { desc = 'Run Qt project' })
 
 -- ==================== Debug Commands ====================
 
 vim.api.nvim_create_user_command('QtDebug', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').debug_application()
 end, { desc = 'Debug Qt application with nvim-dap' })
 
 vim.api.nvim_create_user_command('QtDebugAttach', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').attach_to_process()
 end, { desc = 'Attach debugger to running Qt process' })
 
 vim.api.nvim_create_user_command('QtDebugStatus', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').show_debug_status()
 end, { desc = 'Show Qt debug configuration status' })
 
 vim.api.nvim_create_user_command('QtDebugSetup', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant.debug').setup_debugging()
 end, { desc = 'Setup complete Qt debugging environment' })
 
 -- ==================== LSP Commands ====================
 
 vim.api.nvim_create_user_command('QtLspSetup', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').setup_qt_lsp()
 end, { desc = 'Setup clangd LSP for Qt development' })
 
 vim.api.nvim_create_user_command('QtLspGenerate', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').generate_compile_commands()
 end, { desc = 'Generate compile_commands.json for clangd' })
 
 vim.api.nvim_create_user_command('QtLspStatus', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').show_lsp_status()
 end, { desc = 'Show clangd LSP status' })
 
 -- ==================== Help ====================
 
 vim.api.nvim_create_user_command('QtHelp', function()
-    ensure_loaded()
+    if not ensure_loaded() then return end
     require('qt-assistant').show_help()
 end, { desc = 'Show Qt Assistant help' })
 
@@ -197,7 +204,7 @@ end, { desc = 'Show Qt Assistant help' })
 local initialized = false
 local function lazy_init()
     if not initialized then
-        ensure_loaded()
+        if not ensure_loaded() then return end
         local ok, qt_assistant = pcall(require, 'qt-assistant')
         if ok and qt_assistant.setup then
             qt_assistant.setup({})
