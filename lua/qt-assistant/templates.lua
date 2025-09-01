@@ -390,6 +390,33 @@ int main(int argc, char *argv[])
 
     builtin_templates.cmake_widget_app = [[
 cmake_minimum_required(VERSION 3.16)
+
+# Prevent CMake from mixing MinGW and MSVC toolchains on Windows
+if(WIN32)
+    # Ensure we use the correct compiler when MSVC is detected
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR MSVC)
+        # Force MSVC toolchain settings
+        set(CMAKE_SYSTEM_NAME Windows)
+        
+        # Remove any potential MinGW paths that could cause library conflicts
+        if(CMAKE_PREFIX_PATH)
+            string(REPLACE "C:/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "C:/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+        endif()
+        
+        # Force MSVC runtime library selection to avoid MinGW conflicts
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+        
+        # Clear any potential MinGW library paths from linker
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:mingw32")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libmingw32.a")
+    endif()
+endif()
+
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
 # C++ Standard Configuration
@@ -566,6 +593,33 @@ endif()
 
     builtin_templates.cmake_console_app = [[
 cmake_minimum_required(VERSION 3.16)
+
+# Prevent CMake from mixing MinGW and MSVC toolchains on Windows  
+if(WIN32)
+    # Ensure we use the correct compiler when MSVC is detected
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR MSVC)
+        # Force MSVC toolchain settings
+        set(CMAKE_SYSTEM_NAME Windows)
+        
+        # Remove any potential MinGW paths that could cause library conflicts
+        if(CMAKE_PREFIX_PATH)
+            string(REPLACE "C:/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "C:/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+        endif()
+        
+        # Force MSVC runtime library selection to avoid MinGW conflicts
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+        
+        # Clear any potential MinGW library paths from linker  
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:mingw32")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libmingw32.a")
+    endif()
+endif()
+
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
 # C++ Standard Configuration
@@ -771,8 +825,19 @@ cd %BUILD_DIR%
 :: Try to detect and use Visual Studio generator for better MSVC support
 echo [INFO] Detecting Visual Studio version...
 
+:: Clean any potential MinGW paths from environment to avoid conflicts
+set PATH_CLEAN=%PATH%
+set PATH_CLEAN=%PATH_CLEAN:C:\mingw64\bin;=%
+set PATH_CLEAN=%PATH_CLEAN:C:\msys64\usr\bin;=%
+set PATH_CLEAN=%PATH_CLEAN:C:\msys64\mingw64\bin;=%
+set PATH=%PATH_CLEAN%
+
+:: Force MSVC compiler environment
+set CMAKE_C_COMPILER=cl
+set CMAKE_CXX_COMPILER=cl
+
 :: Try VS2022 first
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -G "Visual Studio 17 2022" -A x64 2>nul
+cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -G "Visual Studio 17 2022" -A x64 2>nul
 if %errorlevel% equ 0 (
     echo [INFO] Using Visual Studio 2022 with C++%CXX_STANDARD%
     goto :build_project
@@ -780,23 +845,23 @@ if %errorlevel% equ 0 (
 
 :: Try VS2019
 echo [INFO] VS2022 not found, trying VS2019...
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -G "Visual Studio 16 2019" -A x64 2>nul
+cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -G "Visual Studio 16 2019" -A x64 2>nul
 if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2019
+    echo [INFO] Using Visual Studio 2019 with C++%CXX_STANDARD%
     goto :build_project
 )
 
 :: Try VS2017
 echo [INFO] VS2019 not found, trying VS2017...
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -G "Visual Studio 15 2017" -A x64 2>nul
+cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -G "Visual Studio 15 2017" -A x64 2>nul
 if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2017
+    echo [INFO] Using Visual Studio 2017 with C++%CXX_STANDARD%
     goto :build_project
 )
 
-:: Fallback to default generator
-echo [WARNING] No specific Visual Studio version detected, using default generator...
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD%
+:: Fallback to default generator with explicit MSVC compiler
+echo [WARNING] No specific Visual Studio version detected, using default generator with MSVC...
+cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
 if %errorlevel% neq 0 (
     echo [ERROR] CMake configuration failed!
     echo.

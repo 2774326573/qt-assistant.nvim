@@ -8,6 +8,165 @@ local function get_config()
     return require('qt-assistant.config').get()
 end
 
+-- 显示主界面
+function M.show_main_interface()
+    local menu_items = {
+        "Qt Assistant - Main Interface",
+        "=" .. string.rep("=", 50),
+        "",
+        "Project Management:",
+        "  p - New Project (Interactive)",
+        "  P - Quick Project (C++17 Widget App)",
+        "  o - Open Project",
+        "",
+        "Build & Run:",
+        "  b - Build Project",
+        "  r - Run Project",
+        "  q - Quick Build & Run",
+        "",
+        "C++ Standard Builds:",
+        "  1 - Build with C++11",
+        "  4 - Build with C++14",
+        "  7 - Build with C++17",
+        "  2 - Build with C++20",
+        "",
+        "UI & Classes:",
+        "  d - Open Qt Designer",
+        "  u - Create New UI File",
+        "  c - Create Qt Class",
+        "",
+        "Configuration:",
+        "  s - Show Current Config",
+        "  t - Select C++ Standard",
+        "  R - Reconfigure Project",
+        "",
+        "Other:",
+        "  h - Help",
+        "  ESC - Close",
+        "",
+    }
+    
+    -- 创建浮动窗口
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, menu_items)
+    
+    local width = 60
+    local height = #menu_items + 2
+    local win_config = {
+        relative = 'editor',
+        width = width,
+        height = height,
+        col = (vim.o.columns - width) / 2,
+        row = (vim.o.lines - height) / 2,
+        style = 'minimal',
+        border = 'rounded',
+        title = " Qt Assistant ",
+        title_pos = "center"
+    }
+    
+    local win = vim.api.nvim_open_win(buf, true, win_config)
+    
+    -- 设置窗口选项
+    vim.api.nvim_win_set_option(win, "number", false)
+    vim.api.nvim_win_set_option(win, "relativenumber", false)
+    vim.api.nvim_buf_set_option(buf, "modifiable", false)
+    
+    -- 设置键位映射
+    local keymaps = {
+        -- 关闭窗口
+        ['<Esc>'] = function() vim.api.nvim_win_close(win, true) end,
+        
+        -- 项目管理
+        ['p'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant.project_manager').new_project_interactive()
+        end,
+        ['P'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').new_project_quick()
+        end,
+        ['o'] = function()
+            vim.api.nvim_win_close(win, true)
+            vim.cmd('QtOpenProject')
+        end,
+        
+        -- 构建运行
+        ['b'] = function()
+            vim.api.nvim_win_close(win, true)
+            vim.cmd('QtBuild')
+        end,
+        ['r'] = function()
+            vim.api.nvim_win_close(win, true)
+            vim.cmd('QtRun')
+        end,
+        ['q'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').quick_build_and_run()
+        end,
+        
+        -- C++标准构建
+        ['1'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').build_with_std('11')
+        end,
+        ['4'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').build_with_std('14')
+        end,
+        ['7'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').build_with_std('17')
+        end,
+        ['2'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').build_with_std('20')
+        end,
+        
+        -- UI和类
+        ['d'] = function()
+            vim.api.nvim_win_close(win, true)
+            vim.cmd('QtDesigner')
+        end,
+        ['u'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').create_new_ui_interactive()
+        end,
+        ['c'] = function()
+            vim.api.nvim_win_close(win, true)
+            vim.cmd('QtCreateClass')
+        end,
+        
+        -- 配置
+        ['s'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').show_current_config()
+        end,
+        ['t'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').select_cxx_standard()
+        end,
+        ['R'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').reconfigure_project()
+        end,
+        
+        -- 帮助
+        ['h'] = function()
+            vim.api.nvim_win_close(win, true)
+            require('qt-assistant').show_help()
+        end,
+    }
+    
+    -- 应用键位映射
+    for key, fn in pairs(keymaps) do
+        vim.api.nvim_buf_set_keymap(buf, 'n', key, '', {
+            noremap = true,
+            silent = true,
+            callback = fn
+        })
+    end
+end
+
 -- 浮动窗口配置
 local float_win_config = {
     relative = 'editor',
