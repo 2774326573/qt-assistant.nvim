@@ -9,13 +9,33 @@ local function get_config()
     return require('qt-assistant.config').get()
 end
 
--- 查找CMakeLists.txt文件
-function M.find_cmake_file()
-    local config = get_config()
-    local cmake_file = config.project_root .. "/CMakeLists.txt"
+-- 查找CMakeLists.txt文件 (根据不同的目录更新对应目录的cmakelists.txt文档)
+function M.find_cmake_file(start_dir)
+    start_dir = start_dir or vim.fn.getcwd()
+    local project_root = file_manager.get_project_root()
     
-    if file_manager.file_exists(cmake_file) then
-        return cmake_file
+    -- 从当前目录开始向上查找CMakeLists.txt
+    local current_dir = start_dir
+    
+    while current_dir and current_dir ~= "/" do
+        local cmake_file = current_dir .. "/CMakeLists.txt"
+        
+        if file_manager.file_exists(cmake_file) then
+            return cmake_file
+        end
+        
+        -- 检查是否已到达项目根目录
+        if current_dir == project_root then
+            break
+        end
+        
+        -- 向上移动一级目录
+        current_dir = vim.fn.fnamemodify(current_dir, ":h")
+        
+        -- 防止无限循环
+        if current_dir == vim.fn.fnamemodify(current_dir, ":h") then
+            break
+        end
     end
     
     return nil
@@ -92,8 +112,8 @@ function M.add_source_files(files)
     
     for file_type, file_info in pairs(files) do
         if file_type == "source" and file_info.name:match("%.cpp$") then
-            local relative_path = config.directories.source .. "/" .. 
-                                 M.get_file_subdir(file_info.type) .. "/" .. file_info.name
+            -- Use actual relative path from file creation
+            local relative_path = config.directories.source .. "/" .. file_info.name
             
             if not M.is_file_in_cmake(cmake_content, relative_path) then
                 new_content = M.add_cpp_file_to_cmake(new_content, relative_path)
@@ -101,8 +121,8 @@ function M.add_source_files(files)
             end
             
         elseif file_type == "header" and file_info.name:match("%.h$") then
-            local relative_path = config.directories.include .. "/" .. 
-                                 M.get_file_subdir(file_info.type) .. "/" .. file_info.name
+            -- Use actual relative path from file creation  
+            local relative_path = config.directories.include .. "/" .. file_info.name
             
             if not M.is_file_in_cmake(cmake_content, relative_path) then
                 new_content = M.add_header_file_to_cmake(new_content, relative_path)
@@ -391,6 +411,36 @@ function M.backup_cmake_file()
     end
     
     return false, "Failed to create backup"
+end
+
+-- 自动构建当CMakeLists.txt发生变化之后
+function M.setup_auto_rebuild()
+    local config = get_config()
+    if not config.auto_rebuild_on_cmake_change then
+        return
+    end
+    
+    -- 创建autocommand监听CMakeLists.txt文件变化
+    vim.api.nvim_create_autocmd({"BufWritePost"}, {
+        pattern = "CMakeLists.txt",
+        group = vim.api.nvim_create_augroup("QtAssistantAutoRebuild", {clear = true}),
+        callback = function()
+            vim.schedule(function()
+                vim.notify("CMakeLists.txt changed, triggering rebuild...", vim.log.levels.INFO)
+                local build_manager = require('qt-assistant.build_manager')
+                build_manager.build_project()
+            end)
+        end,
+        desc = "Auto rebuild when CMakeLists.txt changes"
+    })
+    
+    vim.notify("Auto rebuild on CMakeLists.txt changes enabled", vim.log.levels.INFO)
+end
+
+-- 禁用自动构建
+function M.disable_auto_rebuild()
+    vim.api.nvim_del_augroup_by_name("QtAssistantAutoRebuild")
+    vim.notify("Auto rebuild disabled", vim.log.levels.INFO)
 end
 
 return M

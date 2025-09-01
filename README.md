@@ -1,12 +1,13 @@
-# Neovim Qt Assistant
+# Neovim Qt Assistant | ch: Neovim Qt 助手
 
 A streamlined Neovim plugin for Qt development that provides essential Qt project management and UI design tools without leaving your editor.
 
 ## Features
 
 ### Core Qt Development Workflow
+
 - **Project Management**: Create and open Qt projects with standard structure
-- **UI Designer Integration**: Create, edit UI files and launch Qt Designer seamlessly  
+- **UI Designer Integration**: Create, edit UI files and launch Qt Designer seamlessly
 - **Class Generation**: Generate C++ classes from UI files with proper uic integration
 - **Build System**: Support for both CMake and qmake build systems
 - **Language Server**: Clangd integration with Qt-aware configuration
@@ -14,7 +15,9 @@ A streamlined Neovim plugin for Qt development that provides essential Qt projec
 - **Cross-Platform**: Works on Linux, macOS, and Windows
 
 ### PRD Compliance
+
 This plugin implements all core requirements from the Product Requirements Document:
+
 - ✅ **F1.1**: Create new Qt projects (`:QtNewProject`)
 - ✅ **F2.1**: Launch Qt Designer (`:QtDesigner`)
 - ✅ **F2.2**: Create new UI files (`:QtNewUi`)
@@ -28,6 +31,7 @@ This plugin implements all core requirements from the Product Requirements Docum
 ## Installation
 
 ### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+
 ```lua
 {
     "your-username/neovim-qt-assistant",
@@ -42,6 +46,7 @@ This plugin implements all core requirements from the Product Requirements Docum
 ```
 
 ### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+
 ```lua
 use {
     'your-username/neovim-qt-assistant',
@@ -54,12 +59,14 @@ use {
 ## Dependencies
 
 ### System Requirements
+
 - **Neovim**: 0.8+ (required)
 - **Qt**: 5.15+ or 6.x (required)
 - **Build Tools**: CMake 3.16+ (recommended) or qmake
 - **Compiler**: GCC, Clang, or MSVC with C++11+ support
 
 ### Optional Dependencies
+
 - **clangd**: For language server features (autocomplete, error checking)
 - **nvim-dap**: For debugging support
 - **nvim-lspconfig**: For enhanced LSP configuration
@@ -68,6 +75,7 @@ use {
 ### Qt Installation Guide
 
 #### Linux (Ubuntu/Debian)
+
 ```bash
 # Qt 6 (recommended)
 sudo apt update
@@ -81,11 +89,12 @@ which designer uic qmake cmake
 ```
 
 #### Linux (Arch/Manjaro)
+
 ```bash
 # Qt 6
 sudo pacman -S qt6-base qt6-tools qt-creator
 
-# Qt 5  
+# Qt 5
 sudo pacman -S qt5-base qt5-tools
 
 # Verify
@@ -93,6 +102,7 @@ which designer uic qmake cmake
 ```
 
 #### macOS
+
 ```bash
 # Using Homebrew (recommended)
 brew install qt@6
@@ -109,6 +119,7 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 ```
 
 #### Windows (Future Support)
+
 ```powershell
 # Download Qt installer from https://www.qt.io/download-qt-installer
 # Choose: Qt 6.x with MinGW or MSVC compiler
@@ -119,31 +130,33 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 
 ### Essential Commands
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `:QtNewProject <name> <type>` | Create new Qt project | `:QtNewProject MyApp widget_app` |
-| `:QtOpenProject [path]` | Open existing Qt project | `:QtOpenProject ~/MyProject` |
-| `:QtNewUi <filename>` | Create new UI file | `:QtNewUi mainwindow` |
-| `:QtEditUi [filename]` | Edit existing UI file | `:QtEditUi mainwindow.ui` |
-| `:QtDesigner [file]` | Open Qt Designer | `:QtDesigner` |
-| `:QtCreateClass <name> <type>` | Create Qt class | `:QtCreateClass MyWidget widget` |
-| `:QtCreateClass <name> <type> <ui>` | Create class from UI | `:QtCreateClass MainWin main_window main.ui` |
-| `:QtBuild` | Build project | `:QtBuild` |
-| `:QtRun` | Run project | `:QtRun` |
-| `:QtDebugSetup` | Setup debugging environment | `:QtDebugSetup` |
-| `:QtDebug` | Debug Qt application | `:QtDebug` |
-| `:QtDebugAttach` | Attach to running process | `:QtDebugAttach` |
-| `:QtDebugStatus` | Show debug configuration | `:QtDebugStatus` |
-| `:QtLspSetup` | Setup clangd for Qt development | `:QtLspSetup` |
-| `:QtLspGenerate` | Generate compile_commands.json | `:QtLspGenerate` |
-| `:QtLspStatus` | Show clangd LSP status | `:QtLspStatus` |
+| Command                             | Description                     | Example                                      |
+| ----------------------------------- | ------------------------------- | -------------------------------------------- |
+| `:QtNewProject <name> <type>`       | Create new Qt project           | `:QtNewProject MyApp widget_app`             |
+| `:QtOpenProject [path]`             | Open existing Qt project        | `:QtOpenProject ~/MyProject`                 |
+| `:QtNewUi <filename>`               | Create new UI file              | `:QtNewUi mainwindow`                        |
+| `:QtEditUi [filename]`              | Edit existing UI file           | `:QtEditUi mainwindow.ui`                    |
+| `:QtDesigner [file]`                | Open Qt Designer                | `:QtDesigner`                                |
+| `:QtCreateClass <name> <type>`      | Create Qt class                 | `:QtCreateClass MyWidget widget`             |
+| `:QtCreateClass <name> <type> <ui>` | Create class from UI            | `:QtCreateClass MainWin main_window main.ui` |
+| `:QtBuild`                          | Build project                   | `:QtBuild`                                   |
+| `:QtRun`                            | Run project                     | `:QtRun`                                     |
+| `:QtDebugSetup`                     | Setup debugging environment     | `:QtDebugSetup`                              |
+| `:QtDebug`                          | Debug Qt application            | `:QtDebug`                                   |
+| `:QtDebugAttach`                    | Attach to running process       | `:QtDebugAttach`                             |
+| `:QtDebugStatus`                    | Show debug configuration        | `:QtDebugStatus`                             |
+| `:QtLspSetup`                       | Setup clangd for Qt development | `:QtLspSetup`                                |
+| `:QtLspGenerate`                    | Generate compile_commands.json  | `:QtLspGenerate`                             |
+| `:QtLspStatus`                      | Show clangd LSP status          | `:QtLspStatus`                               |
 
 ### Project Types
+
 - `widget_app` - Qt Widgets desktop application
-- `quick_app` - Qt Quick/QML application  
+- `quick_app` - Qt Quick/QML application
 - `console_app` - Console application
 
 ### Class Types
+
 - `main_window` - QMainWindow-based class
 - `dialog` - QDialog-based class
 - `widget` - QWidget-based class
@@ -152,52 +165,58 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 ### Optimized Keymaps for Quick Development
 
 #### Essential Workflow Keymaps
-| Keymap | Command | Description |
-|--------|---------|-------------|
-| `<leader>qa` | QtAssistant | Open main interface |
-| `<leader>qh` | QtHelp | Show help and commands |
-| `<leader>qp` | New Project | Create new project (interactive) |
-| `<leader>qo` | Open Project | Open project (interactive) |
 
-#### UI Development Keymaps  
-| Keymap | Command | Description |
-|--------|---------|-------------|
-| `<leader>qu` | New UI | Create UI file (interactive) |
-| `<leader>qe` | Edit UI | Edit current or select UI file |
-| `<leader>qd` | Qt Designer | Open Qt Designer |
-| `<leader>qf` | From UI | Create class from current UI |
+| Keymap       | Command      | Description                      |
+| ------------ | ------------ | -------------------------------- |
+| `<leader>qa` | QtAssistant  | Open main interface              |
+| `<leader>qh` | QtHelp       | Show help and commands           |
+| `<leader>qp` | New Project  | Create new project (interactive) |
+| `<leader>qo` | Open Project | Open project (interactive)       |
+
+#### UI Development Keymaps
+
+| Keymap       | Command     | Description                    |
+| ------------ | ----------- | ------------------------------ |
+| `<leader>qu` | New UI      | Create UI file (interactive)   |
+| `<leader>qe` | Edit UI     | Edit current or select UI file |
+| `<leader>qd` | Qt Designer | Open Qt Designer               |
+| `<leader>qf` | From UI     | Create class from current UI   |
 
 #### Build & Run Keymaps
-| Keymap | Command | Description |
-|--------|---------|-------------|
-| `<leader>qb` | Build | Build project (async) |
-| `<leader>qr` | Run | Run project |
-| `<leader>qq` | Quick | Build & run in one command |
+
+| Keymap       | Command | Description                |
+| ------------ | ------- | -------------------------- |
+| `<leader>qb` | Build   | Build project (async)      |
+| `<leader>qr` | Run     | Run project                |
+| `<leader>qq` | Quick   | Build & run in one command |
 
 #### Debug Keymaps (requires nvim-dap)
-| Keymap | Command | Description |
-|--------|---------|-------------|
-| `<leader>qdb` | Debug | Start debugging Qt application |
-| `<leader>qda` | Attach | Attach to running Qt process |
-| `<F5>` | Continue | Debug continue/start |
-| `<F10>` | Step Over | Debug step over |
-| `<F11>` | Step Into | Debug step into |
-| `<F12>` | Step Out | Debug step out |
-| `<leader>db` | Breakpoint | Toggle breakpoint |
+
+| Keymap        | Command    | Description                    |
+| ------------- | ---------- | ------------------------------ |
+| `<leader>qdb` | Debug      | Start debugging Qt application |
+| `<leader>qda` | Attach     | Attach to running Qt process   |
+| `<F5>`        | Continue   | Debug continue/start           |
+| `<F10>`       | Step Over  | Debug step over                |
+| `<F11>`       | Step Into  | Debug step into                |
+| `<F12>`       | Step Out   | Debug step out                 |
+| `<leader>db`  | Breakpoint | Toggle breakpoint              |
 
 #### LSP Keymaps (requires clangd)
-| Keymap | Command | Description |
-|--------|---------|-------------|
-| `<leader>qls` | LSP Setup | Setup clangd for Qt |
-| `<leader>qlg` | Generate | Generate compile commands |
-| `<leader>qlt` | LSP Status | Show LSP status |
+
+| Keymap        | Command    | Description               |
+| ------------- | ---------- | ------------------------- |
+| `<leader>qls` | LSP Setup  | Setup clangd for Qt       |
+| `<leader>qlg` | Generate   | Generate compile commands |
+| `<leader>qlt` | LSP Status | Show LSP status           |
 
 #### Context-Aware Keymaps (File-Specific)
-| Keymap | Available In | Description |
-|--------|--------------|-------------|
-| `<leader>gd` | `.ui` files | Open current UI in Designer |
-| `<leader>gc` | `.ui` files | Generate class from current UI |
-| `<leader>gu` | `.h/.cpp` files | Find & open corresponding UI |
+
+| Keymap       | Available In    | Description                    |
+| ------------ | --------------- | ------------------------------ |
+| `<leader>gd` | `.ui` files     | Open current UI in Designer    |
+| `<leader>gc` | `.ui` files     | Generate class from current UI |
+| `<leader>gu` | `.h/.cpp` files | Find & open corresponding UI   |
 
 ## Debugging Integration
 
@@ -206,6 +225,7 @@ The plugin integrates with [nvim-dap](https://github.com/mfussenegger/nvim-dap) 
 ### Debug Setup
 
 #### 1. Install nvim-dap
+
 ```lua
 -- Lazy.nvim
 {'mfussenegger/nvim-dap'}
@@ -215,7 +235,9 @@ use 'mfussenegger/nvim-dap'
 ```
 
 #### 2. Install Debug Adapter
+
 **Linux:**
+
 ```bash
 # GDB (usually pre-installed)
 sudo apt install gdb                    # Ubuntu/Debian
@@ -226,6 +248,7 @@ sudo pacman -S gdb                      # Arch
 ```
 
 **macOS:**
+
 ```bash
 # LLDB (comes with Xcode)
 xcode-select --install
@@ -235,10 +258,11 @@ brew install lldb
 ```
 
 #### 3. Start Debugging
+
 ```vim
 :QtDebugSetup               " One-time setup and verification
 :QtDebug                    " Start debugging current project
-:QtDebugAttach              " Attach to running Qt process  
+:QtDebugAttach              " Attach to running Qt process
 :QtDebugStatus              " Check debug configuration
 ```
 
@@ -257,12 +281,14 @@ The plugin provides seamless integration with clangd language server for advance
 ### LSP Setup
 
 #### 1. Install clangd
+
 **Linux:**
+
 ```bash
 # Ubuntu/Debian
 sudo apt install clangd
 
-# Arch Linux  
+# Arch Linux
 sudo pacman -S clang
 
 # CentOS/RHEL
@@ -270,6 +296,7 @@ sudo yum install clang-tools-extra
 ```
 
 **macOS:**
+
 ```bash
 # Homebrew
 brew install llvm
@@ -282,18 +309,20 @@ xcode-select --install
 ```
 
 #### 2. Install LSP Config (recommended)
+
 ```lua
 -- Lazy.nvim
 {'neovim/nvim-lspconfig'}
 
--- Packer  
+-- Packer
 use 'neovim/nvim-lspconfig'
 ```
 
 #### 3. Setup Qt LSP
+
 ```vim
 :QtLspSetup                 " One-time setup for Qt + clangd
-:QtLspGenerate              " Generate compile_commands.json  
+:QtLspGenerate              " Generate compile_commands.json
 :QtLspStatus                " Check LSP configuration
 ```
 
@@ -307,19 +336,20 @@ use 'neovim/nvim-lspconfig'
 - **Error checking**: Real-time syntax and semantic error detection
 
 ### LSP Keymaps
+
 Standard LSP keymaps are automatically configured when clangd attaches:
 
-| Keymap | Description |
-|--------|-------------|
-| `gd` | Go to definition |
-| `gD` | Go to declaration |
-| `gr` | Find references |
-| `gi` | Go to implementation |
-| `K` | Show hover documentation |
-| `<C-k>` | Signature help |
-| `<leader>rn` | Rename symbol |
-| `<leader>ca` | Code actions |
-| `<leader>f` | Format code |
+| Keymap       | Description              |
+| ------------ | ------------------------ |
+| `gd`         | Go to definition         |
+| `gD`         | Go to declaration        |
+| `gr`         | Find references          |
+| `gi`         | Go to implementation     |
+| `K`          | Show hover documentation |
+| `<C-k>`      | Signature help           |
+| `<leader>rn` | Rename symbol            |
+| `<leader>ca` | Code actions             |
+| `<leader>f`  | Format code              |
 
 ## Configuration
 
@@ -327,15 +357,15 @@ Standard LSP keymaps are automatically configured when clangd attaches:
 require('qt-assistant').setup({
     -- Auto-update CMakeLists.txt when creating files
     auto_update_cmake = true,
-    
+
     -- Project directory structure
     directories = {
         source = "src",
         include = "include",
-        ui = "ui", 
+        ui = "ui",
         resource = "resources"
     },
-    
+
     -- Qt tool paths (auto-detected by default)
     qt_tools = {
         designer_path = "designer",
@@ -343,7 +373,7 @@ require('qt-assistant').setup({
         qmake_path = "qmake",
         cmake_path = "cmake"
     },
-    
+
     -- Enable default keymaps
     enable_default_keymaps = true
 })
@@ -352,37 +382,45 @@ require('qt-assistant').setup({
 ## Example Workflow
 
 1. **Create a new Qt project:**
+
    ```vim
    :QtNewProject MyApp widget_app
    ```
 
 2. **Create UI file:**
+
    ```vim
    :QtNewUi mainwindow
    ```
-   *This creates `ui/mainwindow.ui` and opens Qt Designer*
+
+   _This creates `ui/mainwindow.ui` and opens Qt Designer_
 
 3. **Design your interface in Qt Designer**
 
 4. **Generate C++ class from UI:**
+
    ```vim
    :QtCreateClass MainWindow main_window mainwindow.ui
    ```
-   *This runs uic and creates properly integrated C++ files*
+
+   _This runs uic and creates properly integrated C++ files_
 
 5. **Build and run:**
+
    ```vim
    :QtBuild
    :QtRun
    ```
 
 6. **Setup language server (optional):**
+
    ```vim
    :QtLspSetup                 " Setup clangd with Qt configuration
    " Provides: autocomplete, go-to-definition, error checking
    ```
 
 7. **Debug (optional):**
+
    ```vim
    :QtDebug                    " Start debugging session
    " Or use keymaps: <leader>qdb for debug, <F5> to continue
@@ -399,6 +437,7 @@ The plugin automatically detects Qt tool locations across all platforms.
 ## Project Structure
 
 Generated projects follow Qt best practices:
+
 ```
 MyProject/
 ├── CMakeLists.txt       # Build configuration
@@ -416,12 +455,14 @@ MyProject/
 ## Non-Functional Requirements Compliance
 
 ### ✅ NF1: Performance
+
 - **Lazy Loading**: Plugin modules load only when first command is used
-- **Async Operations**: All build and tool operations run asynchronously  
+- **Async Operations**: All build and tool operations run asynchronously
 - **Non-blocking**: File generation and external tool calls don't block editor
 - **Fast Startup**: Zero impact on Neovim startup time
 
 ### ✅ NF2: Qt Version Compatibility
+
 - **Qt 5.15+**: Full support with automatic C++11 standard
 - **Qt 6.x**: Full support with C++17 standard
 - **Auto-detection**: Automatic Qt version detection and configuration
@@ -429,12 +470,14 @@ MyProject/
 - **Version-aware templates**: Different templates for Qt5/Qt6
 
 ### ✅ NF3: Platform Support
+
 - **Linux**: Full support (Ubuntu, Debian, Arch, CentOS, RHEL)
 - **macOS**: Full support (Homebrew, official installer, both Intel & Apple Silicon)
 - **Windows**: Basic support (future enhancement target)
 - **Cross-platform paths**: Automatic path detection for all platforms
 
 ### ✅ NF4: Error Handling
+
 - **Clear Error Messages**: Descriptive error messages with helpful hints
 - **Installation Guidance**: Platform-specific installation instructions in errors
 - **Validation**: Input validation for all commands and file operations
@@ -442,6 +485,7 @@ MyProject/
 - **Permission Checks**: Write permission validation before file operations
 
 ### ✅ NF5: Quick Development Keymaps
+
 - **11 Core Keymaps**: Essential Qt development workflow
 - **Context-aware**: File-type specific keymaps (UI/C++ files)
 - **Quick Build & Run**: One-command build and execute
@@ -450,6 +494,7 @@ MyProject/
 ## Troubleshooting
 
 ### 🔧 Qt Designer not found
+
 ```bash
 # Check if designer is installed
 which designer
@@ -458,12 +503,13 @@ which designer
 sudo apt install qt6-tools-dev qtcreator  # Ubuntu/Debian
 sudo pacman -S qt6-tools                   # Arch
 
-# macOS: Install with Homebrew  
+# macOS: Install with Homebrew
 brew install qt@6
 echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 ```
 
 ### 🔧 uic not found
+
 ```bash
 # Check if uic is available
 which uic
@@ -473,12 +519,14 @@ which uic
 ```
 
 ### 🔧 Build fails
+
 1. **Check Qt installation**: Run `:QtHelp` and verify system info
 2. **Verify CMakeLists.txt**: Ensure proper Qt version detection
 3. **Check permissions**: Ensure write access to build directory
 4. **Dependencies**: Install required Qt components for your project type
 
 ### 🔧 Performance Issues
+
 - Plugin uses lazy loading - no startup impact
 - All operations are async - editor remains responsive
 - Large projects: build operations run in background
@@ -486,6 +534,7 @@ which uic
 ### 🔧 Debug Issues
 
 #### nvim-dap not found
+
 ```bash
 # Install nvim-dap with your plugin manager
 # Lazy.nvim
@@ -496,6 +545,7 @@ which uic
 ```
 
 #### Debugger not found
+
 ```bash
 # Linux - Install GDB
 sudo apt install gdb build-essential     # Ubuntu/Debian
@@ -510,6 +560,7 @@ which lldb          # macOS
 ```
 
 #### No debug symbols
+
 ```bash
 # Project will auto-build in debug mode, but you can force it:
 cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
@@ -521,13 +572,14 @@ cd build && qmake CONFIG+=debug .. && make debug
 ### 🔧 LSP Issues
 
 #### clangd not found
+
 ```bash
 # Linux
 sudo apt install clangd              # Ubuntu/Debian
 sudo pacman -S clang                 # Arch
 sudo yum install clang-tools-extra   # CentOS/RHEL
 
-# macOS  
+# macOS
 brew install llvm
 export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 
@@ -536,6 +588,7 @@ which clangd
 ```
 
 #### No autocomplete/errors
+
 ```vim
 " Check LSP status
 :QtLspStatus
@@ -548,6 +601,7 @@ which clangd
 ```
 
 #### Qt headers not found
+
 ```bash
 # Ensure Qt development packages are installed
 sudo apt install qt6-base-dev        # Ubuntu Qt6
@@ -560,10 +614,12 @@ qmake -query QT_INSTALL_HEADERS
 ### 🔧 Platform-Specific Issues
 
 #### Linux
+
 - Install development packages: `*-dev` or `*-devel`
 - Check Qt version: `qmake --version` or `cmake --find-package Qt6`
 
 #### macOS
+
 - Use Homebrew for easy installation and PATH management
 - Both Intel (`/usr/local`) and Apple Silicon (`/opt/homebrew`) supported
 - Official Qt installer also works
@@ -577,17 +633,18 @@ qmake -query QT_INSTALL_HEADERS
 
 ## Feature Matrix
 
-| Feature | Status | Requirements | Commands |
-|---------|--------|--------------|----------|
-| **Project Management** | ✅ Core | Qt tools | `:QtNewProject`, `:QtOpenProject` |
-| **UI Designer** | ✅ Core | Qt Designer | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
-| **Class Generation** | ✅ Core | uic tool | `:QtCreateClass` |
-| **Build System** | ✅ Core | CMake/qmake | `:QtBuild`, `:QtRun` |
-| **Language Server** | ✅ Enhanced | clangd | `:QtLspSetup`, `:QtLspGenerate` |
-| **Debugging** | ✅ Enhanced | nvim-dap + debugger | `:QtDebug`, `:QtDebugAttach` |
-| **Quick Keymaps** | ✅ Core | None | `<leader>q*` shortcuts |
-| **Cross-Platform** | ✅ Core | Platform Qt | Linux, macOS, Windows |
+| Feature                | Status      | Requirements        | Commands                               |
+| ---------------------- | ----------- | ------------------- | -------------------------------------- |
+| **Project Management** | ✅ Core     | Qt tools            | `:QtNewProject`, `:QtOpenProject`      |
+| **UI Designer**        | ✅ Core     | Qt Designer         | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
+| **Class Generation**   | ✅ Core     | uic tool            | `:QtCreateClass`                       |
+| **Build System**       | ✅ Core     | CMake/qmake         | `:QtBuild`, `:QtRun`                   |
+| **Language Server**    | ✅ Enhanced | clangd              | `:QtLspSetup`, `:QtLspGenerate`        |
+| **Debugging**          | ✅ Enhanced | nvim-dap + debugger | `:QtDebug`, `:QtDebugAttach`           |
+| **Quick Keymaps**      | ✅ Core     | None                | `<leader>q*` shortcuts                 |
+| **Cross-Platform**     | ✅ Core     | Platform Qt         | Linux, macOS, Windows                  |
 
 ## License
 
 MIT License - see LICENSE file for details.
+

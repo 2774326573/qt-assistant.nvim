@@ -48,6 +48,14 @@ function M.setup(user_config)
 			lsp.init()
 		end
 	end)
+	
+	-- Initialize auto-rebuild functionality
+	vim.schedule(function()
+		local cmake_ok, cmake = pcall(require, 'qt-assistant.cmake')
+		if cmake_ok then
+			cmake.setup_auto_rebuild()
+		end
+	end)
 end
 
 -- Get configuration

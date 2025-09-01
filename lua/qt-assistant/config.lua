@@ -17,6 +17,7 @@ function M.setup(user_config)
             resource = "resources"
         },
         auto_update_cmake = true,
+        auto_rebuild_on_cmake_change = false,  -- 当cmakelists.txt发生变化之后应该自动构建cmake
         qt_tools = {
             designer_path = "designer",
             uic_path = "uic",

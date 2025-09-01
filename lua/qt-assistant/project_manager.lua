@@ -180,8 +180,8 @@ end
 function M.get_target_directory(file_name, template_type)
     if file_name:match("%.h$") then
         return "include"
-    elseif file_name:match("%.cpp$") and file_name ~= "main.cpp" then
-        return "src"
+    elseif file_name:match("%.cpp$") then
+        return "src"  -- All cpp files go to src, including main.cpp
     elseif file_name:match("%.ui$") then
         return "ui"
     elseif file_name:match("%.qml$") or file_name:match("%.qrc$") then

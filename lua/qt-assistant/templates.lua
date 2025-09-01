@@ -361,13 +361,13 @@ QVariant {{CLASS_NAME}}::data(const QModelIndex &index, int role) const
     -- Project templates
     builtin_templates.main_widget_app = [[
 #include <QApplication>
-#include "mainwindow.h"
+#include "{{FILE_NAME}}.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     
-    MainWindow window;
+    {{CLASS_NAME}} window;
     window.show();
     
     return app.exec();
