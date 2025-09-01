@@ -37,17 +37,35 @@ end, { desc = 'Open Qt Assistant interface' })
 vim.api.nvim_create_user_command('QtNewProject', function(opts)
     if ensure_loaded() then
         local args = vim.split(opts.args, '%s+')
-        if #args >= 2 then
-            require('qt-assistant').new_project(args[1], args[2])
+        if #args >= 3 then
+            -- QtNewProject <name> <template> <cxx_standard>
+            local project_manager = require('qt-assistant.project_manager')
+            project_manager.new_project(args[1], args[2], args[3])
+        elseif #args >= 2 then
+            -- QtNewProject <name> <template>
+            local project_manager = require('qt-assistant.project_manager')
+            project_manager.new_project(args[1], args[2])
         else
-            require('qt-assistant').new_project_interactive()
+            -- Interactive mode
+            local project_manager = require('qt-assistant.project_manager')
+            project_manager.new_project_interactive()
         end
     end
 end, { 
     nargs = '*',
-    desc = 'Create new Qt project',
-    complete = function()
-        return {'widget_app', 'quick_app', 'console_app'}
+    desc = 'Create new Qt project [name] [template] [cxx_standard]',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+        local args = vim.split(cmd_line, '%s+')
+        local arg_count = #args - 1  -- Subtract command name
+        
+        if arg_count == 1 then
+            -- Complete template type
+            return {'widget_app', 'console_app', 'quick_app'}
+        elseif arg_count == 2 then
+            -- Complete C++ standard
+            return {'11', '14', '17', '20', '23'}
+        end
+        return {}
     end
 })
 

@@ -86,8 +86,8 @@ function M.open_project(project_path)
     return true
 end
 
--- Create new project
-function M.new_project(project_name, template_type)
+-- Create new project with optional C++ standard
+function M.new_project(project_name, template_type, cxx_standard)
     if not project_name or project_name == "" then
         vim.notify("Project name is required", vim.log.levels.ERROR)
         return false
@@ -96,6 +96,15 @@ function M.new_project(project_name, template_type)
     local template = project_templates[template_type]
     if not template then
         vim.notify("Unknown template type: " .. template_type, vim.log.levels.ERROR)
+        return false
+    end
+    
+    -- Default C++ standard if not specified
+    cxx_standard = cxx_standard or "17"
+    
+    -- Validate C++ standard
+    if not M.validate_cxx_standard(cxx_standard) then
+        vim.notify("Invalid C++ standard: " .. cxx_standard .. ". Supported: 11, 14, 17, 20", vim.log.levels.ERROR)
         return false
     end
     
@@ -110,8 +119,8 @@ function M.new_project(project_name, template_type)
     -- Create project structure
     M.create_project_structure(project_path, template_type)
     
-    -- Generate project files
-    M.create_project_files(project_path, template_type, project_name)
+    -- Generate project files with C++ standard
+    M.create_project_files(project_path, template_type, project_name, cxx_standard)
     
     -- Create Windows scripts if on Windows or requested
     M.create_windows_scripts(project_path, project_name)
@@ -149,9 +158,11 @@ function M.create_project_structure(project_path, template_type)
 end
 
 -- Create project files
-function M.create_project_files(project_path, template_type, project_name)
+function M.create_project_files(project_path, template_type, project_name, cxx_standard)
     local templates = require('qt-assistant.templates')
     templates.init()
+    
+    cxx_standard = cxx_standard or "17"  -- Default to C++17
     
     local template_vars = {
         PROJECT_NAME = project_name,
@@ -159,7 +170,8 @@ function M.create_project_files(project_path, template_type, project_name)
         FILE_NAME = "mainwindow",
         HEADER_GUARD = "MAINWINDOW_H",
         DATE = os.date('%Y-%m-%d'),
-        YEAR = os.date('%Y')
+        YEAR = os.date('%Y'),
+        CXX_STANDARD = cxx_standard
     }
     
     -- Create files based on template
@@ -228,6 +240,76 @@ function M.is_qt_project(project_path)
     return M.detect_project_type(project_path) ~= nil
 end
 
+-- Validate C++ standard
+function M.validate_cxx_standard(standard)
+    local valid_standards = {"11", "14", "17", "20", "23"}
+    for _, valid in ipairs(valid_standards) do
+        if tostring(standard) == valid then
+            return true
+        end
+    end
+    return false
+end
+
+-- Get recommended C++ standard for Qt version
+function M.get_recommended_cxx_standard(qt_version)
+    if qt_version == "6" then
+        return "17"  -- Qt6 requires C++17 minimum
+    elseif qt_version == "5" then
+        return "11"  -- Qt5 works with C++11 minimum
+    else
+        return "17"  -- Default to C++17
+    end
+end
+
+-- Interactive project creation with C++ standard selection
+function M.new_project_interactive()
+    local project_name = vim.fn.input("Project name: ")
+    if project_name == "" then
+        vim.notify("Project name cannot be empty", vim.log.levels.ERROR)
+        return
+    end
+    
+    -- Template selection
+    local template_options = {"widget_app", "console_app", "quick_app"}
+    local template_choice = vim.fn.inputlist({
+        "Select project template:",
+        "1. Widget Application (QMainWindow)",
+        "2. Console Application", 
+        "3. Quick Application (QML)"
+    })
+    
+    if template_choice < 1 or template_choice > 3 then
+        vim.notify("Invalid template selection", vim.log.levels.ERROR)
+        return
+    end
+    
+    local template_type = template_options[template_choice]
+    
+    -- C++ standard selection
+    local cxx_choice = vim.fn.inputlist({
+        "Select C++ standard:",
+        "1. C++11 (Qt5 compatible)",
+        "2. C++14 (Qt5 compatible)",
+        "3. C++17 (Qt5/Qt6 compatible, recommended)",
+        "4. C++20 (Modern C++, Qt6 preferred)",
+        "5. C++23 (Latest standard)"
+    })
+    
+    local cxx_standards = {"11", "14", "17", "20", "23"}
+    local cxx_standard = "17"  -- Default
+    
+    if cxx_choice >= 1 and cxx_choice <= 5 then
+        cxx_standard = cxx_standards[cxx_choice]
+    end
+    
+    -- Show selection summary
+    vim.notify(string.format("Creating %s project '%s' with C++%s", template_type, project_name, cxx_standard), vim.log.levels.INFO)
+    
+    -- Create project
+    return M.new_project(project_name, template_type, cxx_standard)
+end
+
 -- Create Windows development scripts
 function M.create_windows_scripts(project_path, project_name)
     local templates = require('qt-assistant.templates')
@@ -259,6 +341,10 @@ function M.create_windows_scripts(project_path, project_name)
         {
             filename = "dev.bat",
             template_func = templates.get_windows_dev_script
+        },
+        {
+            filename = "fix_msvc.bat",
+            template_func = templates.get_windows_fix_script
         }
     }
     

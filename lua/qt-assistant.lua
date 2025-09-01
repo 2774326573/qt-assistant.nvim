@@ -60,7 +60,8 @@ function M.setup_keymaps()
 	map("n", "<leader>qh", function() M.show_help() end, { desc = "Qt Help" })
 	
 	-- Project management (quick access)
-	map("n", "<leader>qp", function() M.new_project_interactive() end, { desc = "New Qt Project" })
+	map("n", "<leader>qp", function() M.new_project_interactive() end, { desc = "New Qt Project (Interactive)" })
+	map("n", "<leader>qP", function() M.new_project_quick() end, { desc = "New Qt Project (Quick C++17)" })
 	map("n", "<leader>qo", function() M.open_project_interactive() end, { desc = "Open Qt Project" })
 	
 	-- UI Designer (rapid UI development)
@@ -85,6 +86,12 @@ function M.setup_keymaps()
 	map("n", "<leader>qr", function() M.run_project() end, { desc = "Run Project" })
 	map("n", "<leader>qq", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
 	
+	-- C++ Standard specific builds (Windows)
+	map("n", "<leader>qb1", function() M.build_with_std("11") end, { desc = "Build with C++11" })
+	map("n", "<leader>qb4", function() M.build_with_std("14") end, { desc = "Build with C++14" })
+	map("n", "<leader>qb7", function() M.build_with_std("17") end, { desc = "Build with C++17" })
+	map("n", "<leader>qb20", function() M.build_with_std("20") end, { desc = "Build with C++20" })
+	
 	-- Debug system (integrated debugging) - conditional loading
 	map("n", "<leader>qdb", function() M.debug_application() end, { desc = "Debug Qt App" })
 	map("n", "<leader>qda", function() M.attach_to_process() end, { desc = "Attach to Qt Process" })
@@ -93,6 +100,11 @@ function M.setup_keymaps()
 	map("n", "<leader>qls", function() M.setup_qt_lsp() end, { desc = "Setup Qt LSP" })
 	map("n", "<leader>qlg", function() M.generate_compile_commands() end, { desc = "Generate Compile Commands" })
 	map("n", "<leader>qlt", function() M.show_lsp_status() end, { desc = "LSP Status" })
+	
+	-- Configuration and Standards
+	map("n", "<leader>qsc", function() M.show_current_config() end, { desc = "Show Current Config" })
+	map("n", "<leader>qss", function() M.select_cxx_standard() end, { desc = "Select C++ Standard" })
+	map("n", "<leader>qsr", function() M.reconfigure_project() end, { desc = "Reconfigure Project" })
 	
 	-- File-specific keymaps (context-aware)
 	local function setup_ui_file_keymaps()
@@ -656,6 +668,145 @@ function M.show_help()
 	-- Close with q or Esc
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "<cmd>close<cr>", { noremap = true, silent = true })
 	vim.api.nvim_buf_set_keymap(buf, "n", "<Esc>", "<cmd>close<cr>", { noremap = true, silent = true })
+end
+
+-- Quick project creation with C++17 default
+function M.new_project_quick()
+	local project_name = vim.fn.input("Project name: ")
+	if project_name == "" then
+		vim.notify("Project name cannot be empty", vim.log.levels.ERROR)
+		return
+	end
+	
+	local project_manager = require('qt-assistant.project_manager')
+	project_manager.new_project(project_name, "widget_app", "17")
+end
+
+-- Build with specific C++ standard
+function M.build_with_std(cxx_standard)
+	if vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1 then
+		-- Windows: use batch script with C++ standard
+		local cmd = string.format('build.bat Debug %s', cxx_standard)
+		vim.notify(string.format("Building with C++%s...", cxx_standard), vim.log.levels.INFO)
+		vim.fn.system(cmd)
+	else
+		-- Unix: use cmake directly
+		local build_manager = require('qt-assistant.build_manager')
+		build_manager.build_project()
+		vim.notify(string.format("Building with C++%s...", cxx_standard), vim.log.levels.INFO)
+	end
+end
+
+-- Show current project configuration
+function M.show_current_config()
+	local lines = {
+		"=== Qt Project Configuration ===",
+		"",
+	}
+	
+	-- Try to read CMakeCache.txt
+	local cache_file = "build/CMakeCache.txt"
+	if vim.fn.filereadable(cache_file) == 1 then
+		local cache_content = vim.fn.readfile(cache_file)
+		local cxx_standard = "Not found"
+		local qt_version = "Not found"
+		local build_type = "Not found"
+		
+		for _, line in ipairs(cache_content) do
+			if line:match("CMAKE_CXX_STANDARD:STRING=") then
+				cxx_standard = "C++" .. line:gsub(".*=", "")
+			elseif line:match("CMAKE_BUILD_TYPE:STRING=") then
+				build_type = line:gsub(".*=", "")
+			elseif line:match("Qt.*_VERSION:STRING=") then
+				qt_version = line:gsub(".*=", "")
+			end
+		end
+		
+		table.insert(lines, "C++ Standard: " .. cxx_standard)
+		table.insert(lines, "Qt Version: " .. qt_version)
+		table.insert(lines, "Build Type: " .. build_type)
+	else
+		table.insert(lines, "No build configuration found")
+		table.insert(lines, "Run build command to configure project")
+	end
+	
+	table.insert(lines, "")
+	table.insert(lines, "Project Root: " .. vim.fn.getcwd())
+	
+	-- Create floating window
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	
+	local width = 50
+	local height = #lines + 2
+	local win = vim.api.nvim_open_win(buf, true, {
+		relative = 'editor',
+		width = width,
+		height = height,
+		col = (vim.o.columns - width) / 2,
+		row = (vim.o.lines - height) / 2,
+		style = 'minimal',
+		border = 'rounded',
+		title = " Qt Configuration "
+	})
+	
+	-- Close on any key
+	vim.keymap.set('n', '<Esc>', '<cmd>close<cr>', {buffer = buf})
+	vim.keymap.set('n', 'q', '<cmd>close<cr>', {buffer = buf})
+end
+
+-- Select C++ standard interactively
+function M.select_cxx_standard()
+	local standards = {"11", "14", "17", "20", "23"}
+	local choices = {
+		"Select C++ Standard:",
+		"1. C++11 (Qt5 compatible)",
+		"2. C++14 (Qt5 compatible)", 
+		"3. C++17 (Qt5/Qt6 compatible, recommended)",
+		"4. C++20 (Modern C++, Qt6 preferred)",
+		"5. C++23 (Latest standard)"
+	}
+	
+	local choice = vim.fn.inputlist(choices)
+	if choice >= 1 and choice <= 5 then
+		local std = standards[choice]
+		vim.notify(string.format("Selected C++%s - Use build commands to apply", std), vim.log.levels.INFO)
+		return std
+	end
+	return nil
+end
+
+-- Reconfigure project with new settings
+function M.reconfigure_project()
+	local choice = vim.fn.inputlist({
+		"Reconfigure project:",
+		"1. Reconfigure with current settings",
+		"2. Reconfigure with new C++ standard", 
+		"3. Clean and reconfigure"
+	})
+	
+	if choice == 1 then
+		-- Simple reconfigure
+		local cmd = "cd build && cmake .."
+		vim.fn.system(cmd)
+		vim.notify("Project reconfigured", vim.log.levels.INFO)
+	elseif choice == 2 then
+		-- Reconfigure with new C++ standard
+		local std = M.select_cxx_standard()
+		if std then
+			local cmd = string.format("cd build && cmake .. -DCMAKE_CXX_STANDARD=%s", std)
+			vim.fn.system(cmd)
+			vim.notify(string.format("Project reconfigured with C++%s", std), vim.log.levels.INFO)
+		end
+	elseif choice == 3 then
+		-- Clean and reconfigure
+		if vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1 then
+			vim.fn.system('clean.bat')
+		else
+			vim.fn.system('rm -rf build && mkdir build')
+		end
+		vim.notify("Project cleaned and will be reconfigured on next build", vim.log.levels.INFO)
+	end
 end
 
 return M
