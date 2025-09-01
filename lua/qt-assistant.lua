@@ -33,13 +33,21 @@ function M.setup(user_config)
 		M.setup_keymaps()
 	end
 	
-	-- Initialize debug integration
-	local debug = require('qt-assistant.debug')
-	debug.init()
+	-- Initialize debug integration (lazy)
+	vim.schedule(function()
+		local debug_ok, debug = pcall(require, 'qt-assistant.debug')
+		if debug_ok then
+			debug.init()
+		end
+	end)
 	
-	-- Initialize LSP integration
-	local lsp = require('qt-assistant.lsp')
-	lsp.init()
+	-- Initialize LSP integration (lazy)
+	vim.schedule(function()
+		local lsp_ok, lsp = pcall(require, 'qt-assistant.lsp')
+		if lsp_ok then
+			lsp.init()
+		end
+	end)
 end
 
 -- Get configuration
@@ -81,11 +89,11 @@ function M.setup_keymaps()
 	map("n", "<leader>qr", function() M.run_project() end, { desc = "Run Project" })
 	map("n", "<leader>qq", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
 	
-	-- Debug system (integrated debugging)
+	-- Debug system (integrated debugging) - conditional loading
 	map("n", "<leader>qdb", function() M.debug_application() end, { desc = "Debug Qt App" })
 	map("n", "<leader>qda", function() M.attach_to_process() end, { desc = "Attach to Qt Process" })
 	
-	-- LSP system (clangd integration)
+	-- LSP system (clangd integration) - conditional loading
 	map("n", "<leader>qls", function() M.setup_qt_lsp() end, { desc = "Setup Qt LSP" })
 	map("n", "<leader>qlg", function() M.generate_compile_commands() end, { desc = "Generate Compile Commands" })
 	map("n", "<leader>qlt", function() M.show_lsp_status() end, { desc = "LSP Status" })
@@ -376,34 +384,58 @@ end
 
 -- Debug Management
 function M.debug_application()
-	local debug = require("qt-assistant.debug")
-	debug.debug_application()
+	local debug_ok, debug = pcall(require, "qt-assistant.debug")
+	if debug_ok then
+		debug.debug_application()
+	else
+		vim.notify("❌ Debug module not available", vim.log.levels.ERROR)
+	end
 end
 
 function M.attach_to_process()
-	local debug = require("qt-assistant.debug")
-	debug.attach_to_process()
+	local debug_ok, debug = pcall(require, "qt-assistant.debug")
+	if debug_ok then
+		debug.attach_to_process()
+	else
+		vim.notify("❌ Debug module not available", vim.log.levels.ERROR)
+	end
 end
 
 function M.show_debug_status()
-	local debug = require("qt-assistant.debug")
-	debug.show_debug_status()
+	local debug_ok, debug = pcall(require, "qt-assistant.debug")
+	if debug_ok then
+		debug.show_debug_status()
+	else
+		vim.notify("❌ Debug module not available", vim.log.levels.ERROR)
+	end
 end
 
 -- LSP Management
 function M.setup_qt_lsp()
-	local lsp = require("qt-assistant.lsp")
-	lsp.setup_complete_qt_lsp()
+	local lsp_ok, lsp = pcall(require, "qt-assistant.lsp")
+	if lsp_ok then
+		lsp.setup_complete_qt_lsp()
+	else
+		vim.notify("❌ LSP module not available", vim.log.levels.ERROR)
+	end
 end
 
 function M.generate_compile_commands()
-	local lsp = require("qt-assistant.lsp")
-	lsp.generate_compile_commands()
+	local lsp_ok, lsp = pcall(require, "qt-assistant.lsp")
+	if lsp_ok then
+		lsp.generate_compile_commands()
+	else
+		vim.notify("❌ LSP module not available", vim.log.levels.ERROR)
+	end
 end
 
 function M.show_lsp_status()
-	local lsp = require("qt-assistant.lsp")
-	lsp.show_lsp_status()
+	local lsp_ok, lsp = pcall(require, "qt-assistant.lsp")
+	if lsp_ok then
+		lsp.show_lsp_status()
+	else
+		vim.notify("❌ LSP module not available", vim.log.levels.ERROR)
+	end
 end
 
 -- ==================== Helper Functions ====================
