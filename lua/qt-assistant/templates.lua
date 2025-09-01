@@ -559,6 +559,343 @@ function M.render_template(template_name, variables)
     return rendered
 end
 
+-- Render template string with variables (simple version)
+function M.render_template_string(template_string, variables)
+    if not template_string or not variables then
+        return template_string
+    end
+    
+    local rendered = template_string
+    
+    -- Process regular variable substitutions
+    for key, value in pairs(variables) do
+        local pattern = "{{" .. key .. "}}"
+        rendered = rendered:gsub(pattern, tostring(value))
+    end
+    
+    return rendered
+end
+
+-- Windows Scripts Templates
+function M.get_windows_build_script()
+    return builtin_templates.windows_build_script or [[
+@echo off
+setlocal enabledelayedexpansion
+
+echo ================================
+echo Qt Project Build Script (Windows)
+echo ================================
+
+:: Configuration
+set PROJECT_NAME={{PROJECT_NAME}}
+set BUILD_TYPE=%1
+if "%BUILD_TYPE%"=="" set BUILD_TYPE=Debug
+
+set BUILD_DIR=build
+set SOURCE_DIR=%~dp0
+
+echo Project: %PROJECT_NAME%
+echo Build Type: %BUILD_TYPE%
+echo Source Directory: %SOURCE_DIR%
+echo Build Directory: %BUILD_DIR%
+echo.
+
+:: Check if CMake is available
+cmake --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] CMake not found. Please install CMake and add it to PATH.
+    pause
+    exit /b 1
+)
+
+:: Create build directory
+if not exist %BUILD_DIR% (
+    echo [INFO] Creating build directory...
+    mkdir %BUILD_DIR%
+)
+
+:: Configure project
+echo [INFO] Configuring CMake project...
+cd %BUILD_DIR%
+cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE%
+if %errorlevel% neq 0 (
+    echo [ERROR] CMake configuration failed!
+    pause
+    exit /b 1
+)
+
+:: Build project
+echo [INFO] Building project...
+cmake --build . --config %BUILD_TYPE%
+if %errorlevel% neq 0 (
+    echo [ERROR] Build failed!
+    pause
+    exit /b 1
+)
+
+echo.
+echo [SUCCESS] Build completed successfully!
+echo Executable location: %BUILD_DIR%\%BUILD_TYPE%\%PROJECT_NAME%.exe
+
+pause
+]]
+end
+
+function M.get_windows_run_script()
+    return builtin_templates.windows_run_script or [[
+@echo off
+setlocal enabledelayedexpansion
+
+echo ==============================
+echo Qt Project Run Script (Windows)
+echo ==============================
+
+:: Configuration
+set PROJECT_NAME={{PROJECT_NAME}}
+set BUILD_TYPE=%1
+if "%BUILD_TYPE%"=="" set BUILD_TYPE=Debug
+
+set BUILD_DIR=build
+set EXE_PATH=%BUILD_DIR%\%BUILD_TYPE%\%PROJECT_NAME%.exe
+
+echo Project: %PROJECT_NAME%
+echo Build Type: %BUILD_TYPE%
+echo Executable Path: %EXE_PATH%
+echo.
+
+:: Check if executable exists
+if not exist "%EXE_PATH%" (
+    echo [ERROR] Executable not found: %EXE_PATH%
+    echo [INFO] Please build the project first using build.bat
+    pause
+    exit /b 1
+)
+
+:: Run the application
+echo [INFO] Starting %PROJECT_NAME%...
+echo.
+"%EXE_PATH%"
+
+echo.
+echo [INFO] Application terminated.
+pause
+]]
+end
+
+function M.get_windows_clean_script()
+    return builtin_templates.windows_clean_script or [[
+@echo off
+setlocal enabledelayedexpansion
+
+echo ===============================
+echo Qt Project Clean Script (Windows)
+echo ===============================
+
+set BUILD_DIR=build
+
+echo Cleaning build directory: %BUILD_DIR%
+echo.
+
+if exist %BUILD_DIR% (
+    echo [INFO] Removing build directory...
+    rmdir /s /q %BUILD_DIR%
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to remove build directory!
+        pause
+        exit /b 1
+    )
+    echo [SUCCESS] Build directory cleaned.
+) else (
+    echo [INFO] Build directory does not exist, nothing to clean.
+)
+
+echo.
+pause
+]]
+end
+
+function M.get_windows_setup_script()
+    return builtin_templates.windows_setup_script or [[
+@echo off
+setlocal enabledelayedexpansion
+
+echo ====================================
+echo Qt Development Environment Setup (Windows)
+echo ====================================
+
+echo This script will help you set up your Qt development environment.
+echo.
+
+:: Check CMake
+echo [INFO] Checking CMake...
+cmake --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] CMake not found in PATH
+    echo Please download and install CMake from: https://cmake.org/download/
+    echo Make sure to add CMake to your system PATH
+) else (
+    for /f "tokens=3" %%i in ('cmake --version 2^>nul ^| findstr /r "cmake version"') do (
+        echo [OK] CMake found: %%i
+    )
+)
+echo.
+
+:: Check Qt
+echo [INFO] Checking Qt installation...
+qmake --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Qt/qmake not found in PATH
+    echo Please install Qt from: https://www.qt.io/download
+    echo Make sure Qt bin directory is in your system PATH
+) else (
+    for /f "tokens=4" %%i in ('qmake --version 2^>nul ^| findstr /r "Qt version"') do (
+        echo [OK] Qt found: %%i
+    )
+)
+echo.
+
+:: Check Visual Studio Build Tools
+echo [INFO] Checking Visual Studio Build Tools...
+where cl >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Visual Studio compiler (cl.exe) not found in PATH
+    echo Please ensure Visual Studio Build Tools are installed and
+    echo you're running this from a Developer Command Prompt, or
+    echo add Visual Studio tools to your PATH
+) else (
+    for /f "tokens=*" %%i in ('cl 2^>^&1 ^| findstr /r "Microsoft.*C/C++"') do (
+        echo [OK] Visual Studio compiler found
+    )
+)
+echo.
+
+:: Check Git
+echo [INFO] Checking Git...
+git --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Git not found in PATH
+    echo Please install Git from: https://git-scm.com/download/win
+) else (
+    for /f "tokens=3" %%i in ('git --version 2^>nul') do (
+        echo [OK] Git found: %%i
+    )
+)
+echo.
+
+:: Environment Summary
+echo ====================================
+echo Environment Setup Summary:
+echo ====================================
+echo.
+echo Required tools for Qt development:
+echo - CMake: Build system generator
+echo - Qt: Qt framework and tools
+echo - Visual Studio: C++ compiler and build tools
+echo - Git: Version control
+echo.
+echo If any tools are missing, please install them and add to PATH.
+echo Then run this script again to verify the setup.
+echo.
+
+pause
+]]
+end
+
+function M.get_windows_dev_script()
+    return builtin_templates.windows_dev_script or [[
+@echo off
+setlocal enabledelayedexpansion
+
+echo ==========================
+echo Qt Project Developer Menu
+echo ==========================
+
+:menu
+echo.
+echo Please select an option:
+echo.
+echo 1. Build Project (Debug)
+echo 2. Build Project (Release)
+echo 3. Run Project (Debug)
+echo 4. Run Project (Release)
+echo 5. Clean Build Directory
+echo 6. Open Qt Designer
+echo 7. Open Project in Qt Creator
+echo 8. Setup Development Environment
+echo 9. Exit
+echo.
+set /p choice="Enter your choice (1-9): "
+
+if "%choice%"=="1" goto build_debug
+if "%choice%"=="2" goto build_release
+if "%choice%"=="3" goto run_debug
+if "%choice%"=="4" goto run_release
+if "%choice%"=="5" goto clean
+if "%choice%"=="6" goto designer
+if "%choice%"=="7" goto qtcreator
+if "%choice%"=="8" goto setup
+if "%choice%"=="9" goto exit
+echo Invalid choice, please try again.
+goto menu
+
+:build_debug
+echo [INFO] Building project in Debug mode...
+call build.bat Debug
+goto menu
+
+:build_release
+echo [INFO] Building project in Release mode...
+call build.bat Release
+goto menu
+
+:run_debug
+echo [INFO] Running project (Debug)...
+call run.bat Debug
+goto menu
+
+:run_release
+echo [INFO] Running project (Release)...
+call run.bat Release
+goto menu
+
+:clean
+echo [INFO] Cleaning project...
+call clean.bat
+goto menu
+
+:designer
+echo [INFO] Opening Qt Designer...
+where designer >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Qt Designer not found in PATH
+    pause
+    goto menu
+)
+designer ui\*.ui >nul 2>&1 &
+goto menu
+
+:qtcreator
+echo [INFO] Opening Qt Creator...
+where qtcreator >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Qt Creator not found in PATH
+    pause
+    goto menu
+)
+qtcreator CMakeLists.txt >nul 2>&1 &
+goto menu
+
+:setup
+echo [INFO] Running environment setup...
+call setup.bat
+goto menu
+
+:exit
+echo Goodbye!
+exit /b 0
+]]
+end
+
 -- Initialize on module load
 M.load_builtin_templates()
 

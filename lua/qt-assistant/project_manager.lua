@@ -113,6 +113,9 @@ function M.new_project(project_name, template_type)
     -- Generate project files
     M.create_project_files(project_path, template_type, project_name)
     
+    -- Create Windows scripts if on Windows or requested
+    M.create_windows_scripts(project_path, project_name)
+    
     vim.notify(string.format("Project '%s' created successfully", project_name), vim.log.levels.INFO)
     
     -- Ask if user wants to open the project
@@ -223,6 +226,156 @@ end
 function M.is_qt_project(project_path)
     project_path = project_path or vim.fn.getcwd()
     return M.detect_project_type(project_path) ~= nil
+end
+
+-- Create Windows development scripts
+function M.create_windows_scripts(project_path, project_name)
+    local templates = require('qt-assistant.templates')
+    
+    -- Variables for template rendering
+    local vars = {
+        PROJECT_NAME = project_name,
+        UPPER_PROJECT_NAME = string.upper(project_name)
+    }
+    
+    -- Scripts to create
+    local scripts = {
+        {
+            filename = "build.bat",
+            template_func = templates.get_windows_build_script
+        },
+        {
+            filename = "run.bat", 
+            template_func = templates.get_windows_run_script
+        },
+        {
+            filename = "clean.bat",
+            template_func = templates.get_windows_clean_script
+        },
+        {
+            filename = "setup.bat",
+            template_func = templates.get_windows_setup_script
+        },
+        {
+            filename = "dev.bat",
+            template_func = templates.get_windows_dev_script
+        }
+    }
+    
+    vim.notify("Creating Windows development scripts...", vim.log.levels.INFO)
+    
+    for _, script in ipairs(scripts) do
+        local script_path = project_path .. "/" .. script.filename
+        local script_content = script.template_func()
+        
+        -- Render template with variables
+        script_content = templates.render_template_string(script_content, vars)
+        
+        local success, error_msg = file_manager.write_file(script_path, script_content)
+        if success then
+            vim.notify(string.format("✓ Created %s", script.filename), vim.log.levels.INFO)
+        else
+            vim.notify(string.format("✗ Failed to create %s: %s", script.filename, error_msg), vim.log.levels.ERROR)
+        end
+    end
+    
+    -- Create additional useful scripts
+    M.create_additional_windows_scripts(project_path, vars)
+end
+
+-- Create additional Windows scripts
+function M.create_additional_windows_scripts(project_path, vars)
+    local templates = require('qt-assistant.templates')
+    
+    -- Create VS Code launch configuration for Windows
+    local vscode_config = [[
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Qt Debug",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/{{PROJECT_NAME}}.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "Build Debug"
+        },
+        {
+            "name": "Qt Release",
+            "type": "cppvsdbg", 
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Release/{{PROJECT_NAME}}.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "Build Release"
+        }
+    ]
+}
+]]
+    
+    -- Create VS Code tasks configuration
+    local vscode_tasks = [[
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Debug",
+            "type": "shell",
+            "command": "${workspaceFolder}/build.bat",
+            "args": ["Debug"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Build Release",
+            "type": "shell",
+            "command": "${workspaceFolder}/build.bat",
+            "args": ["Release"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "${workspaceFolder}/clean.bat",
+            "group": "build"
+        }
+    ]
+}
+]]
+    
+    -- Create .vscode directory and files
+    local vscode_dir = project_path .. "/.vscode"
+    file_manager.ensure_directory_exists(vscode_dir)
+    
+    -- Render and write VS Code configurations
+    local launch_content = templates.render_template_string(vscode_config, vars)
+    local tasks_content = templates.render_template_string(vscode_tasks, vars)
+    
+    file_manager.write_file(vscode_dir .. "/launch.json", launch_content)
+    file_manager.write_file(vscode_dir .. "/tasks.json", tasks_content)
+    
+    vim.notify("✓ Created VS Code configurations", vim.log.levels.INFO)
 end
 
 return M

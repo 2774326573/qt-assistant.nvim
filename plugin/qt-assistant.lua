@@ -200,6 +200,21 @@ vim.api.nvim_create_user_command('QtHelp', function()
     require('qt-assistant').show_help()
 end, { desc = 'Show Qt Assistant help' })
 
+-- ==================== Windows Scripts ====================
+
+vim.api.nvim_create_user_command('QtCreateScripts', function(opts)
+    if not ensure_loaded() then return end
+    local project_name = opts.args
+    if project_name == '' then
+        project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+    end
+    local project_manager = require('qt-assistant.project_manager')
+    project_manager.create_windows_scripts(vim.fn.getcwd(), project_name)
+end, { 
+    nargs = '?',
+    desc = 'Create Windows development scripts for current project'
+})
+
 -- Lazy initialization - only setup when first command is used
 local initialized = false
 local function lazy_init()
