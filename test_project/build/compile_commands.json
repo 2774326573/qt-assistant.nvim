@@ -1,0 +1,20 @@
+[
+{
+  "directory": "/home/one_wu/neovim-qt-assistant/test_project/build",
+  "command": "/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_WIDGETS_LIB -I/home/one_wu/neovim-qt-assistant/test_project/build/TestQtApp_autogen/include -I/home/one_wu/neovim-qt-assistant/test_project/include -I/home/one_wu/neovim-qt-assistant/test_project/build -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -g -std=gnu++17 -fPIC -o CMakeFiles/TestQtApp.dir/TestQtApp_autogen/mocs_compilation.cpp.o -c /home/one_wu/neovim-qt-assistant/test_project/build/TestQtApp_autogen/mocs_compilation.cpp",
+  "file": "/home/one_wu/neovim-qt-assistant/test_project/build/TestQtApp_autogen/mocs_compilation.cpp",
+  "output": "CMakeFiles/TestQtApp.dir/TestQtApp_autogen/mocs_compilation.cpp.o"
+},
+{
+  "directory": "/home/one_wu/neovim-qt-assistant/test_project/build",
+  "command": "/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_WIDGETS_LIB -I/home/one_wu/neovim-qt-assistant/test_project/build/TestQtApp_autogen/include -I/home/one_wu/neovim-qt-assistant/test_project/include -I/home/one_wu/neovim-qt-assistant/test_project/build -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -g -std=gnu++17 -fPIC -o CMakeFiles/TestQtApp.dir/src/main.cpp.o -c /home/one_wu/neovim-qt-assistant/test_project/src/main.cpp",
+  "file": "/home/one_wu/neovim-qt-assistant/test_project/src/main.cpp",
+  "output": "CMakeFiles/TestQtApp.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/one_wu/neovim-qt-assistant/test_project/build",
+  "command": "/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_WIDGETS_LIB -I/home/one_wu/neovim-qt-assistant/test_project/build/TestQtApp_autogen/include -I/home/one_wu/neovim-qt-assistant/test_project/include -I/home/one_wu/neovim-qt-assistant/test_project/build -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -g -std=gnu++17 -fPIC -o CMakeFiles/TestQtApp.dir/src/mainwindow.cpp.o -c /home/one_wu/neovim-qt-assistant/test_project/src/mainwindow.cpp",
+  "file": "/home/one_wu/neovim-qt-assistant/test_project/src/mainwindow.cpp",
+  "output": "CMakeFiles/TestQtApp.dir/src/mainwindow.cpp.o"
+}
+]

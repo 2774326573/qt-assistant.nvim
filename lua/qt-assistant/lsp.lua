@@ -7,7 +7,16 @@ local system = require('qt-assistant.system')
 
 -- Get plugin configuration
 local function get_config()
-    return require('qt-assistant').get_config()
+    -- Set default config for current working directory
+    return {
+        project_root = vim.fn.getcwd(),
+        directories = {
+            source = "src",
+            include = "include", 
+            ui = "ui",
+            resource = "resources"
+        }
+    }
 end
 
 -- Check if clangd is available
@@ -23,6 +32,17 @@ end
 -- Generate compile_commands.json for clangd
 function M.generate_compile_commands()
     local project_root = get_config().project_root
+    
+    -- Check if this is a Qt C++ project
+    local cmake_file = system.join_path(project_root, "CMakeLists.txt")
+    local pro_files = M.find_pro_files(project_root)
+    
+    if not file_manager.file_exists(cmake_file) and #pro_files == 0 then
+        vim.notify("❌ No Qt project found (missing CMakeLists.txt or .pro file)", vim.log.levels.ERROR)
+        vim.notify("💡 Navigate to a Qt C++ project directory first", vim.log.levels.INFO)
+        return false
+    end
+    
     local build_dir = system.join_path(project_root, "build")
     
     -- Ensure build directory exists
@@ -33,7 +53,6 @@ function M.generate_compile_commands()
     end
     
     -- Detect build system and generate compile commands
-    local cmake_file = system.join_path(project_root, "CMakeLists.txt")
     if file_manager.file_exists(cmake_file) then
         return M.generate_cmake_compile_commands(project_root, build_dir)
     else
@@ -668,9 +687,16 @@ end
 -- Show LSP status
 function M.show_lsp_status()
     local project_root = get_config().project_root
+    
+    -- Check if this is a Qt project
+    local cmake_file = system.join_path(project_root, "CMakeLists.txt")
+    local pro_files = M.find_pro_files(project_root)
+    local is_qt_project = file_manager.file_exists(cmake_file) or #pro_files > 0
+    
     local status = {
         clangd_available = M.is_clangd_available(),
         lsp_available = M.is_lsp_available(),
+        is_qt_project = is_qt_project,
         compile_commands_exists = file_manager.file_exists(system.join_path(project_root, "compile_commands.json")),
         clangd_config_exists = file_manager.file_exists(system.join_path(project_root, ".clangd")),
         lsp_clients_active = #vim.lsp.get_active_clients() > 0
@@ -683,6 +709,10 @@ function M.show_lsp_status()
         "  clangd: " .. (status.clangd_available and "✅ Available" or "❌ Not installed"),
         "  LSP: " .. (status.lsp_available and "✅ Available" or "❌ Not available"),
         "",
+        "🎯 Project Type:",
+        "  Qt Project: " .. (status.is_qt_project and "✅ Detected" or "❌ Not a Qt project"),
+        "  Build System: " .. (file_manager.file_exists(cmake_file) and "CMake" or (#pro_files > 0 and "qmake" or "None")),
+        "",
         "📁 Project Configuration:",
         "  compile_commands.json: " .. (status.compile_commands_exists and "✅ Found" or "❌ Missing"),
         "  .clangd config: " .. (status.clangd_config_exists and "✅ Found" or "❌ Missing"),
@@ -691,13 +721,20 @@ function M.show_lsp_status()
         "  Active clients: " .. (status.lsp_clients_active and "✅ " .. #vim.lsp.get_active_clients() or "❌ None"),
     }
     
-    -- Add installation help if needed
-    if not status.clangd_available then
+    -- Add appropriate help messages
+    if not status.is_qt_project then
         table.insert(status_lines, "")
-        table.insert(status_lines, "💡 Run :QtLspSetup to configure clangd")
+        table.insert(status_lines, "💡 Navigate to a Qt C++ project directory")
+        table.insert(status_lines, "   (directory with CMakeLists.txt or .pro file)")
+    elseif not status.clangd_available then
+        table.insert(status_lines, "")
+        table.insert(status_lines, "💡 Install clangd: sudo apt install clangd")
     elseif not status.compile_commands_exists then
         table.insert(status_lines, "")
         table.insert(status_lines, "💡 Run :QtLspGenerate to create compile commands")
+    else
+        table.insert(status_lines, "")
+        table.insert(status_lines, "✅ Qt LSP fully configured!")
     end
     
     -- Display in floating window

@@ -1,0 +1,31 @@
+# Qt Assistant generated clangd configuration
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -Wall
+    - -Wextra
+    - -DQT_CORE_LIB
+    - -DQT_WIDGETS_LIB
+    - -DQT_GUI_LIB
+    - -I/usr/include/x86_64-linux-gnu/qt6
+    - -I/usr/include/x86_64-linux-gnu/qt6/QtCore
+    - -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets
+    - -I/usr/include/x86_64-linux-gnu/qt6/QtGui
+    - -I/home/one_wu/neovim-qt-assistant/test_project/include
+    - -I/home/one_wu/neovim-qt-assistant/test_project/src
+    - -I/home/one_wu/neovim-qt-assistant/test_project
+
+Index:
+  Background: Build
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+Completion:
+  AllScopes: true
+
+InlayHints:
+  Enabled: true
+  ParameterNames: true
+  DeducedTypes: true
