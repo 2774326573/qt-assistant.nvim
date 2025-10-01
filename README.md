@@ -134,6 +134,7 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | ----------------------------------- | ------------------------------- | -------------------------------------------- |
 | `:QtNewProject <name> <type>`       | Create new Qt project           | `:QtNewProject MyApp widget_app`             |
 | `:QtOpenProject [path]`             | Open existing Qt project        | `:QtOpenProject ~/MyProject`                 |
+| `:QtAddModule <name> <type>`        | Add module to project            | `:QtAddModule core shared_lib`               |
 | `:QtNewUi <filename>`               | Create new UI file              | `:QtNewUi mainwindow`                        |
 | `:QtEditUi [filename]`              | Edit existing UI file           | `:QtEditUi mainwindow.ui`                    |
 | `:QtDesigner [file]`                | Open Qt Designer                | `:QtDesigner`                                |
@@ -141,6 +142,10 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | `:QtCreateClass <name> <type> <ui>` | Create class from UI            | `:QtCreateClass MainWin main_window main.ui` |
 | `:QtBuild`                          | Build project                   | `:QtBuild`                                   |
 | `:QtRun`                            | Run project                     | `:QtRun`                                     |
+| `:QtCMakePresets`                   | Generate CMakePresets.json      | `:QtCMakePresets`                            |
+| `:QtBuildPreset [preset]`           | Build with CMake preset         | `:QtBuildPreset debug`                       |
+| `:QtCMakeFormat`                    | Format CMakeLists.txt           | `:QtCMakeFormat`                             |
+| `:QtCMakeBackup`                    | Backup CMakeLists.txt           | `:QtCMakeBackup`                             |
 | `:QtDebugSetup`                     | Setup debugging environment     | `:QtDebugSetup`                              |
 | `:QtDebug`                          | Debug Qt application            | `:QtDebug`                                   |
 | `:QtDebugAttach`                    | Attach to running process       | `:QtDebugAttach`                             |
@@ -151,9 +156,16 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 
 ### Project Types
 
+**Single Module Projects:**
 - `widget_app` - Qt Widgets desktop application
 - `quick_app` - Qt Quick/QML application
 - `console_app` - Console application
+
+**Multi-Module Projects:**
+- `multi_project` - Multi-module workspace (root project)
+- `shared_lib` - Qt shared library module
+- `static_lib` - Qt static library module
+- `plugin` - Qt plugin module
 
 ### Class Types
 
@@ -450,6 +462,132 @@ MyProject/
 ├── ui/                  # UI files (.ui)
 │   └── mainwindow.ui
 └── build/               # Build output
+    ├── debug/           # Debug build artifacts
+    └── release/         # Release build artifacts
+```
+
+## Modern CMake Development
+
+The Qt Assistant now supports modern CMake workflows with presets and improved project management.
+
+### CMake Presets Support
+
+Generate standardized build configurations:
+
+```vim
+:QtCMakePresets
+```
+
+This creates a `CMakePresets.json` file with:
+- **debug**: Debug configuration with symbols
+- **release**: Optimized release build
+- **relwithdebinfo**: Release with debug information
+
+### Building with Presets
+
+Use presets for consistent builds:
+
+```vim
+:QtBuildPreset debug      " Build debug configuration
+:QtBuildPreset release    " Build release configuration
+:QtBuildPreset            " Interactive preset selection
+```
+
+### CMake File Management
+
+- **Format**: `:QtCMakeFormat` - Clean up CMakeLists.txt formatting
+- **Backup**: `:QtCMakeBackup` - Create timestamped backup before changes
+- **Auto-update**: Automatically adds new files to CMakeLists.txt
+
+### Improved Qt Version Detection
+
+The assistant now intelligently detects and configures:
+- **Qt6**: Automatically uses C++17 standard
+- **Qt5**: Falls back to C++11 minimum
+- **Cross-platform**: Handles MSVC, GCC, and Clang compilers
+- **Standards**: Supports C++11, 14, 17, 20, and 23
+
+### Streamlined Development Experience
+
+The Qt Assistant focuses on essential project files only - no additional scripts or boilerplate:
+
+- **Clean Project Structure**: Creates only necessary CMake, source, and UI files
+- **Modern CMake**: Uses contemporary CMake practices and presets
+- **Cross-Platform**: Works consistently across Linux, macOS, and Windows
+- **Minimal Dependencies**: No external scripts or complex setup required
+
+### Example CMake Workflow
+
+1. **Create project with modern standards:**
+   ```vim
+   :QtNewProject MyApp widget_app
+   " Choose C++17 for Qt6 compatibility
+   ```
+
+2. **Generate build presets:**
+   ```vim
+   :QtCMakePresets
+   ```
+
+3. **Build specific configuration:**
+   ```vim
+   :QtBuildPreset debug
+   ```
+
+4. **Format and backup CMake files:**
+   ```vim
+   :QtCMakeFormat
+   :QtCMakeBackup
+   ```
+
+### Multi-Module Project Workflow
+
+1. **Create multi-module workspace:**
+   ```vim
+   :QtNewProject MyProject multi_project
+   ```
+
+2. **Add core library module:**
+   ```vim
+   :QtAddModule core shared_lib
+   ```
+
+3. **Add UI library module:**
+   ```vim
+   :QtAddModule ui shared_lib
+   ```
+
+4. **Add plugin module:**
+   ```vim
+   :QtAddModule myplugin plugin
+   ```
+
+5. **Add main application:**
+   ```vim
+   :QtAddModule app widget_app
+   ```
+
+This creates a structure like:
+```
+MyProject/
+├── CMakeLists.txt           # Root configuration
+├── core/                    # Shared library
+│   ├── CMakeLists.txt
+│   ├── src/core.cpp
+│   └── include/core/core.h
+├── ui/                      # UI library
+│   ├── CMakeLists.txt
+│   ├── src/ui.cpp
+│   └── include/ui/ui.h
+├── myplugin/                # Plugin
+│   ├── CMakeLists.txt
+│   ├── src/myplugin.cpp
+│   └── include/myplugin/myplugin.h
+└── app/                     # Main application
+    ├── CMakeLists.txt
+    ├── src/main.cpp
+    └── include/mainwindow.h
+```
 ```
 
 ## Non-Functional Requirements Compliance

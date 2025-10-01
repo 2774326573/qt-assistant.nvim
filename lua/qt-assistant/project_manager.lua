@@ -9,17 +9,45 @@ local project_templates = {
     widget_app = {
         name = "Qt Widgets Application",
         description = "Standard Qt Widgets desktop application",
-        files = {"main.cpp", "mainwindow.h", "mainwindow.cpp", "mainwindow.ui", "CMakeLists.txt"}
+        files = {"main.cpp", "mainwindow.h", "mainwindow.cpp", "mainwindow.ui", "CMakeLists.txt"},
+        type = "executable"
     },
     quick_app = {
-        name = "Qt Quick Application", 
+        name = "Qt Quick Application",
         description = "Qt Quick/QML application",
-        files = {"main.cpp", "main.qml", "qml.qrc", "CMakeLists.txt"}
+        files = {"main.cpp", "main.qml", "qml.qrc", "CMakeLists.txt"},
+        type = "executable"
     },
     console_app = {
         name = "Qt Console Application",
-        description = "Command-line Qt application", 
-        files = {"main.cpp", "CMakeLists.txt"}
+        description = "Command-line Qt application",
+        files = {"main.cpp", "CMakeLists.txt"},
+        type = "executable"
+    },
+    -- Multi-module project templates
+    multi_project = {
+        name = "Multi-Module Qt Project",
+        description = "Qt project with multiple modules (app + libraries)",
+        files = {"CMakeLists.txt", "README.md"},
+        type = "workspace"
+    },
+    shared_lib = {
+        name = "Qt Shared Library",
+        description = "Qt shared library module",
+        files = {"CMakeLists.txt"},
+        type = "library"
+    },
+    static_lib = {
+        name = "Qt Static Library",
+        description = "Qt static library module",
+        files = {"CMakeLists.txt"},
+        type = "library"
+    },
+    plugin = {
+        name = "Qt Plugin Module",
+        description = "Qt plugin module",
+        files = {"CMakeLists.txt"},
+        type = "plugin"
     }
 }
 
@@ -122,9 +150,6 @@ function M.new_project(project_name, template_type, cxx_standard)
     -- Generate project files with C++ standard
     M.create_project_files(project_path, template_type, project_name, cxx_standard)
     
-    -- Create Windows scripts if on Windows or requested
-    M.create_windows_scripts(project_path, project_name)
-    
     vim.notify(string.format("Project '%s' created successfully", project_name), vim.log.levels.INFO)
     
     -- Ask if user wants to open the project
@@ -199,8 +224,10 @@ function M.get_target_directory(file_name, template_type)
         return "src"  -- All cpp files go to src, including main.cpp
     elseif file_name:match("%.ui$") then
         return "ui"
-    elseif file_name:match("%.qml$") or file_name:match("%.qrc$") then
+    elseif file_name:match("%.qml$") then
         return template_type == "quick_app" and "qml" or "resources"
+    elseif file_name:match("%.qrc$") then
+        return ""  -- Root directory for resource files
     else
         return ""  -- Root directory
     end
@@ -211,11 +238,15 @@ function M.generate_template_file(file_name, template_type, vars)
     local templates = require('qt-assistant.templates')
     
     local template_map = {
-        ["main.cpp"] = template_type == "widget_app" and "main_widget_app" or "main_console_app",
+        ["main.cpp"] = template_type == "widget_app" and "main_widget_app" or
+                      (template_type == "quick_app" and "main_quick_app" or "main_console_app"),
         ["mainwindow.h"] = "main_window_header",
-        ["mainwindow.cpp"] = "main_window_source", 
+        ["mainwindow.cpp"] = "main_window_source",
         ["mainwindow.ui"] = "main_window_ui",
-        ["CMakeLists.txt"] = "cmake_" .. template_type
+        ["main.qml"] = "main_qml",
+        ["qml.qrc"] = "qml_qrc",
+        ["CMakeLists.txt"] = "cmake_" .. template_type,
+        ["README.md"] = template_type == "multi_project" and "multi_project_readme" or nil
     }
     
     local template_name = template_map[file_name]
@@ -310,158 +341,235 @@ function M.new_project_interactive()
     return M.new_project(project_name, template_type, cxx_standard)
 end
 
--- Create Windows development scripts
-function M.create_windows_scripts(project_path, project_name)
-    local templates = require('qt-assistant.templates')
-    
-    -- Variables for template rendering
-    local vars = {
-        PROJECT_NAME = project_name,
-        UPPER_PROJECT_NAME = string.upper(project_name)
-    }
-    
-    -- Scripts to create
-    local scripts = {
-        {
-            filename = "build.bat",
-            template_func = templates.get_windows_build_script
-        },
-        {
-            filename = "run.bat", 
-            template_func = templates.get_windows_run_script
-        },
-        {
-            filename = "clean.bat",
-            template_func = templates.get_windows_clean_script
-        },
-        {
-            filename = "setup.bat",
-            template_func = templates.get_windows_setup_script
-        },
-        {
-            filename = "dev.bat",
-            template_func = templates.get_windows_dev_script
-        },
-        {
-            filename = "fix_msvc.bat",
-            template_func = templates.get_windows_fix_script
-        }
-    }
-    
-    vim.notify("Creating Windows development scripts...", vim.log.levels.INFO)
-    
-    for _, script in ipairs(scripts) do
-        local script_path = project_path .. "/" .. script.filename
-        local script_content = script.template_func()
-        
-        -- Render template with variables
-        script_content = templates.render_template_string(script_content, vars)
-        
-        local success, error_msg = file_manager.write_file(script_path, script_content)
-        if success then
-            vim.notify(string.format("✓ Created %s", script.filename), vim.log.levels.INFO)
-        else
-            vim.notify(string.format("✗ Failed to create %s: %s", script.filename, error_msg), vim.log.levels.ERROR)
-        end
+-- Add module to existing multi-module project
+function M.add_module(module_name, module_type, parent_dir)
+    if not module_name or module_name == "" then
+        vim.notify("Module name is required", vim.log.levels.ERROR)
+        return false
     end
-    
-    -- Create additional useful scripts
-    M.create_additional_windows_scripts(project_path, vars)
+
+    local template = project_templates[module_type]
+    if not template then
+        vim.notify("Unknown module type: " .. module_type, vim.log.levels.ERROR)
+        return false
+    end
+
+    parent_dir = parent_dir or vim.fn.getcwd()
+
+    -- Check if this is a multi-module project
+    local root_cmake = parent_dir .. "/CMakeLists.txt"
+    if not file_manager.file_exists(root_cmake) then
+        vim.notify("No CMakeLists.txt found in parent directory. Is this a multi-module project?", vim.log.levels.ERROR)
+        return false
+    end
+
+    -- Create module directory
+    local module_path = parent_dir .. "/" .. module_name
+    local success, error_msg = file_manager.ensure_directory_exists(module_path)
+    if not success then
+        vim.notify("Failed to create module directory: " .. error_msg, vim.log.levels.ERROR)
+        return false
+    end
+
+    -- Create module structure based on type
+    M.create_module_structure(module_path, module_type)
+
+    -- Generate module files
+    M.create_module_files(module_path, module_type, module_name)
+
+    -- Update root CMakeLists.txt to include new module
+    M.add_module_to_root_cmake(parent_dir, module_name)
+
+    vim.notify(string.format("Module '%s' (%s) created successfully", module_name, module_type), vim.log.levels.INFO)
+    return true
 end
 
--- Create additional Windows scripts
-function M.create_additional_windows_scripts(project_path, vars)
+-- Create module directory structure
+function M.create_module_structure(module_path, module_type)
+    local directories = {}
+
+    if module_type == "shared_lib" or module_type == "static_lib" or module_type == "plugin" then
+        directories = {"src", "include/" .. vim.fn.fnamemodify(module_path, ":t")}
+    elseif module_type == "widget_app" or module_type == "quick_app" then
+        directories = {"src", "include", "ui"}
+        if module_type == "quick_app" then
+            table.insert(directories, "qml")
+        end
+    elseif module_type == "console_app" then
+        directories = {"src"}
+    end
+
+    for _, dir in ipairs(directories) do
+        local dir_path = module_path .. "/" .. dir
+        file_manager.ensure_directory_exists(dir_path)
+    end
+end
+
+-- Create module files
+function M.create_module_files(module_path, module_type, module_name)
     local templates = require('qt-assistant.templates')
-    
-    -- Create VS Code launch configuration for Windows
-    local vscode_config = [[
+    templates.init()
+
+    local template_vars = {
+        PROJECT_NAME = module_name,
+        CLASS_NAME = M.project_name_to_class_name(module_name),
+        FILE_NAME = module_name:lower(),
+        HEADER_GUARD = string.upper(module_name) .. "_H",
+        DATE = os.date('%Y-%m-%d'),
+        YEAR = os.date('%Y'),
+        CXX_STANDARD = "17"  -- Default for modules
+    }
+
+    -- Create CMakeLists.txt for the module
+    local cmake_template_name = "cmake_" .. module_type
+    local cmake_content = templates.render_template(cmake_template_name, template_vars)
+    if cmake_content then
+        file_manager.write_file(module_path .. "/CMakeLists.txt", cmake_content)
+    end
+
+    -- Create source and header files for libraries and plugins
+    if module_type == "shared_lib" or module_type == "static_lib" or module_type == "plugin" then
+        -- Create header file
+        local header_content = M.generate_library_header(module_name, template_vars)
+        local header_path = module_path .. "/include/" .. module_name .. "/" .. module_name .. ".h"
+        file_manager.write_file(header_path, header_content)
+
+        -- Create source file
+        local source_content = M.generate_library_source(module_name, template_vars)
+        local source_path = module_path .. "/src/" .. module_name .. ".cpp"
+        file_manager.write_file(source_path, source_content)
+    end
+end
+
+-- Generate library header template
+function M.generate_library_header(module_name, template_vars)
+    local header_guard = string.upper(module_name) .. "_H"
+    local class_name = M.project_name_to_class_name(module_name)
+
+    return string.format([[
+#ifndef %s
+#define %s
+
+#include <QObject>
+
+class %s : public QObject
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Qt Debug",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/{{PROJECT_NAME}}.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "externalTerminal",
-            "preLaunchTask": "Build Debug"
-        },
-        {
-            "name": "Qt Release",
-            "type": "cppvsdbg", 
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Release/{{PROJECT_NAME}}.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "externalTerminal",
-            "preLaunchTask": "Build Release"
-        }
-    ]
-}
-]]
-    
-    -- Create VS Code tasks configuration
-    local vscode_tasks = [[
+    Q_OBJECT
+
+public:
+    explicit %s(QObject *parent = nullptr);
+    virtual ~%s();
+
+public slots:
+    void doSomething();
+
+signals:
+    void somethingDone();
+
+private:
+    // Private members
+};
+
+#endif // %s
+]], header_guard, header_guard, class_name, class_name, class_name, header_guard)
+end
+
+-- Generate library source template
+function M.generate_library_source(module_name, template_vars)
+    local class_name = M.project_name_to_class_name(module_name)
+
+    return string.format([[
+#include "%s/%s.h"
+
+%s::%s(QObject *parent)
+    : QObject(parent)
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Build Debug",
-            "type": "shell",
-            "command": "${workspaceFolder}/build.bat",
-            "args": ["Debug"],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "Build Release",
-            "type": "shell",
-            "command": "${workspaceFolder}/build.bat",
-            "args": ["Release"],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "Clean",
-            "type": "shell",
-            "command": "${workspaceFolder}/clean.bat",
-            "group": "build"
-        }
-    ]
 }
-]]
-    
-    -- Create .vscode directory and files
-    local vscode_dir = project_path .. "/.vscode"
-    file_manager.ensure_directory_exists(vscode_dir)
-    
-    -- Render and write VS Code configurations
-    local launch_content = templates.render_template_string(vscode_config, vars)
-    local tasks_content = templates.render_template_string(vscode_tasks, vars)
-    
-    file_manager.write_file(vscode_dir .. "/launch.json", launch_content)
-    file_manager.write_file(vscode_dir .. "/tasks.json", tasks_content)
-    
-    vim.notify("✓ Created VS Code configurations", vim.log.levels.INFO)
+
+%s::~%s()
+{
+}
+
+void %s::doSomething()
+{
+    // TODO: Implement functionality
+    emit somethingDone();
+}
+]], module_name, module_name, class_name, class_name, class_name, class_name, class_name)
+end
+
+-- Add module to root CMakeLists.txt
+function M.add_module_to_root_cmake(parent_dir, module_name)
+    local root_cmake_path = parent_dir .. "/CMakeLists.txt"
+    local content = file_manager.read_file(root_cmake_path)
+
+    if not content then
+        vim.notify("Failed to read root CMakeLists.txt", vim.log.levels.ERROR)
+        return false
+    end
+
+    -- Check if module is already added
+    local subdirectory_line = "add_subdirectory(" .. module_name .. ")"
+    if content:find(subdirectory_line, 1, true) then
+        vim.notify("Module " .. module_name .. " already exists in root CMakeLists.txt", vim.log.levels.INFO)
+        return true
+    end
+
+    -- Find a good place to insert the add_subdirectory call
+    local insertion_point = content:find("# Add subdirectories %(modules will be added here%)")
+    if insertion_point then
+        -- Replace the comment with the actual subdirectory call
+        local before = content:sub(1, insertion_point - 1)
+        local after = content:sub(content:find("\n", insertion_point))
+        local new_content = before .. "# Add subdirectories (modules will be added here)\nadd_subdirectory(" .. module_name .. ")" .. after
+        file_manager.write_file(root_cmake_path, new_content)
+    else
+        -- Append at the end
+        local new_content = content .. "\n# Add " .. module_name .. " module\nadd_subdirectory(" .. module_name .. ")\n"
+        file_manager.write_file(root_cmake_path, new_content)
+    end
+
+    return true
+end
+
+-- List available module types
+function M.get_available_module_types()
+    local module_types = {}
+    for key, template in pairs(project_templates) do
+        if template.type ~= "workspace" then  -- Exclude workspace type
+            table.insert(module_types, key)
+        end
+    end
+    return module_types
+end
+
+-- Interactive module addition
+function M.add_module_interactive()
+    local module_name = vim.fn.input("Module name: ")
+    if module_name == "" then
+        vim.notify("Module name cannot be empty", vim.log.levels.ERROR)
+        return
+    end
+
+    local module_types = M.get_available_module_types()
+    local type_descriptions = {}
+    for i, type_key in ipairs(module_types) do
+        local template = project_templates[type_key]
+        table.insert(type_descriptions, i .. ". " .. template.name .. " (" .. template.description .. ")")
+    end
+
+    local choice = vim.fn.inputlist(vim.tbl_flatten({
+        "Select module type:",
+        type_descriptions
+    }))
+
+    if choice < 1 or choice > #module_types then
+        vim.notify("Invalid selection", vim.log.levels.ERROR)
+        return
+    end
+
+    local module_type = module_types[choice]
+    return M.add_module(module_name, module_type)
 end
 
 return M

@@ -388,6 +388,92 @@ int main(int argc, char *argv[])
 }
 ]]
 
+    builtin_templates.main_quick_app = [[
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QUrl>
+
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
+
+    QQmlApplicationEngine engine;
+
+    // Load the main QML file
+    const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
+
+    // Handle QML loading errors
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+                     &app, [url](QObject *obj, const QUrl &objUrl) {
+        if (!obj && url == objUrl)
+            QCoreApplication::exit(-1);
+    }, Qt::QueuedConnection);
+
+    engine.load(url);
+
+    return app.exec();
+}
+]]
+
+    builtin_templates.main_qml = [[
+import QtQuick 2.15
+import QtQuick.Window 2.15
+import QtQuick.Controls 2.15
+
+ApplicationWindow {
+    id: window
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("{{PROJECT_NAME}}")
+
+    Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#4CAF50" }
+            GradientStop { position: 1.0; color: "#2E7D32" }
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Welcome to {{PROJECT_NAME}}")
+                font.pointSize: 24
+                font.bold: true
+                color: "white"
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Click me!")
+                onClicked: {
+                    messageText.text = qsTr("Hello from Qt Quick!")
+                }
+            }
+
+            Text {
+                id: messageText
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Qt Quick Application")
+                font.pointSize: 16
+                color: "white"
+            }
+        }
+    }
+}
+]]
+
+    builtin_templates.qml_qrc = [[
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+    </qresource>
+</RCC>
+]]
+
     builtin_templates.cmake_widget_app = [[
 cmake_minimum_required(VERSION 3.16)
 
@@ -716,6 +802,524 @@ else()
     target_link_libraries(${PROJECT_NAME} Qt5::Core)
 endif()
 ]]
+
+    builtin_templates.cmake_quick_app = [[
+cmake_minimum_required(VERSION 3.16)
+
+# Prevent CMake from mixing MinGW and MSVC toolchains on Windows
+if(WIN32)
+    # Ensure we use the correct compiler when MSVC is detected
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR MSVC)
+        # Force MSVC toolchain settings
+        set(CMAKE_SYSTEM_NAME Windows)
+
+        # Remove any potential MinGW paths that could cause library conflicts
+        if(CMAKE_PREFIX_PATH)
+            string(REPLACE "C:/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "C:/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+        endif()
+
+        # Force MSVC runtime library selection to avoid MinGW conflicts
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+
+        # Clear any potential MinGW library paths from linker
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:mingw32")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libmingw32.a")
+    endif()
+endif()
+
+project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+# C++ Standard Configuration
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})  # Default from template
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Validate C++ standard for Qt Quick
+if(CMAKE_CXX_STANDARD LESS 17)
+    message(STATUS "Qt Quick applications work better with C++17+. Current: C++${CMAKE_CXX_STANDARD}")
+    if(CMAKE_CXX_STANDARD LESS 11)
+        message(FATAL_ERROR "Qt requires at least C++11. Please set CMAKE_CXX_STANDARD to 11 or higher.")
+    endif()
+endif()
+
+# MSVC specific settings for different C++ standards
+if(MSVC)
+    if(MSVC_VERSION GREATER_EQUAL 1910)  # VS2017 (15.0) and later
+        if(CMAKE_CXX_STANDARD GREATER_EQUAL 17)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Zc:__cplusplus")
+        elseif(CMAKE_CXX_STANDARD EQUAL 14)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++14")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++11")
+        endif()
+
+        if(MSVC_VERSION GREATER_EQUAL 1914)  # VS2017 15.7+
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-")
+        endif()
+    endif()
+
+    # Additional MSVC optimizations and warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /EHsc")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi /Od")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /DNDEBUG")
+endif()
+
+# Qt settings - enable before finding Qt
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+# Find Qt - prefer Qt6 for Quick applications
+find_package(Qt6 COMPONENTS Core Quick Qml QUIET)
+if(Qt6_FOUND)
+    message(STATUS "Using Qt6: ${Qt6_VERSION} for Qt Quick application")
+    set(QT_VERSION_MAJOR 6)
+    # Ensure minimum C++ standard for Qt6
+    if(CMAKE_CXX_STANDARD LESS 17)
+        set(CMAKE_CXX_STANDARD 17)
+        message(STATUS "Upgraded to C++17 for Qt6 compatibility")
+    endif()
+else()
+    # Fallback to Qt5
+    find_package(Qt5 5.12 COMPONENTS Core Quick Qml QUIET)
+    if(Qt5_FOUND)
+        message(STATUS "Using Qt5: ${Qt5_VERSION} for Qt Quick application")
+        set(QT_VERSION_MAJOR 5)
+        # Ensure minimum C++ standard for Qt5
+        if(CMAKE_CXX_STANDARD LESS 11)
+            set(CMAKE_CXX_STANDARD 11)
+        endif()
+    else()
+        message(FATAL_ERROR "Qt5 (5.12+) or Qt6 with Quick/Qml components is required")
+    endif()
+endif()
+
+# Source files
+set(SOURCES
+    src/main.cpp
+)
+
+# QML files and resources
+set(QML_SOURCES
+    qml/main.qml
+)
+
+# Create executable
+if(QT_VERSION_MAJOR EQUAL 6)
+    qt_add_executable(${PROJECT_NAME} ${SOURCES})
+    qt_add_qml_module(${PROJECT_NAME}
+        URI ${PROJECT_NAME}
+        VERSION 1.0
+        QML_FILES ${QML_SOURCES}
+    )
+else()
+    # For Qt5, use traditional resource compilation
+    qt5_add_resources(QML_RESOURCES qml.qrc)
+    add_executable(${PROJECT_NAME} ${SOURCES} ${QML_RESOURCES})
+endif()
+
+# Link Qt libraries
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries(${PROJECT_NAME}
+        Qt6::Core
+        Qt6::Quick
+        Qt6::Qml
+    )
+else()
+    target_link_libraries(${PROJECT_NAME}
+        Qt5::Core
+        Qt5::Quick
+        Qt5::Qml
+    )
+endif()
+
+# Set output directory
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
+# Platform-specific settings
+if(WIN32)
+    # Windows-specific settings
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+endif()
+]]
+
+    -- Multi-module project templates
+    builtin_templates.cmake_multi_project = [[
+cmake_minimum_required(VERSION 3.16)
+
+project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+# C++ Standard Configuration
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Global Qt settings
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+# Find Qt
+find_package(Qt6 COMPONENTS Core Widgets QUIET)
+if(Qt6_FOUND)
+    message(STATUS "Using Qt6: ${Qt6_VERSION}")
+    set(QT_VERSION_MAJOR 6)
+else()
+    find_package(Qt5 5.15 COMPONENTS Core Widgets QUIET)
+    if(Qt5_FOUND)
+        message(STATUS "Using Qt5: ${Qt5_VERSION}")
+        set(QT_VERSION_MAJOR 5)
+    else()
+        message(FATAL_ERROR "Qt5 or Qt6 is required")
+    endif()
+endif()
+
+# Global settings
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# Add subdirectories (modules will be added here)
+# add_subdirectory(core)
+# add_subdirectory(ui)
+# add_subdirectory(plugins)
+# add_subdirectory(app)
+
+# Example structure for multi-module project:
+#
+# {{PROJECT_NAME}}/
+# ├── CMakeLists.txt           # This file
+# ├── core/                    # Core library module
+# │   ├── CMakeLists.txt
+# │   ├── src/
+# │   └── include/
+# ├── ui/                      # UI library module
+# │   ├── CMakeLists.txt
+# │   ├── src/
+# │   └── include/
+# ├── plugins/                 # Plugin modules
+# │   ├── CMakeLists.txt
+# │   └── plugin1/
+# └── app/                     # Main application
+#     ├── CMakeLists.txt
+#     ├── src/
+#     └── main.cpp
+
+message(STATUS "Multi-module project structure created")
+message(STATUS "Use :QtAddModule <name> <type> to add new modules")
+]]
+
+    builtin_templates.cmake_shared_lib = [[
+cmake_minimum_required(VERSION 3.16)
+
+project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+# C++ Standard Configuration
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt settings
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+# Find Qt components for this library
+find_package(Qt6 COMPONENTS Core QUIET)
+if(Qt6_FOUND)
+    set(QT_VERSION_MAJOR 6)
+else()
+    find_package(Qt5 5.15 COMPONENTS Core QUIET)
+    if(Qt5_FOUND)
+        set(QT_VERSION_MAJOR 5)
+    else()
+        message(FATAL_ERROR "Qt5 or Qt6 is required")
+    endif()
+endif()
+
+# Source files
+set(SOURCES
+    src/{{PROJECT_NAME}}.cpp
+    # Add more source files here
+)
+
+set(HEADERS
+    include/{{PROJECT_NAME}}/{{PROJECT_NAME}}.h
+    # Add more header files here
+)
+
+# Create shared library
+add_library({{PROJECT_NAME}} SHARED ${SOURCES} ${HEADERS})
+
+# Set library properties
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    PUBLIC_HEADER "${HEADERS}"
+)
+
+# Include directories
+target_include_directories({{PROJECT_NAME}}
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        src
+)
+
+# Link Qt libraries
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries({{PROJECT_NAME}} PUBLIC Qt6::Core)
+else()
+    target_link_libraries({{PROJECT_NAME}} PUBLIC Qt5::Core)
+endif()
+
+# Export symbols for Windows
+if(WIN32)
+    target_compile_definitions({{PROJECT_NAME}} PRIVATE {{PROJECT_NAME}}_EXPORTS)
+endif()
+
+# Installation rules
+install(TARGETS {{PROJECT_NAME}}
+    EXPORT {{PROJECT_NAME}}Targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    PUBLIC_HEADER DESTINATION include/{{PROJECT_NAME}}
+)
+
+install(EXPORT {{PROJECT_NAME}}Targets
+    FILE {{PROJECT_NAME}}Targets.cmake
+    NAMESPACE {{PROJECT_NAME}}::
+    DESTINATION lib/cmake/{{PROJECT_NAME}}
+)
+]]
+
+    builtin_templates.cmake_static_lib = [[
+cmake_minimum_required(VERSION 3.16)
+
+project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+# C++ Standard Configuration
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt settings
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+# Find Qt components for this library
+find_package(Qt6 COMPONENTS Core QUIET)
+if(Qt6_FOUND)
+    set(QT_VERSION_MAJOR 6)
+else()
+    find_package(Qt5 5.15 COMPONENTS Core QUIET)
+    if(Qt5_FOUND)
+        set(QT_VERSION_MAJOR 5)
+    else()
+        message(FATAL_ERROR "Qt5 or Qt6 is required")
+    endif()
+endif()
+
+# Source files
+set(SOURCES
+    src/{{PROJECT_NAME}}.cpp
+    # Add more source files here
+)
+
+set(HEADERS
+    include/{{PROJECT_NAME}}/{{PROJECT_NAME}}.h
+    # Add more header files here
+)
+
+# Create static library
+add_library({{PROJECT_NAME}} STATIC ${SOURCES} ${HEADERS})
+
+# Include directories
+target_include_directories({{PROJECT_NAME}}
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        src
+)
+
+# Link Qt libraries
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries({{PROJECT_NAME}} PUBLIC Qt6::Core)
+else()
+    target_link_libraries({{PROJECT_NAME}} PUBLIC Qt5::Core)
+endif()
+
+# Installation rules
+install(TARGETS {{PROJECT_NAME}}
+    EXPORT {{PROJECT_NAME}}Targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    PUBLIC_HEADER DESTINATION include/{{PROJECT_NAME}}
+)
+
+install(EXPORT {{PROJECT_NAME}}Targets
+    FILE {{PROJECT_NAME}}Targets.cmake
+    NAMESPACE {{PROJECT_NAME}}::
+    DESTINATION lib/cmake/{{PROJECT_NAME}}
+)
+]]
+
+    builtin_templates.cmake_plugin = [[
+cmake_minimum_required(VERSION 3.16)
+
+project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+# C++ Standard Configuration
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt settings
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+# Find Qt components for plugin
+find_package(Qt6 COMPONENTS Core QUIET)
+if(Qt6_FOUND)
+    set(QT_VERSION_MAJOR 6)
+else()
+    find_package(Qt5 5.15 COMPONENTS Core QUIET)
+    if(Qt5_FOUND)
+        set(QT_VERSION_MAJOR 5)
+    else()
+        message(FATAL_ERROR "Qt5 or Qt6 is required")
+    endif()
+endif()
+
+# Source files
+set(SOURCES
+    src/{{PROJECT_NAME}}.cpp
+    # Add more source files here
+)
+
+set(HEADERS
+    include/{{PROJECT_NAME}}/{{PROJECT_NAME}}.h
+    # Add more header files here
+)
+
+# Create plugin
+add_library({{PROJECT_NAME}} MODULE ${SOURCES} ${HEADERS})
+
+# Plugin properties
+set_target_properties({{PROJECT_NAME}} PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins
+    PREFIX ""  # Remove 'lib' prefix on Unix
+)
+
+# Include directories
+target_include_directories({{PROJECT_NAME}}
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    PRIVATE
+        src
+)
+
+# Link Qt libraries
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries({{PROJECT_NAME}} Qt6::Core)
+else()
+    target_link_libraries({{PROJECT_NAME}} Qt5::Core)
+endif()
+
+# Installation rules
+install(TARGETS {{PROJECT_NAME}}
+    LIBRARY DESTINATION plugins
+)
+]]
+
+    builtin_templates.multi_project_readme = [[
+# {{PROJECT_NAME}}
+
+Multi-module Qt project with the following structure:
+
+## Project Structure
+
+```
+{{PROJECT_NAME}}/
+├── CMakeLists.txt           # Root CMake configuration
+├── README.md                # This file
+├── core/                    # Core library module
+│   ├── CMakeLists.txt
+│   ├── src/
+│   └── include/
+├── ui/                      # UI library module
+│   ├── CMakeLists.txt
+│   ├── src/
+│   └── include/
+├── plugins/                 # Plugin modules
+│   ├── CMakeLists.txt
+│   └── plugin1/
+├── app/                     # Main application
+│   ├── CMakeLists.txt
+│   ├── src/
+│   └── main.cpp
+└── build/                   # Build output
+    ├── bin/                 # Executables
+    ├── lib/                 # Libraries
+    └── plugins/             # Plugins
+```
+
+## Adding New Modules
+
+Use Qt Assistant commands to add new modules:
+
+```vim
+:QtAddModule core shared_lib         " Add a shared library module
+:QtAddModule utils static_lib        " Add a static library module
+:QtAddModule myplugin plugin         " Add a plugin module
+:QtAddModule myapp widget_app        " Add an application module
+```
+
+## Building
+
+```bash
+# Generate build configuration
+cmake -B build -S .
+
+# Build all modules
+cmake --build build
+
+# Or use Qt Assistant presets
+:QtCMakePresets
+:QtBuildPreset debug
+```
+
+## Module Dependencies
+
+Edit the root CMakeLists.txt to define module dependencies:
+
+```cmake
+# Add modules in dependency order
+add_subdirectory(core)      # Base library
+add_subdirectory(ui)        # UI library (depends on core)
+add_subdirectory(plugins)   # Plugins (depend on core)
+add_subdirectory(app)       # Application (depends on all)
+```
+]]
 end
 
 -- Get template configuration
@@ -775,713 +1379,6 @@ function M.render_template_string(template_string, variables)
     end
     
     return rendered
-end
-
--- Windows Scripts Templates
-function M.get_windows_build_script()
-    return builtin_templates.windows_build_script or [[
-@echo off
-setlocal enabledelayedexpansion
-
-echo ================================
-echo Qt Project Build Script (Windows)
-echo ================================
-
-:: Configuration
-set PROJECT_NAME={{PROJECT_NAME}}
-set BUILD_TYPE=%1
-set CXX_STANDARD=%2
-if "%BUILD_TYPE%"=="" set BUILD_TYPE=Debug
-if "%CXX_STANDARD%"=="" set CXX_STANDARD=17
-
-set BUILD_DIR=build
-set SOURCE_DIR=%~dp0
-
-echo Project: %PROJECT_NAME%
-echo Build Type: %BUILD_TYPE%
-echo C++ Standard: C++%CXX_STANDARD%
-echo Source Directory: %SOURCE_DIR%
-echo Build Directory: %BUILD_DIR%
-echo.
-
-:: Check if CMake is available
-cmake --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] CMake not found. Please install CMake and add it to PATH.
-    pause
-    exit /b 1
-)
-
-:: Create build directory
-if not exist %BUILD_DIR% (
-    echo [INFO] Creating build directory...
-    mkdir %BUILD_DIR%
-)
-
-:: Configure project
-echo [INFO] Configuring CMake project...
-cd %BUILD_DIR%
-
-:: Try to detect and use Visual Studio generator for better MSVC support
-echo [INFO] Detecting Visual Studio version...
-
-:: Clean any potential MinGW paths from environment to avoid conflicts
-set PATH_CLEAN=%PATH%
-set PATH_CLEAN=%PATH_CLEAN:C:\mingw64\bin;=%
-set PATH_CLEAN=%PATH_CLEAN:C:\msys64\usr\bin;=%
-set PATH_CLEAN=%PATH_CLEAN:C:\msys64\mingw64\bin;=%
-set PATH=%PATH_CLEAN%
-
-:: Force MSVC compiler environment
-set CMAKE_C_COMPILER=cl
-set CMAKE_CXX_COMPILER=cl
-
-:: Try VS2022 first
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -G "Visual Studio 17 2022" -A x64 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2022 with C++%CXX_STANDARD%
-    goto :build_project
-)
-
-:: Try VS2019
-echo [INFO] VS2022 not found, trying VS2019...
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -G "Visual Studio 16 2019" -A x64 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2019 with C++%CXX_STANDARD%
-    goto :build_project
-)
-
-:: Try VS2017
-echo [INFO] VS2019 not found, trying VS2017...
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -G "Visual Studio 15 2017" -A x64 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2017 with C++%CXX_STANDARD%
-    goto :build_project
-)
-
-:: Fallback to default generator with explicit MSVC compiler
-echo [WARNING] No specific Visual Studio version detected, using default generator with MSVC...
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_CXX_STANDARD=%CXX_STANDARD% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
-if %errorlevel% neq 0 (
-    echo [ERROR] CMake configuration failed!
-    echo.
-    echo Possible solutions:
-    echo 1. Install Visual Studio 2017, 2019, or 2022 with C++ support
-    echo 2. Install Visual Studio Build Tools
-    echo 3. Run from Visual Studio Developer Command Prompt
-    echo 4. Check if Qt is properly installed and in PATH
-    echo 5. Verify CMake is installed and in PATH
-    pause
-    exit /b 1
-)
-
-:build_project
-
-:: Build project
-echo [INFO] Building project...
-cmake --build . --config %BUILD_TYPE%
-if %errorlevel% neq 0 (
-    echo [ERROR] Build failed!
-    pause
-    exit /b 1
-)
-
-echo.
-echo [SUCCESS] Build completed successfully!
-echo Executable location: %BUILD_DIR%\%BUILD_TYPE%\%PROJECT_NAME%.exe
-
-pause
-]]
-end
-
-function M.get_windows_run_script()
-    return builtin_templates.windows_run_script or [[
-@echo off
-setlocal enabledelayedexpansion
-
-echo ==============================
-echo Qt Project Run Script (Windows)
-echo ==============================
-
-:: Configuration
-set PROJECT_NAME={{PROJECT_NAME}}
-set BUILD_TYPE=%1
-if "%BUILD_TYPE%"=="" set BUILD_TYPE=Debug
-
-set BUILD_DIR=build
-set EXE_PATH=%BUILD_DIR%\%BUILD_TYPE%\%PROJECT_NAME%.exe
-
-echo Project: %PROJECT_NAME%
-echo Build Type: %BUILD_TYPE%
-echo Executable Path: %EXE_PATH%
-echo.
-
-:: Try to detect C++ standard from CMakeCache.txt
-set DETECTED_CXX_STD=Unknown
-if exist "../CMakeCache.txt" (
-    for /f "tokens=2 delims==" %%i in ('findstr "CMAKE_CXX_STANDARD:STRING" "../CMakeCache.txt" 2^>nul') do (
-        set DETECTED_CXX_STD=%%i
-    )
-)
-if not "%DETECTED_CXX_STD%"=="Unknown" (
-    echo C++ Standard: C++%DETECTED_CXX_STD%
-    echo.
-)
-
-:: Check if executable exists
-if not exist "%EXE_PATH%" (
-    echo [ERROR] Executable not found: %EXE_PATH%
-    echo [INFO] Please build the project first using build.bat
-    pause
-    exit /b 1
-)
-
-:: Run the application
-echo [INFO] Starting %PROJECT_NAME%...
-echo.
-"%EXE_PATH%"
-
-echo.
-echo [INFO] Application terminated.
-pause
-]]
-end
-
-function M.get_windows_clean_script()
-    return builtin_templates.windows_clean_script or [[
-@echo off
-setlocal enabledelayedexpansion
-
-echo ===============================
-echo Qt Project Clean Script (Windows)
-echo ===============================
-
-set BUILD_DIR=build
-
-echo Cleaning build directory: %BUILD_DIR%
-echo.
-
-if exist %BUILD_DIR% (
-    echo [INFO] Removing build directory...
-    rmdir /s /q %BUILD_DIR%
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to remove build directory!
-        pause
-        exit /b 1
-    )
-    echo [SUCCESS] Build directory cleaned.
-) else (
-    echo [INFO] Build directory does not exist, nothing to clean.
-)
-
-echo.
-pause
-]]
-end
-
-function M.get_windows_setup_script()
-    return builtin_templates.windows_setup_script or [[
-@echo off
-setlocal enabledelayedexpansion
-
-echo ====================================
-echo Qt Development Environment Setup (Windows)
-echo ====================================
-
-echo This script will help you set up your Qt development environment.
-echo.
-
-:: Check CMake
-echo [INFO] Checking CMake...
-cmake --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] CMake not found in PATH
-    echo Please download and install CMake from: https://cmake.org/download/
-    echo Make sure to add CMake to your system PATH
-) else (
-    for /f "tokens=3" %%i in ('cmake --version 2^>nul ^| findstr /r "cmake version"') do (
-        echo [OK] CMake found: %%i
-    )
-)
-echo.
-
-:: Check Qt
-echo [INFO] Checking Qt installation...
-qmake --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Qt/qmake not found in PATH
-    echo Please install Qt from: https://www.qt.io/download
-    echo Make sure Qt bin directory is in your system PATH
-) else (
-    for /f "tokens=4" %%i in ('qmake --version 2^>nul ^| findstr /r "Qt version"') do (
-        echo [OK] Qt found: %%i
-    )
-)
-echo.
-
-:: Check Visual Studio Build Tools
-echo [INFO] Checking Visual Studio installations...
-
-:: Check for cl.exe in PATH
-where cl >nul 2>&1
-if %errorlevel% equ 0 (
-    for /f "tokens=*" %%i in ('cl 2^>^&1 ^| findstr /r "Microsoft.*C/C++"') do (
-        echo [OK] Visual Studio compiler found: %%i
-    )
-    goto :vs_found
-)
-
-:: Check common VS installation paths
-set VS_FOUND=0
-
-:: VS2022
-if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC" (
-    echo [OK] Visual Studio 2022 Community detected
-    set VS_FOUND=1
-)
-if exist "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC" (
-    echo [OK] Visual Studio 2022 Professional detected  
-    set VS_FOUND=1
-)
-
-:: VS2019
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC" (
-    echo [OK] Visual Studio 2019 Community detected
-    set VS_FOUND=1
-)
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Tools\MSVC" (
-    echo [OK] Visual Studio 2019 Professional detected
-    set VS_FOUND=1
-)
-
-:: VS2017
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC" (
-    echo [OK] Visual Studio 2017 Community detected
-    set VS_FOUND=1
-)
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Tools\MSVC" (
-    echo [OK] Visual Studio 2017 Professional detected
-    set VS_FOUND=1
-)
-
-:: VS Build Tools
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC" (
-    echo [OK] VS2019 Build Tools detected
-    set VS_FOUND=1
-)
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Tools\MSVC" (
-    echo [OK] VS2017 Build Tools detected
-    set VS_FOUND=1
-)
-
-if %VS_FOUND% equ 0 (
-    echo [WARNING] No Visual Studio installation detected
-    echo Please install Visual Studio 2017 or later with C++ support
-    echo Or run this from Visual Studio Developer Command Prompt
-) else (
-    echo [INFO] To use VS tools, run from Developer Command Prompt
-    echo Or manually call: "C:\Program Files\Microsoft Visual Studio\YYYY\Edition\VC\Auxiliary\Build\vcvars64.bat"
-)
-
-:vs_found
-echo.
-
-:: Check Git
-echo [INFO] Checking Git...
-git --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Git not found in PATH
-    echo Please install Git from: https://git-scm.com/download/win
-) else (
-    for /f "tokens=3" %%i in ('git --version 2^>nul') do (
-        echo [OK] Git found: %%i
-    )
-)
-echo.
-
-:: Environment Summary
-echo ====================================
-echo Environment Setup Summary:
-echo ====================================
-echo.
-echo Required tools for Qt development:
-echo - CMake: Build system generator
-echo - Qt: Qt framework and tools
-echo - Visual Studio: C++ compiler and build tools
-echo - Git: Version control
-echo.
-echo If any tools are missing, please install them and add to PATH.
-echo Then run this script again to verify the setup.
-echo.
-
-pause
-]]
-end
-
-function M.get_windows_dev_script()
-    return builtin_templates.windows_dev_script or [[
-@echo off
-setlocal enabledelayedexpansion
-
-echo ==========================
-echo Qt Project Developer Menu
-echo ==========================
-
-:menu
-echo.
-echo Please select an option:
-echo.
-echo 1. Build Project (Debug)
-echo 2. Build Project (Release)  
-echo 3. Run Project (Debug)
-echo 4. Run Project (Release)
-echo 5. Clean Build Directory
-echo 6. Open Qt Designer
-echo 7. Open Project in Qt Creator
-echo 8. Setup Development Environment
-echo 9. Setup Visual Studio Environment
-echo A. Advanced Build Options
-echo 0. Exit
-echo.
-set /p choice="Enter your choice (0-9, A): "
-
-if "%choice%"=="1" goto build_debug
-if "%choice%"=="2" goto build_release
-if "%choice%"=="3" goto run_debug
-if "%choice%"=="4" goto run_release
-if "%choice%"=="5" goto clean
-if "%choice%"=="6" goto designer
-if "%choice%"=="7" goto qtcreator
-if "%choice%"=="8" goto setup
-if "%choice%"=="9" goto setup_vs
-if /I "%choice%"=="A" goto advanced_build
-if "%choice%"=="0" goto exit
-echo Invalid choice, please try again.
-goto menu
-
-:build_debug
-echo [INFO] Building project in Debug mode...
-call build.bat Debug
-goto menu
-
-:build_release
-echo [INFO] Building project in Release mode...
-call build.bat Release
-goto menu
-
-:run_debug
-echo [INFO] Running project (Debug)...
-call run.bat Debug
-goto menu
-
-:run_release
-echo [INFO] Running project (Release)...
-call run.bat Release
-goto menu
-
-:clean
-echo [INFO] Cleaning project...
-call clean.bat
-goto menu
-
-:designer
-echo [INFO] Opening Qt Designer...
-where designer >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Qt Designer not found in PATH
-    pause
-    goto menu
-)
-designer ui\*.ui >nul 2>&1 &
-goto menu
-
-:qtcreator
-echo [INFO] Opening Qt Creator...
-where qtcreator >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Qt Creator not found in PATH
-    pause
-    goto menu
-)
-qtcreator CMakeLists.txt >nul 2>&1 &
-goto menu
-
-:setup
-echo [INFO] Running environment setup...
-call setup.bat
-goto menu
-
-:setup_vs
-echo [INFO] Setting up Visual Studio environment...
-echo.
-echo Available Visual Studio versions:
-echo 1. Visual Studio 2017
-echo 2. Visual Studio 2019  
-echo 3. Visual Studio 2022
-echo 4. Auto-detect
-echo.
-set /p vs_choice="Select Visual Studio version (1-4): "
-
-if "%vs_choice%"=="1" goto setup_vs2017
-if "%vs_choice%"=="2" goto setup_vs2019
-if "%vs_choice%"=="3" goto setup_vs2022
-if "%vs_choice%"=="4" goto setup_vs_auto
-echo Invalid choice.
-pause
-goto menu
-
-:setup_vs2017
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2017 Community environment loaded
-) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2017 Professional environment loaded
-) else (
-    echo VS2017 not found
-)
-pause
-goto menu
-
-:setup_vs2019
-if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2019 Community environment loaded
-) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2019 Professional environment loaded
-) else (
-    echo VS2019 not found
-)
-pause
-goto menu
-
-:setup_vs2022
-if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2022 Community environment loaded
-) else if exist "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2022 Professional environment loaded
-) else (
-    echo VS2022 not found
-)
-pause
-goto menu
-
-:setup_vs_auto
-echo [INFO] Auto-detecting Visual Studio...
-:: Try to find and setup any available VS version
-if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2022 Community environment loaded
-) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2019 Community environment loaded
-) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-    echo VS2017 Community environment loaded
-) else (
-    echo No Visual Studio found
-)
-pause
-goto menu
-
-:advanced_build
-echo [INFO] Advanced Build Options
-echo.
-echo Current project C++ standard detection:
-if exist "CMakeCache.txt" (
-    for /f "tokens=2 delims==" %%i in ('findstr "CMAKE_CXX_STANDARD:STRING" "CMakeCache.txt" 2^>nul') do (
-        echo Current C++ Standard: C++%%i
-    )
-) else (
-    echo No build cache found - project not configured yet
-)
-echo.
-echo Available options:
-echo 1. Build with specific C++ standard
-echo 2. Show current build configuration
-echo 3. Regenerate build files with new C++ standard
-echo 4. Back to main menu
-echo.
-set /p adv_choice="Enter your choice (1-4): "
-
-if "%adv_choice%"=="1" goto build_with_std
-if "%adv_choice%"=="2" goto show_config
-if "%adv_choice%"=="3" goto regen_config
-if "%adv_choice%"=="4" goto menu
-echo Invalid choice.
-pause
-goto advanced_build
-
-:build_with_std
-echo.
-echo Select C++ standard:
-echo 1. C++11
-echo 2. C++14  
-echo 3. C++17 (recommended)
-echo 4. C++20
-echo 5. C++23
-echo.
-set /p std_choice="Enter choice (1-5): "
-
-set CXX_STD=17
-if "%std_choice%"=="1" set CXX_STD=11
-if "%std_choice%"=="2" set CXX_STD=14
-if "%std_choice%"=="3" set CXX_STD=17
-if "%std_choice%"=="4" set CXX_STD=20
-if "%std_choice%"=="5" set CXX_STD=23
-
-echo.
-echo Select build type:
-echo 1. Debug
-echo 2. Release
-set /p build_choice="Enter choice (1-2): "
-
-set BUILD_TYPE=Debug
-if "%build_choice%"=="2" set BUILD_TYPE=Release
-
-echo [INFO] Building with C++%CXX_STD% (%BUILD_TYPE%)...
-call build.bat %BUILD_TYPE% %CXX_STD%
-pause
-goto advanced_build
-
-:show_config
-echo.
-echo [INFO] Current Build Configuration:
-if exist "CMakeCache.txt" (
-    echo Found CMakeCache.txt:
-    findstr "CMAKE_CXX_STANDARD\|CMAKE_BUILD_TYPE\|Qt.*_VERSION" "CMakeCache.txt" 2>nul
-) else (
-    echo No CMakeCache.txt found - project not configured
-)
-echo.
-pause
-goto advanced_build
-
-:regen_config
-echo.
-echo [INFO] Regenerating build configuration...
-if exist build (
-    echo Cleaning existing build directory...
-    rmdir /s /q build
-)
-mkdir build
-cd build
-
-echo.
-echo Select C++ standard for regeneration:
-echo 1. C++11    4. C++20
-echo 2. C++14    5. C++23
-echo 3. C++17 (recommended)
-set /p regen_std="Enter choice (1-5): "
-
-set REGEN_CXX=17
-if "%regen_std%"=="1" set REGEN_CXX=11
-if "%regen_std%"=="2" set REGEN_CXX=14
-if "%regen_std%"=="3" set REGEN_CXX=17
-if "%regen_std%"=="4" set REGEN_CXX=20
-if "%regen_std%"=="5" set REGEN_CXX=23
-
-echo [INFO] Configuring with C++%REGEN_CXX%...
-cmake .. -DCMAKE_CXX_STANDARD=%REGEN_CXX%
-
-if %errorlevel% equ 0 (
-    echo [SUCCESS] Configuration completed with C++%REGEN_CXX%
-) else (
-    echo [ERROR] Configuration failed
-)
-
-cd ..
-pause
-goto advanced_build
-
-:exit
-echo Goodbye!
-exit /b 0
-]]
-end
-
-function M.get_windows_fix_script()
-    return builtin_templates.windows_fix_script or [[
-@echo off
-setlocal enabledelayedexpansion
-
-echo ========================================
-echo Qt Project MSVC C++17 Fix Script
-echo ========================================
-echo.
-echo This script fixes the MSVC C++17 compilation error.
-echo.
-
-:: Check if CMakeLists.txt exists
-if not exist "CMakeLists.txt" (
-    echo [ERROR] CMakeLists.txt not found!
-    pause
-    exit /b 1
-)
-
-:: Backup and clean build
-if exist build (
-    echo [INFO] Cleaning build directory...
-    rmdir /s /q build
-)
-
-echo [INFO] Creating fresh build directory...
-mkdir build
-cd build
-
-echo [INFO] Configuring with proper MSVC settings...
-
-:: Try different Visual Studio versions in order
-echo [INFO] Detecting Visual Studio version...
-
-:: Try VS2022
-cmake .. -G "Visual Studio 17 2022" -A x64 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2022
-    goto :fix_complete
-)
-
-:: Try VS2019
-cmake .. -G "Visual Studio 16 2019" -A x64 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2019
-    goto :fix_complete
-)
-
-:: Try VS2017
-cmake .. -G "Visual Studio 15 2017" -A x64 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using Visual Studio 2017
-    goto :fix_complete
-)
-
-:: Fallback to default with explicit flags
-cmake .. -DCMAKE_CXX_FLAGS="/std:c++17 /Zc:__cplusplus" 2>nul
-if %errorlevel% equ 0 (
-    echo [INFO] Using default generator with MSVC C++17 flags
-    goto :fix_complete
-)
-
-echo [ERROR] Configuration failed with all methods!
-echo.
-echo Please check:
-echo 1. Visual Studio 2017 or later is installed
-echo 2. CMake is installed and in PATH
-echo 3. You're running from correct command prompt
-pause
-exit /b 1
-
-:fix_complete
-
-echo.
-echo [SUCCESS] Project fixed! Now you can build with:
-echo cmake --build . --config Debug
-echo.
-pause
-]]
 end
 
 -- Initialize on module load

@@ -443,4 +443,211 @@ function M.disable_auto_rebuild()
     vim.notify("Auto rebuild disabled", vim.log.levels.INFO)
 end
 
+-- 生成CMakePresets.json文件
+function M.generate_cmake_presets()
+    local cmake_file = M.find_cmake_file()
+    if not cmake_file then
+        vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
+        return false
+    end
+
+    local project_root = vim.fn.fnamemodify(cmake_file, ":h")
+    local presets_file = project_root .. "/CMakePresets.json"
+
+    -- 检查是否已存在
+    if file_manager.file_exists(presets_file) then
+        vim.ui.select({'Yes', 'No'}, {
+            prompt = 'CMakePresets.json already exists. Overwrite?'
+        }, function(choice)
+            if choice == 'Yes' then
+                M.write_cmake_presets_file(presets_file)
+            end
+        end)
+    else
+        M.write_cmake_presets_file(presets_file)
+    end
+
+    return true
+end
+
+-- 写入CMakePresets.json文件
+function M.write_cmake_presets_file(presets_file)
+    local presets_content = [[
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Default Config",
+            "description": "Default build using Ninja generator",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "debug",
+            "inherits": "default",
+            "displayName": "Debug",
+            "description": "Debug build configuration",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release",
+            "inherits": "default",
+            "displayName": "Release",
+            "description": "Release build configuration",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "relwithdebinfo",
+            "inherits": "default",
+            "displayName": "RelWithDebInfo",
+            "description": "Release with debug info",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "debug"
+        },
+        {
+            "name": "release",
+            "configurePreset": "release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "debug",
+            "output": {"outputOnFailure": true}
+        },
+        {
+            "name": "release",
+            "configurePreset": "release",
+            "output": {"outputOnFailure": true}
+        }
+    ]
+}
+]]
+
+    local success, error_msg = file_manager.write_file(presets_file, presets_content)
+    if success then
+        vim.notify("CMakePresets.json created successfully", vim.log.levels.INFO)
+        vim.notify("Use: cmake --preset=debug to build", vim.log.levels.INFO)
+    else
+        vim.notify("Error creating CMakePresets.json: " .. error_msg, vim.log.levels.ERROR)
+    end
+
+    return success
+end
+
+-- 获取可用的CMake预设
+function M.get_available_presets()
+    local cmake_file = M.find_cmake_file()
+    if not cmake_file then
+        return {}
+    end
+
+    local project_root = vim.fn.fnamemodify(cmake_file, ":h")
+    local presets_file = project_root .. "/CMakePresets.json"
+
+    if not file_manager.file_exists(presets_file) then
+        return {}
+    end
+
+    local content = file_manager.read_file(presets_file)
+    if not content then
+        return {}
+    end
+
+    -- 简单解析预设名称（真实实现应该使用JSON解析）
+    local presets = {}
+    for preset_name in content:gmatch('"name":%s*"([^"]+)"') do
+        if preset_name ~= "default" then -- 跳过default预设
+            table.insert(presets, preset_name)
+        end
+    end
+
+    return presets
+end
+
+-- 使用预设构建项目
+function M.build_with_preset(preset_name)
+    if not preset_name then
+        local presets = M.get_available_presets()
+        if #presets == 0 then
+            vim.notify("No CMake presets available. Generate presets first.", vim.log.levels.WARN)
+            return false
+        end
+
+        vim.ui.select(presets, {
+            prompt = 'Select CMake preset:'
+        }, function(choice)
+            if choice then
+                M.build_with_preset(choice)
+            end
+        end)
+        return true
+    end
+
+    local cmake_file = M.find_cmake_file()
+    if not cmake_file then
+        vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
+        return false
+    end
+
+    local project_root = vim.fn.fnamemodify(cmake_file, ":h")
+    local system = require('qt-assistant.system')
+    local cmake_path = system.find_executable("cmake")
+
+    if not cmake_path then
+        vim.notify("❌ CMake not found. Please install CMake.", vim.log.levels.ERROR)
+        return false
+    end
+
+    vim.notify("🔨 Building with preset: " .. preset_name, vim.log.levels.INFO)
+
+    -- 配置步骤
+    local configure_cmd = {cmake_path, "--preset=" .. preset_name}
+
+    vim.fn.jobstart(configure_cmd, {
+        cwd = project_root,
+        on_exit = function(_, exit_code)
+            vim.schedule(function()
+                if exit_code == 0 then
+                    vim.notify("✅ Configure completed with preset: " .. preset_name, vim.log.levels.INFO)
+                    -- 构建步骤
+                    local build_cmd = {cmake_path, "--build", "--preset=" .. preset_name}
+                    vim.fn.jobstart(build_cmd, {
+                        cwd = project_root,
+                        on_exit = function(_, build_exit_code)
+                            vim.schedule(function()
+                                if build_exit_code == 0 then
+                                    vim.notify("🎉 Build completed successfully!", vim.log.levels.INFO)
+                                else
+                                    vim.notify("❌ Build failed (exit code: " .. build_exit_code .. ")", vim.log.levels.ERROR)
+                                end
+                            end)
+                        end
+                    })
+                else
+                    vim.notify("❌ Configure failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                end
+            end)
+        end
+    })
+
+    return true
+end
+
 return M

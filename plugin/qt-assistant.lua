@@ -76,10 +76,37 @@ vim.api.nvim_create_user_command('QtOpenProject', function(opts)
     else
         require('qt-assistant').open_project_interactive()
     end
-end, { 
+end, {
     nargs = '?',
     desc = 'Open Qt project',
     complete = 'dir'
+})
+
+-- ==================== Multi-Module Project Commands ====================
+
+vim.api.nvim_create_user_command('QtAddModule', function(opts)
+    if not ensure_loaded() then return end
+    local args = vim.split(opts.args, '%s+')
+    if #args >= 2 then
+        require('qt-assistant.project_manager').add_module(args[1], args[2])
+    else
+        require('qt-assistant.project_manager').add_module_interactive()
+    end
+end, {
+    nargs = '*',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+        local args = vim.split(cmd_line, '%s+')
+        if #args == 2 then
+            -- Complete module name (no completion needed)
+            return {}
+        elseif #args == 3 then
+            -- Complete module type
+            local project_manager = require('qt-assistant.project_manager')
+            return project_manager.get_available_module_types()
+        end
+        return {}
+    end,
+    desc = 'Add module to multi-module Qt project'
 })
 
 -- ==================== UI Designer Commands (PRD Core) ====================
@@ -172,6 +199,36 @@ vim.api.nvim_create_user_command('QtRun', function()
     require('qt-assistant').run_project()
 end, { desc = 'Run Qt project' })
 
+-- ==================== CMake Commands ====================
+
+vim.api.nvim_create_user_command('QtCMakePresets', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant.cmake').generate_cmake_presets()
+end, { desc = 'Generate CMakePresets.json for Qt project' })
+
+vim.api.nvim_create_user_command('QtBuildPreset', function(opts)
+    if not ensure_loaded() then return end
+    local preset = opts.args ~= '' and opts.args or nil
+    require('qt-assistant.cmake').build_with_preset(preset)
+end, {
+    desc = 'Build Qt project with CMake preset',
+    nargs = '?',
+    complete = function()
+        local cmake = require('qt-assistant.cmake')
+        return cmake.get_available_presets()
+    end
+})
+
+vim.api.nvim_create_user_command('QtCMakeFormat', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant.cmake').format_cmake_file()
+end, { desc = 'Format CMakeLists.txt file' })
+
+vim.api.nvim_create_user_command('QtCMakeBackup', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant.cmake').backup_cmake_file()
+end, { desc = 'Backup CMakeLists.txt file' })
+
 -- ==================== Debug Commands ====================
 
 vim.api.nvim_create_user_command('QtDebug', function()
@@ -218,20 +275,6 @@ vim.api.nvim_create_user_command('QtHelp', function()
     require('qt-assistant').show_help()
 end, { desc = 'Show Qt Assistant help' })
 
--- ==================== Windows Scripts ====================
-
-vim.api.nvim_create_user_command('QtCreateScripts', function(opts)
-    if not ensure_loaded() then return end
-    local project_name = opts.args
-    if project_name == '' then
-        project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
-    end
-    local project_manager = require('qt-assistant.project_manager')
-    project_manager.create_windows_scripts(vim.fn.getcwd(), project_name)
-end, { 
-    nargs = '?',
-    desc = 'Create Windows development scripts for current project'
-})
 
 -- Lazy initialization - only setup when first command is used
 local initialized = false
