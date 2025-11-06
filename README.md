@@ -34,7 +34,7 @@ This plugin implements all core requirements from the Product Requirements Docum
 
 ```lua
 {
-    "your-username/neovim-qt-assistant",
+    "2774326573/qt-assistant",
     config = function()
         require('qt-assistant').setup({
             -- Optional configuration
@@ -49,7 +49,7 @@ This plugin implements all core requirements from the Product Requirements Docum
 
 ```lua
 use {
-    'your-username/neovim-qt-assistant',
+    '2774326573/qt-assistant',
     config = function()
         require('qt-assistant').setup()
     end
