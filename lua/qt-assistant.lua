@@ -226,13 +226,81 @@ function M.new_project_interactive()
 end
 
 function M.open_project_interactive()
-	vim.ui.input({ 
-		prompt = 'Project path: ',
-		default = vim.fn.getcwd(),
-		completion = 'dir'
-	}, function(path)
-		if path and path ~= "" then
-			M.open_project(path)
+	local function prompt_for_path(default_path)
+		vim.ui.input({
+			prompt = 'Project path: ',
+			default = default_path or vim.fn.getcwd(),
+			completion = 'dir'
+		}, function(path)
+			if path and path ~= "" then
+				M.open_project(path)
+			end
+		end)
+	end
+
+	local history = require("qt-assistant.history")
+	local project_manager = require("qt-assistant.project_manager")
+
+	local recent = history.get_recent_projects()
+	local discovered = project_manager.discover_projects({ limit = 20 })
+
+	local items = {}
+	local seen = {}
+
+	local function normalize_path(path)
+		if not path or path == "" then
+			return nil
+		end
+		local absolute = vim.fn.fnamemodify(path, ":p")
+		absolute = absolute:gsub("[/\\]+$", "")
+		return absolute
+	end
+
+	local function add_item(path, source_label)
+		local normalized = normalize_path(path)
+		if not normalized then
+			return
+		end
+		local key = normalized:lower()
+		if seen[key] then
+			return
+		end
+		local label = normalized
+		if source_label then
+			label = string.format("%s (%s)", normalized, source_label)
+		end
+		table.insert(items, { label = label, path = normalized })
+		seen[key] = true
+	end
+
+	for _, path in ipairs(recent) do
+		add_item(path)
+	end
+
+	for _, path in ipairs(discovered) do
+		add_item(path, "auto")
+	end
+
+	if #items == 0 then
+		prompt_for_path()
+		return
+	end
+
+	table.insert(items, { label = "[Browse for another project...]", path = nil })
+
+	vim.ui.select(items, {
+		prompt = 'Open Qt project:',
+		format_item = function(item)
+			return item.label
+		end,
+	}, function(choice)
+		if not choice then
+			return
+		end
+		if choice.path then
+			M.open_project(choice.path)
+		else
+			prompt_for_path()
 		end
 	end)
 end
@@ -244,7 +312,7 @@ end
 
 function M.open_project(path)
 	local project_manager = require("qt-assistant.project_manager")
-	project_manager.open_project(path)
+	return project_manager.open_project(path)
 end
 
 -- UI Designer Integration
