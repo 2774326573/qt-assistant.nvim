@@ -3,6 +3,8 @@
 
 local M = {}
 local file_manager = require('qt-assistant.file_manager')
+local history = require('qt-assistant.history')
+local system = require('qt-assistant.system')
 
 -- Project templates
 local project_templates = {
@@ -85,6 +87,102 @@ function M.detect_project_type(project_path)
     return nil
 end
 
+-- Discover Qt project directories by scanning for key project files
+---@param opts? { paths?: string[], limit?: number }
+---@return string[]
+function M.discover_projects(opts)
+    opts = opts or {}
+    local limit = opts.limit or 20
+    local results = {}
+    local seen = {}
+    local path_seen = {}
+
+    local function normalize_path(path)
+        if not path or path == "" then
+            return nil
+        end
+        local absolute = vim.fn.fnamemodify(path, ":p")
+        absolute = vim.fs.normalize(absolute)
+        absolute = absolute:gsub("[/\\]+$", "")
+        return absolute
+    end
+
+    local search_paths = {}
+    if opts.paths and #opts.paths > 0 then
+        for _, p in ipairs(opts.paths) do
+            local normalized = normalize_path(p)
+            if normalized then
+                local key = normalized:lower()
+                if not path_seen[key] then
+                    table.insert(search_paths, normalized)
+                    path_seen[key] = true
+                end
+            end
+        end
+    else
+        local config = require('qt-assistant.config').get()
+        if config and config.project_root then
+            local normalized = normalize_path(config.project_root)
+            if normalized then
+                local key = normalized:lower()
+                if not path_seen[key] then
+                    table.insert(search_paths, normalized)
+                    path_seen[key] = true
+                end
+            end
+        end
+        local cwd = normalize_path(vim.fn.getcwd())
+        if cwd then
+            local key = cwd:lower()
+            if not path_seen[key] then
+                table.insert(search_paths, cwd)
+                path_seen[key] = true
+            end
+        end
+    end
+
+    local function add_result(dir)
+        local normalized = normalize_path(dir)
+        if not normalized then
+            return
+        end
+        if vim.fn.isdirectory(normalized) ~= 1 then
+            return
+        end
+        local key = normalized:lower()
+        if not seen[key] then
+            table.insert(results, normalized)
+            seen[key] = true
+        end
+    end
+
+    for _, root in ipairs(search_paths) do
+        if vim.fn.isdirectory(root) == 1 then
+            local remaining = limit - #results
+            if remaining <= 0 then
+                break
+            end
+            local matches = vim.fs.find(function(name)
+                return name == "CMakeLists.txt" or name:match("%.pro$")
+            end, {
+                path = root,
+                limit = remaining * 4,
+                type = "file",
+            }) or {}
+
+            for _, file_path in ipairs(matches) do
+                local dir = vim.fs.dirname(file_path)
+                add_result(dir)
+                if #results >= limit then
+                    break
+                end
+            end
+        end
+    end
+
+    return results
+end
+
 -- Open project
 function M.open_project(project_path)
     project_path = project_path or vim.fn.getcwd()
@@ -106,11 +204,13 @@ function M.open_project(project_path)
     end
     
     vim.notify(string.format("Opened Qt project (%s): %s", project_type, project_path), vim.log.levels.INFO)
-    
+
     -- Update configuration
     local config = require('qt-assistant.config')
     config.set_value('project_root', project_path)
-    
+
+    history.record_project(project_path)
+
     return true
 end
 

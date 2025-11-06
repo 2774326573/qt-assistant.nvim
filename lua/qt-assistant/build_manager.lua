@@ -21,9 +21,9 @@ function M.detect_build_system()
     return nil
 end
 
--- Build project (async)
-function M.build_project(build_type)
+function M.build_project(build_type, opts)
     build_type = build_type or "Debug"
+    opts = opts or {}
     
     vim.schedule(function()
         local build_system = M.detect_build_system()

@@ -278,20 +278,25 @@ end, { desc = 'Show Qt Assistant help' })
 
 -- Lazy initialization - only setup when first command is used
 local initialized = false
+local original_ensure_loaded = ensure_loaded
+
 local function lazy_init()
-    if not initialized then
-        if not ensure_loaded() then return end
-        local ok, qt_assistant = pcall(require, 'qt-assistant')
-        if ok and qt_assistant.setup then
-            qt_assistant.setup({})
-            initialized = true
-        end
+    if initialized then
+        return true
     end
+    local ok, qt_assistant = pcall(require, 'qt-assistant')
+    if ok and qt_assistant.setup then
+        qt_assistant.setup({})
+    end
+    initialized = true
+    return true
 end
 
 -- Override ensure_loaded to include lazy init
-local original_ensure_loaded = ensure_loaded
 ensure_loaded = function()
-    original_ensure_loaded()
+    if not original_ensure_loaded() then
+        return false
+    end
     lazy_init()
+    return true
 end

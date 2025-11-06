@@ -62,7 +62,7 @@ Build System:
 <leader>qb7  - Build with C++17
 <leader>qb20 - Build with C++20
 <leader>qr   - Run Project
-<leader>qq   - Quick Build & Run
+<leader>qA   - Quick Build & Run
 
 Configuration & Standards:
 <leader>qsc - Show Current Config (C++ standard, Qt version, etc.)

@@ -84,7 +84,7 @@ function M.setup_keymaps()
 	-- Build system (fast build & run)
 	map("n", "<leader>qb", function() M.build_project() end, { desc = "Build Project" })
 	map("n", "<leader>qr", function() M.run_project() end, { desc = "Run Project" })
-	map("n", "<leader>qq", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
+	map("n", "<leader>qA", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
 	
 	-- C++ Standard specific builds (Windows)
 	map("n", "<leader>qb1", function() M.build_with_std("11") end, { desc = "Build with C++11" })
@@ -635,7 +635,7 @@ function M.show_help()
 		"  <leader>qf  - Create class from current UI",
 		"  <leader>qb  - Build project",
 		"  <leader>qr  - Run project",
-		"  <leader>qq  - Quick build & run",
+		"  <leader>qA  - Quick build & run",
 		"  <leader>qdb - Debug application (nvim-dap)",
 		"  <leader>qda - Attach to Qt process",
 		"  <leader>qls - Setup Qt LSP (clangd)",
