@@ -34,7 +34,7 @@
 
 ```lua
 {
-    "your-username/neovim-qt-assistant",
+    "2774326573/neovim-qt-assistant",
     config = function()
         require('qt-assistant').setup({
             -- 可选配置
@@ -49,7 +49,7 @@
 
 ```lua
 use {
-    'your-username/neovim-qt-assistant',
+    '2774326573/neovim-qt-assistant',
     config = function()
         require('qt-assistant').setup()
     end
