@@ -21,6 +21,23 @@ function M.join_path(...)
     return table.concat(parts, separator)
 end
 
+-- Normalize path separators to the current OS
+function M.normalize_path(path)
+    if not path or path == '' then
+        return path
+    end
+    local sep = M.get_os() == 'windows' and '\\' or '/'
+    -- Replace both / and \ with the OS separator, collapse duplicates
+    local normalized = path:gsub('[\\/]+', sep)
+    -- On Windows, keep drive letter upper-case for consistency
+    if M.get_os() == 'windows' then
+        normalized = normalized:gsub('^([a-z]):', function(drive)
+            return drive:upper() .. ':'
+        end)
+    end
+    return normalized
+end
+
 -- Find executable in PATH
 function M.find_executable(name)
     if M.get_os() == 'windows' and not name:match('%.exe$') then

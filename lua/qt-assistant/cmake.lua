@@ -3,6 +3,7 @@
 
 local M = {}
 local file_manager = require('qt-assistant.file_manager')
+local system = require('qt-assistant.system')
 
 -- 获取插件配置
 local function get_config()
@@ -11,33 +12,32 @@ end
 
 -- 查找CMakeLists.txt文件 (根据不同的目录更新对应目录的cmakelists.txt文档)
 function M.find_cmake_file(start_dir)
-    start_dir = start_dir or vim.fn.getcwd()
-    local project_root = file_manager.get_project_root()
-    
+    start_dir = system.normalize_path(start_dir or vim.fn.getcwd())
+    local project_root = system.normalize_path(file_manager.get_project_root())
+
     -- 从当前目录开始向上查找CMakeLists.txt
     local current_dir = start_dir
-    
-    while current_dir and current_dir ~= "/" do
-        local cmake_file = current_dir .. "/CMakeLists.txt"
-        
+
+    while current_dir and current_dir ~= '' do
+        local cmake_file = system.join_path(current_dir, "CMakeLists.txt")
+
         if file_manager.file_exists(cmake_file) then
             return cmake_file
         end
-        
+
         -- 检查是否已到达项目根目录
-        if current_dir == project_root then
+        if project_root and system.normalize_path(current_dir) == project_root then
             break
         end
-        
+
         -- 向上移动一级目录
-        current_dir = vim.fn.fnamemodify(current_dir, ":h")
-        
-        -- 防止无限循环
-        if current_dir == vim.fn.fnamemodify(current_dir, ":h") then
-            break
+        local parent = vim.fn.fnamemodify(current_dir, ":h")
+        if parent == current_dir then
+            break -- reached filesystem root
         end
+        current_dir = parent
     end
-    
+
     return nil
 end
 

@@ -5,12 +5,19 @@ local M = {}
 
 -- Get the project root directory
 function M.get_project_root()
-    local current_dir = vim.fn.getcwd()
+    local system = require('qt-assistant.system')
+    local current_dir = system.normalize_path(vim.fn.getcwd())
     while current_dir ~= "" do
-        if vim.fn.isdirectory(current_dir .. "/.git") == 1 or vim.fn.filereadable(current_dir .. "/CMakeLists.txt") == 1 then
+        local git_dir = system.join_path(current_dir, ".git")
+        local cmake_file = system.join_path(current_dir, "CMakeLists.txt")
+        if vim.fn.isdirectory(git_dir) == 1 or vim.fn.filereadable(cmake_file) == 1 then
             return current_dir
         end
-        current_dir = vim.fn.fnamemodify(current_dir, ":h")
+        local parent = vim.fn.fnamemodify(current_dir, ":h")
+        if parent == current_dir then
+            break
+        end
+        current_dir = parent
     end
     return nil -- Project root not found
 end
@@ -119,7 +126,8 @@ function M.create_files(files, target_dirs)
     for file_type, file_info in pairs(files) do
         local target_dir = target_dirs[file_type]
         if target_dir then
-            local file_path = target_dir .. "/" .. file_info.name
+            local system = require('qt-assistant.system')
+            local file_path = system.join_path(target_dir, file_info.name)
             
             -- 检查文件是否已存在
             if M.file_exists(file_path) then
@@ -166,7 +174,9 @@ function M.write_file(file_path, content)
             error("Failed to open file for writing: " .. file_path)
         end
         
-        file:write(content)
+        -- Normalize line endings to LF for cross-platform builds
+        local normalized = content:gsub("\r\n", "\n")
+        file:write(normalized)
         file:close()
     end)
     
