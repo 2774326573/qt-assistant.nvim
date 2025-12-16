@@ -10,6 +10,7 @@ A streamlined Neovim plugin for Qt development that provides essential Qt projec
 - **UI Designer Integration**: Create, edit UI files and launch Qt Designer seamlessly
 - **Class Generation**: Generate C++ classes from UI files with proper uic integration
 - **Build System**: Support for both CMake and qmake build systems
+- **Make Tool Selection**: qmake builds auto-pick `mingw32-make` / `nmake` / `make` based on platform (nmake runs without `-j`)
 - **Debugging**: Full nvim-dap integration for Qt application debugging
 - **Cross-Platform**: Works on Linux, macOS, and Windows
 
@@ -343,6 +344,7 @@ require('qt-assistant').setup({
 - **Linux**: Full support with system Qt packages
 - **macOS**: Full support with Homebrew Qt or official Qt installer
 - **Windows**: Full support with official Qt installer (MinGW or MSVC)
+   - qmake: requires `mingw32-make` (MinGW) or `nmake` (MSVC). clangd compile_commands uses platform-aware flags; `bear` is skipped when only `nmake` is available.
 
 The plugin automatically detects Qt tool locations across all platforms.
 

@@ -336,7 +336,8 @@ function M.show_options_config(class_name, class_type)
     local options = {
         generate_ui = class_info.files and vim.tbl_contains(class_info.files, "ui"),
         add_to_cmake = get_config().auto_update_cmake,
-        generate_comments = get_config().generate_comments
+        generate_comments = get_config().generate_comments,
+        target_subdir = nil
     }
     
     local option_keys = {}
@@ -359,7 +360,9 @@ function M.show_options_config(class_name, class_type)
     option_index = option_index + 1
     
     table.insert(options_items, "")
-    table.insert(options_items, "Press number to toggle, 'c' to create, 'q' to quit")
+    table.insert(options_items, "Target subdir: (relative to include/src/ui) [default]")
+    table.insert(options_items, "")
+    table.insert(options_items, "Press number to toggle, 'd' to change subdir, 'c' to create, 'q' to quit")
     
     -- 创建浮动窗口
     local buf = vim.api.nvim_create_buf(false, true)
@@ -378,33 +381,34 @@ function M.show_options_config(class_name, class_type)
     end
     
     local function update_display()
-        -- 重新生成选项显示
-        local new_items = {}
-        for i = 1, 8 do
-            table.insert(new_items, options_items[i])
-        end
-        
+        local new_items = {
+            "Class Configuration",
+            "=" .. string.rep("=", 30),
+            "",
+            "Class Name: " .. class_name,
+            "Class Type: " .. class_info.name,
+            "Base Class: " .. class_info.base_class,
+            "",
+            "Options:"
+        }
+
         local new_option_index = 1
         if options.generate_ui then
-            new_items[9] = string.format("  %d. [x] Generate UI file", new_option_index)
+            table.insert(new_items, string.format("  %d. [x] Generate UI file", new_option_index))
             new_option_index = new_option_index + 1
         end
-        
-        if new_option_index <= option_index then
-            new_items[8 + new_option_index] = string.format("  %d. [%s] Add to CMakeLists.txt", 
-                                                           new_option_index, options.add_to_cmake and "x" or " ")
-            new_option_index = new_option_index + 1
-        end
-        
-        if new_option_index <= option_index then
-            new_items[8 + new_option_index] = string.format("  %d. [%s] Generate comments", 
-                                                           new_option_index, options.generate_comments and "x" or " ")
-        end
-        
-        for i = #new_items + 1, #options_items do
-            table.insert(new_items, options_items[i])
-        end
-        
+
+        table.insert(new_items, string.format("  %d. [%s] Add to CMakeLists.txt", new_option_index, options.add_to_cmake and "x" or " "))
+        new_option_index = new_option_index + 1
+
+        table.insert(new_items, string.format("  %d. [%s] Generate comments", new_option_index, options.generate_comments and "x" or " "))
+
+        table.insert(new_items, "")
+        local subdir_line = options.target_subdir and options.target_subdir ~= '' and options.target_subdir or "[default]"
+        table.insert(new_items, "Target subdir: (relative to include/src/ui) " .. subdir_line)
+        table.insert(new_items, "")
+        table.insert(new_items, "Press number to toggle, 'd' to change subdir, 'c' to create, 'q' to quit")
+
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, new_items)
     end
     
@@ -442,6 +446,25 @@ function M.show_options_config(class_name, class_type)
             silent = true
         })
     end
+
+    -- 自定义子目录
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'd', '', {
+        callback = function()
+            vim.ui.input({
+                prompt = "Target subdir (relative to include/src/ui, empty for default): ",
+                default = options.target_subdir or ""
+            }, function(input)
+                if input ~= nil then
+                    options.target_subdir = input
+                    update_display()
+                end
+            end)
+        end,
+        noremap = true,
+        silent = true
+    })
+
+            update_display()
 end
 
 -- 使用选项创建类
@@ -465,7 +488,7 @@ function M.create_class_with_options(class_name, class_type, options)
             prompt = 'Open created files?'
         }, function(choice)
             if choice == 'Yes' then
-                M.open_created_files(class_name, class_type)
+                M.open_created_files(class_name, class_type, options)
             end
         end)
     else
@@ -474,30 +497,31 @@ function M.create_class_with_options(class_name, class_type, options)
 end
 
 -- 打开创建的文件
-function M.open_created_files(class_name, class_type)
+function M.open_created_files(class_name, class_type, options)
     local file_manager = require('qt-assistant.file_manager')
-    local target_dirs = file_manager.determine_target_directories(class_type)
+    local system = require('qt-assistant.system')
+    local target_dirs = file_manager.determine_target_directories(class_type, options)
     local filename = file_manager.class_name_to_filename(class_name)
     
     local files_to_open = {}
     
     -- 收集要打开的文件
     if target_dirs.header then
-        local header_file = target_dirs.header .. "/" .. filename .. ".h"
+        local header_file = system.join_path(target_dirs.header, filename .. ".h")
         if file_manager.file_exists(header_file) then
             table.insert(files_to_open, header_file)
         end
     end
     
     if target_dirs.source then
-        local source_file = target_dirs.source .. "/" .. filename .. ".cpp"
+        local source_file = system.join_path(target_dirs.source, filename .. ".cpp")
         if file_manager.file_exists(source_file) then
             table.insert(files_to_open, source_file)
         end
     end
     
     if target_dirs.ui then
-        local ui_file = target_dirs.ui .. "/" .. filename .. ".ui"
+        local ui_file = system.join_path(target_dirs.ui, filename .. ".ui")
         if file_manager.file_exists(ui_file) then
             table.insert(files_to_open, ui_file)
         end
@@ -704,7 +728,15 @@ function M.show_project_manager()
             close_window()
             vim.ui.input({prompt = 'Project name: '}, function(name)
                 if name then
-                    vim.ui.select({'widget_app', 'quick_app', 'console_app', 'library'}, {
+                    local templates = {
+                        'widget_app',
+                        'quick_app',
+                        'console_app',
+                        'static_lib',
+                        'shared_lib',
+                        'plugin'
+                    }
+                    vim.ui.select(templates, {
                         prompt = 'Select template:'
                     }, function(template)
                         if template then

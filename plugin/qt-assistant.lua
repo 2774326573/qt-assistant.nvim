@@ -175,7 +175,7 @@ end, {
     complete = function(arglead, cmdline, cursorpos)
         local args = vim.split(cmdline, '%s+')
         if #args <= 2 then
-            return {'main_window', 'dialog', 'widget', 'model'}
+            return {'main_window', 'dialog', 'widget', 'model', 'delegate', 'thread', 'utility', 'singleton'}
         elseif #args == 3 then
             pcall(ensure_loaded)
             local ok, qt_assistant = pcall(require, 'qt-assistant')

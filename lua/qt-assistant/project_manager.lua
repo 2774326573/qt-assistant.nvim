@@ -11,44 +11,44 @@ local project_templates = {
     widget_app = {
         name = "Qt Widgets Application",
         description = "Standard Qt Widgets desktop application",
-        files = {"main.cpp", "mainwindow.h", "mainwindow.cpp", "mainwindow.ui", "CMakeLists.txt"},
+        files = {"main.cpp", "mainwindow.h", "mainwindow.cpp", "mainwindow.ui", "CMakeLists.txt", "ProjectGuide.md"},
         type = "executable"
     },
     quick_app = {
         name = "Qt Quick Application",
         description = "Qt Quick/QML application",
-        files = {"main.cpp", "main.qml", "qml.qrc", "CMakeLists.txt"},
+        files = {"main.cpp", "main.qml", "qml.qrc", "CMakeLists.txt", "ProjectGuide.md"},
         type = "executable"
     },
     console_app = {
         name = "Qt Console Application",
         description = "Command-line Qt application",
-        files = {"main.cpp", "CMakeLists.txt"},
+        files = {"main.cpp", "CMakeLists.txt", "ProjectGuide.md"},
         type = "executable"
     },
     -- Multi-module project templates
     multi_project = {
         name = "Multi-Module Qt Project",
         description = "Qt project with multiple modules (app + libraries)",
-        files = {"CMakeLists.txt", "README.md"},
+        files = {"CMakeLists.txt", "README.md", "ProjectGuide.md"},
         type = "workspace"
     },
     shared_lib = {
         name = "Qt Shared Library",
         description = "Qt shared library module",
-        files = {"CMakeLists.txt"},
+        files = {"CMakeLists.txt", "ProjectGuide.md"},
         type = "library"
     },
     static_lib = {
         name = "Qt Static Library",
         description = "Qt static library module",
-        files = {"CMakeLists.txt"},
+        files = {"CMakeLists.txt", "ProjectGuide.md"},
         type = "library"
     },
     plugin = {
         name = "Qt Plugin Module",
         description = "Qt plugin module",
-        files = {"CMakeLists.txt"},
+        files = {"CMakeLists.txt", "ProjectGuide.md"},
         type = "plugin"
     }
 }
@@ -266,20 +266,27 @@ end
 
 -- Create project directory structure
 function M.create_project_structure(project_path, template_type)
-    local directories = {"src", "include"}
-    
+    local project_dirname = vim.fn.fnamemodify(project_path, ":t")
+    local directories = {"src", "include", "doc"}
+
     if template_type == "widget_app" then
         table.insert(directories, "ui")
         table.insert(directories, "resources")
     elseif template_type == "quick_app" then
         table.insert(directories, "qml")
         table.insert(directories, "resources")
+    elseif template_type == "shared_lib" or template_type == "static_lib" or template_type == "plugin" then
+        directories = {"src", "include/" .. project_dirname}
     end
-    
+
     for _, dir in ipairs(directories) do
         local dir_path = project_path .. "/" .. dir
         file_manager.ensure_directory_exists(dir_path)
     end
+
+    -- Default export directory: export/<project_name>
+    local export_dir = project_path .. "/export/" .. project_dirname
+    file_manager.ensure_directory_exists(export_dir)
 end
 
 -- Create project files
@@ -314,6 +321,20 @@ function M.create_project_files(project_path, template_type, project_name, cxx_s
             file_manager.write_file(file_path, file_content)
         end
     end
+
+    if template_type == "shared_lib" or template_type == "static_lib" or template_type == "plugin" then
+        local include_dir = project_path .. "/include/" .. project_name
+        local source_dir = project_path .. "/src"
+
+        file_manager.ensure_directory_exists(include_dir)
+        file_manager.ensure_directory_exists(source_dir)
+
+        local header_content = M.generate_library_header(project_name, template_type, template_vars)
+        file_manager.write_file(include_dir .. "/" .. project_name .. ".h", header_content)
+
+        local source_content = M.generate_library_source(project_name, template_type, template_vars)
+        file_manager.write_file(source_dir .. "/" .. project_name .. ".cpp", source_content)
+    end
 end
 
 -- Get target directory for file type
@@ -322,6 +343,8 @@ function M.get_target_directory(file_name, template_type)
         return "include"
     elseif file_name:match("%.cpp$") then
         return "src"  -- All cpp files go to src, including main.cpp
+    elseif file_name:match("%.md$") then
+        return "doc"
     elseif file_name:match("%.ui$") then
         return "ui"
     elseif file_name:match("%.qml$") then
@@ -346,7 +369,8 @@ function M.generate_template_file(file_name, template_type, vars)
         ["main.qml"] = "main_qml",
         ["qml.qrc"] = "qml_qrc",
         ["CMakeLists.txt"] = "cmake_" .. template_type,
-        ["README.md"] = template_type == "multi_project" and "multi_project_readme" or nil
+        ["README.md"] = template_type == "multi_project" and "multi_project_readme" or nil,
+        ["ProjectGuide.md"] = "doc_project_guide"
     }
     
     local template_name = template_map[file_name]
@@ -402,15 +426,18 @@ function M.new_project_interactive()
     end
     
     -- Template selection
-    local template_options = {"widget_app", "console_app", "quick_app"}
+    local template_options = {"widget_app", "console_app", "quick_app", "static_lib", "shared_lib", "plugin"}
     local template_choice = vim.fn.inputlist({
         "Select project template:",
         "1. Widget Application (QMainWindow)",
         "2. Console Application", 
-        "3. Quick Application (QML)"
+        "3. Quick Application (QML)",
+        "4. Static Library",
+        "5. Shared Library",
+        "6. Plugin Module"
     })
     
-    if template_choice < 1 or template_choice > 3 then
+    if template_choice < 1 or template_choice > #template_options then
         vim.notify("Invalid template selection", vim.log.levels.ERROR)
         return
     end
@@ -529,73 +556,43 @@ function M.create_module_files(module_path, module_type, module_name)
 
     -- Create source and header files for libraries and plugins
     if module_type == "shared_lib" or module_type == "static_lib" or module_type == "plugin" then
-        -- Create header file
-        local header_content = M.generate_library_header(module_name, template_vars)
+        local header_content = M.generate_library_header(module_name, module_type, template_vars)
         local header_path = module_path .. "/include/" .. module_name .. "/" .. module_name .. ".h"
         file_manager.write_file(header_path, header_content)
 
-        -- Create source file
-        local source_content = M.generate_library_source(module_name, template_vars)
+        local source_content = M.generate_library_source(module_name, module_type, template_vars)
         local source_path = module_path .. "/src/" .. module_name .. ".cpp"
         file_manager.write_file(source_path, source_content)
     end
 end
 
 -- Generate library header template
-function M.generate_library_header(module_name, template_vars)
-    local header_guard = string.upper(module_name) .. "_H"
-    local class_name = M.project_name_to_class_name(module_name)
+function M.generate_library_header(module_name, module_type, template_vars)
+    local templates = require('qt-assistant.templates')
+    local vars = vim.tbl_extend("force", template_vars or {}, {
+        HEADER_GUARD = (template_vars and template_vars.HEADER_GUARD) or (string.upper(module_name) .. "_H"),
+        PLUGIN_IID = "org.example." .. module_name
+    })
 
-    return string.format([[
-#ifndef %s
-#define %s
+    if module_type == "plugin" then
+        return templates.render_template("plugin_header", vars)
+    end
 
-#include <QObject>
-
-class %s : public QObject
-{
-    Q_OBJECT
-
-public:
-    explicit %s(QObject *parent = nullptr);
-    virtual ~%s();
-
-public slots:
-    void doSomething();
-
-signals:
-    void somethingDone();
-
-private:
-    // Private members
-};
-
-#endif // %s
-]], header_guard, header_guard, class_name, class_name, class_name, header_guard)
+    return templates.render_template("library_header", vars)
 end
 
 -- Generate library source template
-function M.generate_library_source(module_name, template_vars)
-    local class_name = M.project_name_to_class_name(module_name)
+function M.generate_library_source(module_name, module_type, template_vars)
+    local templates = require('qt-assistant.templates')
+    local vars = vim.tbl_extend("force", template_vars or {}, {
+        PLUGIN_IID = "org.example." .. module_name
+    })
 
-    return string.format([[
-#include "%s/%s.h"
+    if module_type == "plugin" then
+        return templates.render_template("plugin_source", vars)
+    end
 
-%s::%s(QObject *parent)
-    : QObject(parent)
-{
-}
-
-%s::~%s()
-{
-}
-
-void %s::doSomething()
-{
-    // TODO: Implement functionality
-    emit somethingDone();
-}
-]], module_name, module_name, class_name, class_name, class_name, class_name, class_name)
+    return templates.render_template("library_source", vars)
 end
 
 -- Add module to root CMakeLists.txt

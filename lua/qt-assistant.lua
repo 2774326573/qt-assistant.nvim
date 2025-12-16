@@ -193,11 +193,27 @@ end
 function M.new_project_interactive()
 	vim.ui.input({ prompt = 'Project name: ' }, function(name)
 		if name and name ~= "" then
-			vim.ui.select({'Qt Widgets App', 'Qt Quick App', 'Console App'}, {
+			local labels = {
+				'Qt Widgets App',
+				'Qt Quick App',
+				'Console App',
+				'Static Library',
+				'Shared Library',
+				'Plugin Module'
+			}
+			local types = {
+				'widget_app',
+				'quick_app',
+				'console_app',
+				'static_lib',
+				'shared_lib',
+				'plugin'
+			}
+
+			vim.ui.select(labels, {
 				prompt = 'Select project type:'
 			}, function(choice, idx)
 				if choice then
-					local types = {'widget_app', 'quick_app', 'console_app'}
 					M.new_project(name, types[idx])
 				end
 			end)
@@ -328,11 +344,31 @@ end
 function M.create_class_interactive()
 	vim.ui.input({ prompt = 'Class name: ' }, function(class_name)
 		if class_name and class_name ~= "" then
-			vim.ui.select({'Main Window', 'Dialog', 'Widget', 'Model'}, {
+			local labels = {
+				'Main Window',
+				'Dialog',
+				'Widget',
+				'Data Model',
+				'Item Delegate',
+				'Thread',
+				'Utility',
+				'Singleton'
+			}
+			local types = {
+				'main_window',
+				'dialog',
+				'widget',
+				'model',
+				'delegate',
+				'thread',
+				'utility',
+				'singleton'
+			}
+
+			vim.ui.select(labels, {
 				prompt = 'Select class type:'
 			}, function(choice, idx)
 				if choice then
-					local types = {'main_window', 'dialog', 'widget', 'model'}
 					M.create_class(class_name, types[idx])
 				end
 			end)
@@ -659,8 +695,8 @@ function M.show_help()
 		"  <leader>gc  - Generate class from current UI",
 		"  <leader>gu  - Find & open corresponding UI",
 		"",
-		"Project Types: widget_app, quick_app, console_app",
-		"Class Types: main_window, dialog, widget, model"
+		"Project Types: widget_app, quick_app, console_app, static_lib, shared_lib, plugin",
+		"Class Types: main_window, dialog, widget, model, delegate, thread, utility, singleton"
 	}
 	
 	local buf = vim.api.nvim_create_buf(false, true)

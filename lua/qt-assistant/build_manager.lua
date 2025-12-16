@@ -173,9 +173,25 @@ end
 
 -- Start make build
 function M.start_make_build(build_dir)
-    vim.notify("🔨 Building with make...", vim.log.levels.INFO)
-    
-    local make_cmd = {"make", "-j4"}  -- Parallel build
+    local system = require('qt-assistant.system')
+    local make_tool = system.find_executable('mingw32-make')
+        or system.find_executable('nmake')
+        or system.find_executable('make')
+
+    if not make_tool then
+        vim.notify("❌ No make tool found (mingw32-make/nmake/make)", vim.log.levels.ERROR)
+        return
+    end
+
+    local make_cmd
+    if make_tool:lower():find('nmake') then
+        -- nmake does not support -j, keep invocation simple
+        make_cmd = {make_tool}
+    else
+        make_cmd = {make_tool, "-j4"}
+    end
+
+    vim.notify("🔨 Building with " .. vim.fn.fnamemodify(make_tool, ':t') .. "...", vim.log.levels.INFO)
     
     vim.fn.jobstart(make_cmd, {
         cwd = build_dir,

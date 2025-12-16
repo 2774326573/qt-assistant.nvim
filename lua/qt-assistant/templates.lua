@@ -28,6 +28,30 @@ local template_configs = {
         has_source = true,
         has_ui = false,
         base_class = "QAbstractItemModel"
+    },
+    delegate = {
+        has_header = true,
+        has_source = true,
+        has_ui = false,
+        base_class = "QStyledItemDelegate"
+    },
+    thread = {
+        has_header = true,
+        has_source = true,
+        has_ui = false,
+        base_class = "QThread"
+    },
+    utility = {
+        has_header = true,
+        has_source = true,
+        has_ui = false,
+        base_class = "QObject"
+    },
+    singleton = {
+        has_header = true,
+        has_source = true,
+        has_ui = false,
+        base_class = "QObject"
     }
 }
 
@@ -310,6 +334,167 @@ QVariant {{CLASS_NAME}}::data(const QModelIndex &index, int role) const
 }
 ]]
 
+    -- Delegate template
+    builtin_templates.delegate_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QStyledItemDelegate>
+
+class {{CLASS_NAME}} : public QStyledItemDelegate
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    void setEditorData(QWidget *editor, const QModelIndex &index) const override;
+    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
+    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    builtin_templates.delegate_source = [[
+#include "{{FILE_NAME}}.h"
+#include <QLineEdit>
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QStyledItemDelegate(parent)
+{
+}
+
+QWidget *{{CLASS_NAME}}::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(option)
+    Q_UNUSED(index)
+    // TODO: customize editor
+    return new QLineEdit(parent);
+}
+
+void {{CLASS_NAME}}::setEditorData(QWidget *editor, const QModelIndex &index) const
+{
+    // TODO: set editor data from model
+    QStyledItemDelegate::setEditorData(editor, index);
+}
+
+void {{CLASS_NAME}}::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const
+{
+    // TODO: write editor data back to model
+    QStyledItemDelegate::setModelData(editor, model, index);
+}
+
+void {{CLASS_NAME}}::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+    editor->setGeometry(option.rect);
+}
+]]
+
+    -- Thread template
+    builtin_templates.thread_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QThread>
+
+class {{CLASS_NAME}} : public QThread
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}() override = default;
+
+protected:
+    void run() override;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    builtin_templates.thread_source = [[
+#include "{{FILE_NAME}}.h"
+#include <QDebug>
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QThread(parent)
+{
+}
+
+void {{CLASS_NAME}}::run()
+{
+    // TODO: implement thread workload
+    qDebug() << "{{CLASS_NAME}} thread running";
+}
+]]
+
+    -- Utility template (QObject based)
+    builtin_templates.utility_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QObject>
+
+class {{CLASS_NAME}} : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    builtin_templates.utility_source = [[
+#include "{{FILE_NAME}}.h"
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QObject(parent)
+{
+    // TODO: add initialization
+}
+]]
+
+    -- Singleton template (non-QObject)
+    builtin_templates.singleton_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+class {{CLASS_NAME}}
+{
+public:
+    static {{CLASS_NAME}} &instance();
+
+    {{CLASS_NAME}}(const {{CLASS_NAME}} &) = delete;
+    {{CLASS_NAME}} &operator=(const {{CLASS_NAME}} &) = delete;
+
+private:
+    {{CLASS_NAME}}();
+    ~{{CLASS_NAME}}() = default;
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    builtin_templates.singleton_source = [[
+#include "{{FILE_NAME}}.h"
+
+{{CLASS_NAME}} &{{CLASS_NAME}}::instance()
+{
+    static {{CLASS_NAME}} instance;
+    return instance;
+}
+
+{{CLASS_NAME}}::{{CLASS_NAME}}()
+{
+    // TODO: initialize singleton state
+}
+]]
+
     -- UI templates
     builtin_templates.main_window_ui = [[
 <?xml version="1.0" encoding="UTF-8"?>
@@ -504,6 +689,12 @@ if(WIN32)
 endif()
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+# Default export output directories
+set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EXPORT_ROOT}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
 
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -959,11 +1150,21 @@ cmake_minimum_required(VERSION 3.16)
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
+# Default export output directories
+set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EXPORT_ROOT}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Global Qt settings
 set(CMAKE_AUTOMOC ON)
@@ -1031,6 +1232,12 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Default export output directories (shared library: bin/lib split)
+set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EXPORT_ROOT}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+
 # Qt settings
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -1059,6 +1266,11 @@ set(HEADERS
     include/{{PROJECT_NAME}}/{{PROJECT_NAME}}.h
     # Add more header files here
 )
+
+# Group files for IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include PREFIX "Header Files" FILES ${HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
 
 # Create shared library
 add_library({{PROJECT_NAME}} SHARED ${SOURCES} ${HEADERS})
@@ -1094,16 +1306,16 @@ endif()
 # Installation rules
 install(TARGETS {{PROJECT_NAME}}
     EXPORT {{PROJECT_NAME}}Targets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-    PUBLIC_HEADER DESTINATION include/{{PROJECT_NAME}}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/{{PROJECT_NAME}}
 )
 
 install(EXPORT {{PROJECT_NAME}}Targets
     FILE {{PROJECT_NAME}}Targets.cmake
     NAMESPACE {{PROJECT_NAME}}::
-    DESTINATION lib/cmake/{{PROJECT_NAME}}
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/{{PROJECT_NAME}}
 )
 ]]
 
@@ -1112,11 +1324,20 @@ cmake_minimum_required(VERSION 3.16)
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Default export output directories (static library: lib only)
+set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
 
 # Qt settings
 set(CMAKE_AUTOMOC ON)
@@ -1147,6 +1368,11 @@ set(HEADERS
     # Add more header files here
 )
 
+# Group files for IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include PREFIX "Header Files" FILES ${HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
+
 # Create static library
 add_library({{PROJECT_NAME}} STATIC ${SOURCES} ${HEADERS})
 
@@ -1169,15 +1395,15 @@ endif()
 # Installation rules
 install(TARGETS {{PROJECT_NAME}}
     EXPORT {{PROJECT_NAME}}Targets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    PUBLIC_HEADER DESTINATION include/{{PROJECT_NAME}}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/{{PROJECT_NAME}}
 )
 
 install(EXPORT {{PROJECT_NAME}}Targets
     FILE {{PROJECT_NAME}}Targets.cmake
     NAMESPACE {{PROJECT_NAME}}::
-    DESTINATION lib/cmake/{{PROJECT_NAME}}
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/{{PROJECT_NAME}}
 )
 ]]
 
@@ -1186,11 +1412,15 @@ cmake_minimum_required(VERSION 3.16)
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Qt settings
 set(CMAKE_AUTOMOC ON)
@@ -1221,10 +1451,14 @@ set(HEADERS
     # Add more header files here
 )
 
+# Group files for IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include PREFIX "Header Files" FILES ${HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCES})
+
 # Create plugin
 add_library({{PROJECT_NAME}} MODULE ${SOURCES} ${HEADERS})
 
-# Plugin properties
 set_target_properties({{PROJECT_NAME}} PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins
     PREFIX ""  # Remove 'lib' prefix on Unix
@@ -1247,9 +1481,153 @@ endif()
 
 # Installation rules
 install(TARGETS {{PROJECT_NAME}}
-    LIBRARY DESTINATION plugins
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/plugins
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 ]]
+
+    -- Library / Plugin source templates
+    builtin_templates.library_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QObject>
+
+class {{CLASS_NAME}} : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    virtual ~{{CLASS_NAME}}();
+
+public slots:
+    void doSomething();
+
+signals:
+    void somethingDone();
+
+private:
+    // TODO: Add private members
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    builtin_templates.library_source = [[
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QObject(parent)
+{
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+}
+
+void {{CLASS_NAME}}::doSomething()
+{
+    // TODO: Implement functionality
+    emit somethingDone();
+}
+]]
+
+    builtin_templates.plugin_header = [[
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QObject>
+
+class {{CLASS_NAME}} : public QObject
+{
+    Q_OBJECT
+    Q_PLUGIN_METADATA(IID "{{PLUGIN_IID}}")
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}() override;
+
+signals:
+    void activated();
+
+public slots:
+    void activate();
+};
+
+#endif // {{HEADER_GUARD}}
+]]
+
+    builtin_templates.plugin_source = [[
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QObject(parent)
+{
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}() = default;
+
+void {{CLASS_NAME}}::activate()
+{
+    // TODO: Implement plugin behavior
+    emit activated();
+}
+]]
+
+        -- Documentation template (combined guide)
+        builtin_templates.doc_project_guide = [[
+    # 项目使用说明
+
+    ## 概览
+    - 名称：{{PROJECT_NAME}}
+    - 类型：Qt 项目
+    - 主要源码：`src/`，头文件：`include/`
+    - 依赖：Qt5/Qt6（优先检测 Qt6）
+
+    ## 构建指引（跨平台）
+    - 请选择适合当前操作系统的生成器，并为不同生成器使用不同的构建目录。
+
+    ### Windows（MSVC / Ninja）
+    ```pwsh
+    # MSVC（IDE/调试友好，示例使用 VS 2017，可改为 2019/2022 对应生成器名）
+    cmake -S . -B build-msvc -G "Visual Studio 15 2017" -A x64 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake --build build-msvc --config Debug
+
+    # Ninja（轻量、适合 clangd）
+    cmake -S . -B build-ninja -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    ninja -C build-ninja
+    ```
+
+    ### Linux / macOS（Ninja / Unix Makefiles）
+    ```bash
+    # Ninja（推荐搭配 clangd）
+    cmake -S . -B build-ninja -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    ninja -C build-ninja
+
+    # 或 Unix Makefiles
+    cmake -S . -B build-make -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake --build build-make
+    ```
+
+    > 重要：同一构建目录只能使用同一种生成器。切换生成器请改用新的目录（如 build-msvc、build-ninja、build-make）。
+
+    ## clangd / 编译数据库
+    - 若根目录缺少 `compile_commands.json`，请把构建目录中的文件复制/链接到根目录，或在 clangd 参数中指定 `--compile-commands-dir=<build-dir>`。
+    - 修改 CMakeLists 或新增源码后，重新运行上面的 cmake 以刷新编译数据库。
+
+    ## 目录速览
+    - 源码：`src/`
+    - 头文件：`include/`
+    - 构建输出示例：`build-msvc/`、`build-ninja/`、`build-make/`
+    - 文档：`doc/`
+
+    ## 常见问题
+    - 生成器冲突：同一 build 目录只能用同一生成器，切换时请清空或改用新目录。
+    - 未找到 Qt：检查 Qt5/Qt6 安装，必要时设置 `Qt5_DIR`/`Qt6_DIR`。
+    - clangd 无法解析：确保根目录存在 `compile_commands.json`，或显式传入 `--compile-commands-dir`。
+    ]]
 
     builtin_templates.multi_project_readme = [[
 # {{PROJECT_NAME}}

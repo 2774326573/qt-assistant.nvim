@@ -42,8 +42,8 @@ function M.find_cmake_file(start_dir)
 end
 
 -- 读取CMakeLists.txt内容
-function M.read_cmake_file()
-    local cmake_file = M.find_cmake_file()
+function M.read_cmake_file(start_dir)
+    local cmake_file = M.find_cmake_file(start_dir)
     if not cmake_file then
         return nil, "CMakeLists.txt not found"
     end
@@ -52,8 +52,8 @@ function M.read_cmake_file()
 end
 
 -- 写入CMakeLists.txt内容
-function M.write_cmake_file(content)
-    local cmake_file = M.find_cmake_file()
+function M.write_cmake_file(content, start_dir)
+    local cmake_file = M.find_cmake_file(start_dir)
     if not cmake_file then
         return false, "CMakeLists.txt not found"
     end
@@ -98,22 +98,39 @@ end
 
 -- 添加源文件到CMakeLists.txt
 function M.add_source_files(files)
-    local cmake_content, error_msg = M.read_cmake_file()
+    local system = require('qt-assistant.system')
+    local config = get_config()
+
+    -- 选择起始目录：优先使用新建文件所在目录（最近的CMakeLists）
+    local start_dir = config.project_root
+    for _, info in pairs(files) do
+        if info.full_path then
+            start_dir = system.normalize_path(vim.fn.fnamemodify(info.full_path, ":h"))
+            break
+        end
+    end
+
+    local cmake_file = M.find_cmake_file(start_dir)
+    if not cmake_file then
+        vim.notify("Warning: CMakeLists.txt not found near " .. tostring(start_dir), vim.log.levels.WARN)
+        return false
+    end
+
+    local cmake_dir = system.normalize_path(vim.fn.fnamemodify(cmake_file, ":h"))
+    local cmake_content = file_manager.read_file(cmake_file)
     if not cmake_content then
-        vim.notify("Warning: " .. error_msg, vim.log.levels.WARN)
+        vim.notify("Warning: Failed to read CMakeLists.txt", vim.log.levels.WARN)
         return false
     end
     
     local modified = false
     local new_content = cmake_content
     
-    -- 获取相对路径
-    local config = get_config()
-    
     for file_type, file_info in pairs(files) do
         if file_type == "source" and file_info.name:match("%.cpp$") then
-            -- Use actual relative path from file creation
-            local relative_path = config.directories.source .. "/" .. file_info.name
+            local absolute = file_info.full_path
+            local relative_path = absolute and file_manager.get_relative_path(absolute, cmake_dir)
+                or (config.directories.source .. "/" .. file_info.name)
             
             if not M.is_file_in_cmake(cmake_content, relative_path) then
                 new_content = M.add_cpp_file_to_cmake(new_content, relative_path)
@@ -121,8 +138,9 @@ function M.add_source_files(files)
             end
             
         elseif file_type == "header" and file_info.name:match("%.h$") then
-            -- Use actual relative path from file creation  
-            local relative_path = config.directories.include .. "/" .. file_info.name
+            local absolute = file_info.full_path
+            local relative_path = absolute and file_manager.get_relative_path(absolute, cmake_dir)
+                or (config.directories.include .. "/" .. file_info.name)
             
             if not M.is_file_in_cmake(cmake_content, relative_path) then
                 new_content = M.add_header_file_to_cmake(new_content, relative_path)
@@ -130,7 +148,9 @@ function M.add_source_files(files)
             end
             
         elseif file_type == "ui" and file_info.name:match("%.ui$") then
-            local relative_path = config.directories.ui .. "/" .. file_info.name
+            local absolute = file_info.full_path
+            local relative_path = absolute and file_manager.get_relative_path(absolute, cmake_dir)
+                or (config.directories.ui .. "/" .. file_info.name)
             
             if not M.is_file_in_cmake(cmake_content, relative_path) then
                 new_content = M.add_ui_file_to_cmake(new_content, relative_path)
@@ -140,7 +160,8 @@ function M.add_source_files(files)
     end
     
     if modified then
-        local success, write_error = M.write_cmake_file(new_content)
+        new_content = ensure_source_groups(new_content, config)
+        local success, write_error = M.write_cmake_file(new_content, start_dir)
         if success then
             vim.notify("CMakeLists.txt updated successfully", vim.log.levels.INFO)
         else
@@ -205,12 +226,16 @@ function M.add_cpp_file_to_cmake(cmake_content, file_path)
         return before .. "\n    " .. file_path .. after
         
     else
-        -- 如果没有SOURCES变量，尝试在add_executable后添加
+        -- 如果没有SOURCES变量，尝试在add_executable/add_library后添加
         local add_exec_pattern = "(add_executable%s*%([^)]+)"
+        local add_lib_pattern = "(add_library%s*%([^)]+)"
         local replacement = "%1\n    " .. file_path
-        
+
         local new_content = cmake_content:gsub(add_exec_pattern, replacement)
-        
+        if new_content == cmake_content then
+            new_content = cmake_content:gsub(add_lib_pattern, replacement)
+        end
+
         if new_content == cmake_content then
             -- 如果都没找到，在文件末尾添加SOURCES变量
             return cmake_content .. "\n\n# Additional sources\nset(ADDITIONAL_SOURCES\n    " .. 
@@ -295,6 +320,66 @@ function M.add_to_variable_block(cmake_content, variable_name, file_path)
     end
     
     return cmake_content
+end
+
+-- 确保存在source_group分组，便于IDE查看
+local function ensure_source_groups(cmake_content, config)
+    if cmake_content:find("source_group%s*%(") then
+        return cmake_content
+    end
+
+    local dirs = config.directories or {}
+    local include_dir = dirs.include or "include"
+    local source_dir = dirs.source or "src"
+    local ui_dir = dirs.ui or "ui"
+
+    local function find_block_end(variable_name)
+        local pattern = "set%s*%(%s*" .. variable_name .. "%s*"
+        local pos_start, pos_end = cmake_content:find(pattern)
+        if not pos_start then
+            return nil
+        end
+
+        local paren_count = 1
+        local pos = pos_end + 1
+        while pos <= #cmake_content and paren_count > 0 do
+            local char = cmake_content:sub(pos, pos)
+            if char == "(" then
+                paren_count = paren_count + 1
+            elseif char == ")" then
+                paren_count = paren_count - 1
+                if paren_count == 0 then
+                    return pos
+                end
+            end
+            pos = pos + 1
+        end
+        return pos_end
+    end
+
+    local insert_pos = math.max(
+        find_block_end("UI_FILES") or 0,
+        find_block_end("HEADERS") or 0,
+        find_block_end("SOURCES") or 0
+    )
+
+    local lines = {
+        "",
+        "# Group files for IDEs (auto-generated)",
+        "set_property(GLOBAL PROPERTY USE_FOLDERS ON)",
+        string.format("source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/%s PREFIX \"Header Files\" FILES ${HEADERS})", include_dir),
+        string.format("source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/%s PREFIX \"Source Files\" FILES ${SOURCES})", source_dir),
+        string.format("source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/%s PREFIX \"UI Files\" FILES ${UI_FILES})", ui_dir),
+        ""
+    }
+
+    local block = table.concat(lines, "\n")
+
+    if insert_pos > 0 then
+        return cmake_content:sub(1, insert_pos) .. "\n" .. block .. cmake_content:sub(insert_pos + 1)
+    end
+
+    return cmake_content .. block
 end
 
 -- 验证CMakeLists.txt语法

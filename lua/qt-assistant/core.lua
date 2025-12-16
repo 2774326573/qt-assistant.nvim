@@ -29,12 +29,19 @@ function M.create_qt_class(class_name, class_type, options)
         return false, "Unknown class type: " .. class_type
     end
     
-    -- Determine target directories
-    local target_dirs = file_manager.determine_target_directories(class_type)
+    local system = require('qt-assistant.system')
+    local target_dirs = file_manager.determine_target_directories(class_type, options)
     
     -- Generate file content
     local files = M.generate_class_files(class_name, class_type, template_config, options)
     
+    for file_type, file_info in pairs(files) do
+        local target_dir = target_dirs[file_type]
+        if target_dir then
+            file_info.full_path = system.join_path(target_dir, file_info.name)
+        end
+    end
+
     -- Create files
     local success, error_msg = file_manager.create_files(files, target_dirs)
     if not success then
@@ -110,7 +117,7 @@ end
 
 -- Get supported class types
 function M.get_supported_class_types()
-    return {'main_window', 'dialog', 'widget', 'model'}
+    return {'main_window', 'dialog', 'widget', 'model', 'delegate', 'thread', 'utility', 'singleton'}
 end
 
 return M

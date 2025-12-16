@@ -19,6 +19,30 @@ local function get_config()
     }
 end
 
+-- Select a make-compatible tool across platforms
+local function select_make_tool()
+    return system.find_executable('mingw32-make')
+        or system.find_executable('nmake')
+        or system.find_executable('make')
+end
+
+-- Select an available compiler with platform-aware flags
+local function select_compiler()
+    if system.find_executable('clang++') then
+        return 'clang++', 'clang'
+    end
+
+    if system.get_os() == 'windows' and system.find_executable('cl') then
+        return 'cl', 'msvc'
+    end
+
+    if system.find_executable('g++') then
+        return 'g++', 'gcc'
+    end
+
+    return 'clang++', 'clang'
+end
+
 -- Check if clangd is available
 function M.is_clangd_available()
     return system.find_executable('clangd') ~= nil
@@ -32,6 +56,12 @@ end
 -- Generate compile_commands.json for clangd
 function M.generate_compile_commands()
     local project_root = get_config().project_root
+
+    -- If compile_commands already exists somewhere under the project, link it and exit early
+    if M.ensure_compile_commands_link(project_root) then
+        vim.notify("ℹ️ Found existing compile_commands.json and linked to project root", vim.log.levels.INFO)
+        return true
+    end
     
     -- Check if this is a Qt C++ project
     local cmake_file = system.join_path(project_root, "CMakeLists.txt")
@@ -167,18 +197,28 @@ end
 
 -- Generate compile commands from Makefile using bear or manual parsing
 function M.generate_compile_commands_from_makefile(build_dir, project_root)
-    -- Try bear first (most accurate)
-    if system.find_executable('bear') then
-        M.generate_with_bear(build_dir, project_root)
-    else
-        -- Fallback to manual compilation database generation
-        M.generate_manual_compile_commands(build_dir, project_root)
+    local make_tool = select_make_tool()
+
+    if not make_tool then
+        vim.notify("⚠️  No make tool found (mingw32-make/nmake/make). Falling back to manual compile_commands generation.", vim.log.levels.WARN)
+        return M.generate_manual_compile_commands(build_dir, project_root)
     end
+
+    if system.find_executable('bear') and not make_tool:lower():find('nmake') then
+        return M.generate_with_bear(build_dir, project_root, make_tool)
+    end
+
+    if make_tool:lower():find('nmake') then
+        vim.notify("ℹ️  nmake detected; bear is skipped. Generating compile_commands manually.", vim.log.levels.INFO)
+    end
+
+    -- Try bear first (most accurate)
+    return M.generate_manual_compile_commands(build_dir, project_root)
 end
 
 -- Generate using bear
-function M.generate_with_bear(build_dir, project_root)
-    local bear_cmd = {'bear', '--', 'make', '-n'}
+function M.generate_with_bear(build_dir, project_root, make_tool)
+    local bear_cmd = {'bear', '--', make_tool, '-n'}
     
     vim.fn.jobstart(bear_cmd, {
         cwd = build_dir,
@@ -309,6 +349,15 @@ function M.get_qt_include_paths(qt_version)
     elseif os_type == 'macos' then
         table.insert(includes, '/opt/homebrew/include/qt' .. qt_version)
         table.insert(includes, '/usr/local/include/qt' .. qt_version)
+    else
+        -- Windows fallbacks (MinGW/MSVC). Prefer QTDIR if set.
+        local qtdir = os.getenv('QTDIR')
+        if qtdir and #qtdir > 0 then
+            table.insert(includes, system.join_path(qtdir, 'include'))
+        end
+        table.insert(includes, 'C:/Qt/6.6.0/mingw_64/include')
+        table.insert(includes, 'C:/Qt/6.6.0/msvc2022_64/include')
+        table.insert(includes, 'C:/Qt/5.15.2/mingw81_64/include')
     end
     
     return includes
@@ -348,16 +397,31 @@ end
 
 -- Build compile command for a source file
 function M.build_compile_command(source_file, qt_includes, project_root)
-    local cmd_parts = {
-        "clang++",
-        "-std=c++17",
-        "-Wall", "-Wextra",
-        "-fPIC"
-    }
+    local compiler, kind = select_compiler()
+    local cmd_parts = {compiler}
+    local os_type = system.get_os()
+
+    if kind == 'msvc' then
+        table.insert(cmd_parts, '/nologo')
+        table.insert(cmd_parts, '/std:c++17')
+        table.insert(cmd_parts, '/EHsc')
+        table.insert(cmd_parts, '/Zc:__cplusplus')
+        table.insert(cmd_parts, '/DWIN32')
+        table.insert(cmd_parts, '/D_WINDOWS')
+    else
+        table.insert(cmd_parts, '-std=c++17')
+        table.insert(cmd_parts, '-Wall')
+        table.insert(cmd_parts, '-Wextra')
+        if os_type ~= 'windows' then
+            table.insert(cmd_parts, '-fPIC')
+        end
+    end
     
+    local include_flag = kind == 'msvc' and '/I' or '-I'
+
     -- Add Qt includes
     for _, include_path in ipairs(qt_includes) do
-        table.insert(cmd_parts, "-I" .. include_path)
+        table.insert(cmd_parts, include_flag .. include_path)
     end
     
     -- Add project includes
@@ -369,25 +433,31 @@ function M.build_compile_command(source_file, qt_includes, project_root)
     
     for _, include_path in ipairs(project_includes) do
         if file_manager.directory_exists(include_path) then
-            table.insert(cmd_parts, "-I" .. include_path)
+            table.insert(cmd_parts, include_flag .. include_path)
         end
     end
     
     -- Add Qt defines
     local qt_version = M.detect_qt_version()
+    local def_flag = kind == 'msvc' and '/D' or '-D'
     if qt_version == "6" then
-        table.insert(cmd_parts, "-DQT_CORE_LIB")
-        table.insert(cmd_parts, "-DQT_WIDGETS_LIB")
-        table.insert(cmd_parts, "-DQT_GUI_LIB")
+        table.insert(cmd_parts, def_flag .. 'QT_CORE_LIB')
+        table.insert(cmd_parts, def_flag .. 'QT_WIDGETS_LIB')
+        table.insert(cmd_parts, def_flag .. 'QT_GUI_LIB')
     else
-        table.insert(cmd_parts, "-DQT_CORE_LIB")
-        table.insert(cmd_parts, "-DQT_WIDGETS_LIB")
-        table.insert(cmd_parts, "-DQT_GUI_LIB")
+        table.insert(cmd_parts, def_flag .. 'QT_CORE_LIB')
+        table.insert(cmd_parts, def_flag .. 'QT_WIDGETS_LIB')
+        table.insert(cmd_parts, def_flag .. 'QT_GUI_LIB')
     end
     
     -- Add source file
-    table.insert(cmd_parts, "-c")
-    table.insert(cmd_parts, source_file)
+    if kind == 'msvc' then
+        table.insert(cmd_parts, '/c')
+        table.insert(cmd_parts, source_file)
+    else
+        table.insert(cmd_parts, '-c')
+        table.insert(cmd_parts, source_file)
+    end
     
     return table.concat(cmd_parts, " ")
 end
@@ -403,12 +473,22 @@ function M.link_compile_commands(source_path, project_root)
     
     local os_type = system.get_os()
     if os_type == 'windows' then
-        -- Windows: copy file instead of symlink
-        local content = file_manager.read_file(source_path)
-        if content then
-            file_manager.write_file(target_path, content)
-            vim.notify("📋 compile_commands.json copied to project root", vim.log.levels.INFO)
-        end
+        -- Windows: try symbolic link (requires dev mode or admin); fall back to copy if it fails
+        local cmd = { 'cmd', '/c', string.format('mklink "%s" "%s"', target_path, source_path) }
+        vim.fn.jobstart(cmd, {
+            on_exit = function(_, exit_code)
+                vim.schedule(function()
+                    if exit_code == 0 then
+                        return -- silently succeed
+                    end
+                    -- fallback to copy to keep clangd usable
+                    local content = file_manager.read_file(source_path)
+                    if content then
+                        file_manager.write_file(target_path, content)
+                    end
+                end)
+            end
+        })
     else
         -- Unix: create symlink
         local cmd = {'ln', '-sf', source_path, target_path}
@@ -599,9 +679,9 @@ function M.setup_complete_qt_lsp()
     
     vim.notify("🚀 Setting up complete Qt + clangd integration...", vim.log.levels.INFO)
     
-    -- Step 1: Generate compile commands
+    -- Step 1: Ensure compile_commands exists or generate it
     vim.schedule(function()
-        local compile_success = M.generate_compile_commands()
+        local compile_success = M.ensure_compile_commands_link(get_config().project_root) or M.generate_compile_commands()
         if compile_success then
             -- Step 2: Setup clangd configuration
             vim.defer_fn(function()
@@ -767,8 +847,11 @@ function M.auto_setup_lsp()
     local project_root = get_config().project_root
     local compile_commands_path = system.join_path(project_root, "compile_commands.json")
     
-    -- Only auto-setup if we don't have compile commands yet
+    -- If compile_commands.json exists elsewhere (e.g., build dir), link it; otherwise generate
     if not file_manager.file_exists(compile_commands_path) then
+        if M.ensure_compile_commands_link(project_root) then
+            return
+        end
         if M.is_clangd_available() then
             vim.notify("🔧 Auto-generating compile commands for clangd...", vim.log.levels.INFO)
             M.generate_compile_commands()
@@ -788,6 +871,68 @@ function M.init()
             M.auto_setup_lsp()
         end
     end)
+end
+
+-- Locate an existing compile_commands.json within the project
+function M.find_compile_commands(project_root)
+    project_root = project_root or get_config().project_root
+    local candidates = {
+        system.join_path(project_root, "compile_commands.json"),
+        system.join_path(project_root, "build", "compile_commands.json")
+    }
+
+    for _, path in ipairs(candidates) do
+        if file_manager.file_exists(path) then
+            return path
+        end
+    end
+
+    local build_dir = system.join_path(project_root, "build")
+    local matches = {}
+    if vim.fn.isdirectory(build_dir) == 1 then
+        matches = vim.fs.find("compile_commands.json", {
+            path = build_dir,
+            limit = 5,
+            type = "file",
+        }) or {}
+    end
+
+    if #matches == 0 then
+        -- Fallback: search the whole project (limited results) when build dir name differs
+        matches = vim.fs.find("compile_commands.json", {
+            path = project_root,
+            limit = 5,
+            type = "file",
+        }) or {}
+    end
+
+    if #matches > 0 then
+        return system.normalize_path(matches[1])
+    end
+
+    return nil
+end
+
+-- Ensure compile_commands.json is linked/copied into project root if found elsewhere
+function M.ensure_compile_commands_link(project_root)
+    project_root = project_root or get_config().project_root
+    local source_path = M.find_compile_commands(project_root)
+    local target_path = system.join_path(project_root, "compile_commands.json")
+
+    if not source_path then
+        return false
+    end
+
+    local normalized_source = system.normalize_path(source_path)
+    local normalized_target = system.normalize_path(target_path)
+
+    -- If already in place, nothing to do
+    if normalized_source == normalized_target and file_manager.file_exists(target_path) then
+        return true
+    end
+
+    M.link_compile_commands(source_path, project_root)
+    return true
 end
 
 return M

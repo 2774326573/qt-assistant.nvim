@@ -10,6 +10,7 @@
 - **UI设计器集成**: 创建、编辑UI文件并无缝启动Qt Designer
 - **类生成**: 从UI文件生成C++类，并正确集成uic
 - **构建系统**: 支持CMake和qmake构建系统
+- **构建工具选择**: qmake 构建会自动选择 `mingw32-make` / `nmake` / `make`（在 nmake 下不会携带 `-j`）
 - **调试**: 完整的nvim-dap集成，用于Qt应用程序调试
 - **跨平台**: 支持Linux、macOS和Windows
 
@@ -135,6 +136,7 @@ brew install lldb
 - **Linux**: 完全支持系统Qt包
 - **macOS**: 完全支持Homebrew Qt或官方Qt安装程序
 - **Windows**: 完全支持官方Qt安装程序（MinGW或MSVC）
+    - qmake: 需要 `mingw32-make`（MinGW）或 `nmake`（MSVC）。clangd 的 compile_commands 会使用平台化参数；仅有 nmake 时会跳过 bear。
 
 插件会自动检测所有平台上的Qt工具位置。
 

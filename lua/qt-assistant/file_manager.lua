@@ -60,32 +60,40 @@ function M.class_name_to_filename(class_name)
 end
 
 -- 确定目标目录
-function M.determine_target_directories(class_type)
+function M.determine_target_directories(class_type, opts)
     local config = get_config()
     local system = require('qt-assistant.system')
     local project_root = config.project_root
     local dirs = config.directories
+    local subdir = opts and opts.target_subdir
+
+    local function with_subdir(base)
+        if subdir and subdir ~= '' then
+            return system.join_path(base, subdir)
+        end
+        return base
+    end
     
     local target_dirs = {}
     
     if class_type == "main_window" or class_type == "dialog" or class_type == "widget" then
-        target_dirs.header = system.join_path(project_root, dirs.include, "ui")
-        target_dirs.source = system.join_path(project_root, dirs.source, "ui")
-        target_dirs.ui = system.join_path(project_root, dirs.ui)
+        target_dirs.header = with_subdir(system.join_path(project_root, dirs.include, "ui"))
+        target_dirs.source = with_subdir(system.join_path(project_root, dirs.source, "ui"))
+        target_dirs.ui = with_subdir(system.join_path(project_root, dirs.ui))
     elseif class_type == "model" or class_type == "delegate" then
-        target_dirs.header = system.join_path(project_root, dirs.include, "core")
-        target_dirs.source = system.join_path(project_root, dirs.source, "core")
+        target_dirs.header = with_subdir(system.join_path(project_root, dirs.include, "core"))
+        target_dirs.source = with_subdir(system.join_path(project_root, dirs.source, "core"))
     elseif class_type == "thread" then
-        target_dirs.header = system.join_path(project_root, dirs.include, "core")
-        target_dirs.source = system.join_path(project_root, dirs.source, "core")
+        target_dirs.header = with_subdir(system.join_path(project_root, dirs.include, "core"))
+        target_dirs.source = with_subdir(system.join_path(project_root, dirs.source, "core"))
     elseif class_type == "utility" or class_type == "singleton" then
-        target_dirs.header = system.join_path(project_root, dirs.include, "utils")
-        target_dirs.source = system.join_path(project_root, dirs.source, "utils")
+        target_dirs.header = with_subdir(system.join_path(project_root, dirs.include, "utils"))
+        target_dirs.source = with_subdir(system.join_path(project_root, dirs.source, "utils"))
     else
         -- 默认目录
-        target_dirs.header = system.join_path(project_root, dirs.include)
-        target_dirs.source = system.join_path(project_root, dirs.source)
-        target_dirs.ui = system.join_path(project_root, dirs.ui)
+        target_dirs.header = with_subdir(system.join_path(project_root, dirs.include))
+        target_dirs.source = with_subdir(system.join_path(project_root, dirs.source))
+        target_dirs.ui = with_subdir(system.join_path(project_root, dirs.ui))
     end
     
     return target_dirs
@@ -248,14 +256,16 @@ end
 
 -- 获取相对路径
 function M.get_relative_path(absolute_path, base_path)
-    base_path = base_path or get_config().project_root
-    
-    -- 简单的相对路径计算
-    if absolute_path:sub(1, #base_path) == base_path then
-        return absolute_path:sub(#base_path + 2) -- +2 to skip the "/"
+    local system = require('qt-assistant.system')
+    local normalized_abs = system.normalize_path(absolute_path)
+    local normalized_base = system.normalize_path(base_path or get_config().project_root)
+
+    if normalized_base and normalized_abs:sub(1, #normalized_base) == normalized_base then
+        local rel = normalized_abs:sub(#normalized_base + 1)
+        return rel:gsub("^[/\\]", "")
     end
-    
-    return absolute_path
+
+    return normalized_abs
 end
 
 -- 验证文件路径
