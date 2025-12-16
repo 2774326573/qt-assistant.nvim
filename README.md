@@ -369,6 +369,10 @@ Standard LSP keymaps are automatically configured when clangd attaches:
 require('qt-assistant').setup({
     -- Auto-update CMakeLists.txt when creating files
     auto_update_cmake = true,
+    
+    -- Auto-rebuild when CMakeLists.txt changes (disabled by default)
+    -- When enabled, saving CMakeLists.txt will automatically trigger project build
+    auto_rebuild_on_cmake_change = false,
 
     -- Project directory structure
     directories = {

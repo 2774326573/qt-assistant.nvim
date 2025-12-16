@@ -416,7 +416,9 @@ end
 -- 自动构建当CMakeLists.txt发生变化之后
 function M.setup_auto_rebuild()
     local config = get_config()
+    -- 检查配置开关,如果关闭则不设置自动构建
     if not config.auto_rebuild_on_cmake_change then
+        vim.notify("Auto rebuild is disabled in config", vim.log.levels.DEBUG)
         return
     end
     
