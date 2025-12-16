@@ -17,7 +17,6 @@ function M.setup(user_config)
             resource = "resources"
         },
         auto_update_cmake = true,
-        auto_rebuild_on_cmake_change = false,
         qt_tools = {
             designer_path = M._detect_qt_tool("designer"),
             uic_path = M._detect_qt_tool("uic"),

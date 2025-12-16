@@ -25,21 +25,6 @@ function M.setup(user_config)
 		end
 	end)
 	
-	-- Initialize LSP integration (lazy)
-	vim.schedule(function()
-		local lsp_ok, lsp = pcall(require, 'qt-assistant.lsp')
-		if lsp_ok then
-			lsp.init()
-		end
-	end)
-	
-	-- Initialize auto-rebuild functionality
-	vim.schedule(function()
-		local cmake_ok, cmake = pcall(require, 'qt-assistant.cmake')
-		if cmake_ok then
-			cmake.setup_auto_rebuild()
-		end
-	end)
 end
 
 -- Get configuration
@@ -95,11 +80,6 @@ function M.setup_keymaps()
 	-- Debug system (integrated debugging) - conditional loading
 	map("n", "<leader>qdb", function() M.debug_application() end, { desc = "Debug Qt App" })
 	map("n", "<leader>qda", function() M.attach_to_process() end, { desc = "Attach to Qt Process" })
-	
-	-- LSP system (clangd integration) - conditional loading
-	map("n", "<leader>qls", function() M.setup_qt_lsp() end, { desc = "Setup Qt LSP" })
-	map("n", "<leader>qlg", function() M.generate_compile_commands() end, { desc = "Generate Compile Commands" })
-	map("n", "<leader>qlt", function() M.show_lsp_status() end, { desc = "LSP Status" })
 	
 	-- Configuration and Standards
 	map("n", "<leader>qsc", function() M.show_current_config() end, { desc = "Show Current Config" })
@@ -486,34 +466,6 @@ function M.show_debug_status()
 	end
 end
 
--- LSP Management
-function M.setup_qt_lsp()
-	local lsp_ok, lsp = pcall(require, "qt-assistant.lsp")
-	if lsp_ok then
-		lsp.setup_complete_qt_lsp()
-	else
-		vim.notify("❌ LSP module not available", vim.log.levels.ERROR)
-	end
-end
-
-function M.generate_compile_commands()
-	local lsp_ok, lsp = pcall(require, "qt-assistant.lsp")
-	if lsp_ok then
-		lsp.generate_compile_commands()
-	else
-		vim.notify("❌ LSP module not available", vim.log.levels.ERROR)
-	end
-end
-
-function M.show_lsp_status()
-	local lsp_ok, lsp = pcall(require, "qt-assistant.lsp")
-	if lsp_ok then
-		lsp.show_lsp_status()
-	else
-		vim.notify("❌ LSP module not available", vim.log.levels.ERROR)
-	end
-end
-
 -- ==================== Helper Functions ====================
 
 -- Determine class type from UI file
@@ -686,11 +638,6 @@ function M.show_help()
 		"  :QtDebugAttach               - Attach to running Qt process", 
 		"  :QtDebugStatus               - Show debug configuration",
 		"",
-		"LSP System (requires clangd):",
-		"  :QtLspSetup                  - Setup clangd for Qt development",
-		"  :QtLspGenerate               - Generate compile_commands.json",
-		"  :QtLspStatus                 - Show clangd LSP status",
-		"",
 		"Essential Keymaps (optimized for quick development):",
 		"  <leader>qa  - Qt Assistant main interface",
 		"  <leader>qh  - Show this help",
@@ -706,9 +653,6 @@ function M.show_help()
 		"  <leader>qA  - Quick build & run",
 		"  <leader>qdb - Debug application (nvim-dap)",
 		"  <leader>qda - Attach to Qt process",
-		"  <leader>qls - Setup Qt LSP (clangd)",
-		"  <leader>qlg - Generate compile commands",
-		"  <leader>qlt - LSP status",
 		"",
 		"Context-aware keymaps (in UI/C++ files):",
 		"  <leader>gd  - Open current UI in Designer",
@@ -811,11 +755,6 @@ function M.show_current_config()
 	table.insert(lines, "")
 	table.insert(lines, "Project Root: " .. vim.fn.getcwd())
 	
-	-- Create floating window
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-	
-	local width = 50
 	local height = #lines + 2
 	local win = vim.api.nvim_open_win(buf, true, {
 		relative = 'editor',

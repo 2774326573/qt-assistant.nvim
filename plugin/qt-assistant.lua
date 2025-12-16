@@ -251,23 +251,6 @@ vim.api.nvim_create_user_command('QtDebugSetup', function()
     require('qt-assistant.debug').setup_debugging()
 end, { desc = 'Setup complete Qt debugging environment' })
 
--- ==================== LSP Commands ====================
-
-vim.api.nvim_create_user_command('QtLspSetup', function()
-    if not ensure_loaded() then return end
-    require('qt-assistant').setup_qt_lsp()
-end, { desc = 'Setup clangd LSP for Qt development' })
-
-vim.api.nvim_create_user_command('QtLspGenerate', function()
-    if not ensure_loaded() then return end
-    require('qt-assistant').generate_compile_commands()
-end, { desc = 'Generate compile_commands.json for clangd' })
-
-vim.api.nvim_create_user_command('QtLspStatus', function()
-    if not ensure_loaded() then return end
-    require('qt-assistant').show_lsp_status()
-end, { desc = 'Show clangd LSP status' })
-
 -- ==================== Help ====================
 
 vim.api.nvim_create_user_command('QtHelp', function()

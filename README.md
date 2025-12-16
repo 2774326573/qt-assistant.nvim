@@ -10,7 +10,6 @@ A streamlined Neovim plugin for Qt development that provides essential Qt projec
 - **UI Designer Integration**: Create, edit UI files and launch Qt Designer seamlessly
 - **Class Generation**: Generate C++ classes from UI files with proper uic integration
 - **Build System**: Support for both CMake and qmake build systems
-- **Language Server**: Clangd integration with Qt-aware configuration
 - **Debugging**: Full nvim-dap integration for Qt application debugging
 - **Cross-Platform**: Works on Linux, macOS, and Windows
 
@@ -25,7 +24,6 @@ This plugin implements all core requirements from the Product Requirements Docum
 - ✅ **F3.1**: Generate C++ classes from UI files (`:QtCreateClass`)
 - ✅ **F3.2**: Auto-update CMakeLists.txt
 - ✅ **F4.3**: Command completion for UI files
-- ✅ **Enhanced**: Clangd LSP integration for advanced code intelligence
 - ✅ **Enhanced**: nvim-dap debugging integration
 
 ## Installation
@@ -67,10 +65,7 @@ use {
 
 ### Optional Dependencies
 
-- **clangd**: For language server features (autocomplete, error checking)
 - **nvim-dap**: For debugging support
-- **nvim-lspconfig**: For enhanced LSP configuration
-- **bear**: For better compile_commands.json generation (qmake projects)
 
 ### Qt Installation Guide
 
@@ -150,9 +145,6 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | `:QtDebug`                          | Debug Qt application            | `:QtDebug`                                   |
 | `:QtDebugAttach`                    | Attach to running process       | `:QtDebugAttach`                             |
 | `:QtDebugStatus`                    | Show debug configuration        | `:QtDebugStatus`                             |
-| `:QtLspSetup`                       | Setup clangd for Qt development | `:QtLspSetup`                                |
-| `:QtLspGenerate`                    | Generate compile_commands.json  | `:QtLspGenerate`                             |
-| `:QtLspStatus`                      | Show clangd LSP status          | `:QtLspStatus`                               |
 
 ### Project Types
 
@@ -213,14 +205,6 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | `<F11>`       | Step Into  | Debug step into                |
 | `<F12>`       | Step Out   | Debug step out                 |
 | `<leader>db`  | Breakpoint | Toggle breakpoint              |
-
-#### LSP Keymaps (requires clangd)
-
-| Keymap        | Command    | Description               |
-| ------------- | ---------- | ------------------------- |
-| `<leader>qls` | LSP Setup  | Setup clangd for Qt       |
-| `<leader>qlg` | Generate   | Generate compile commands |
-| `<leader>qlt` | LSP Status | Show LSP status           |
 
 #### Context-Aware Keymaps (File-Specific)
 
@@ -286,93 +270,12 @@ brew install lldb
 - **Qt-specific**: Includes Qt pretty-printing and environment setup
 - **Process attachment**: Can attach to already running Qt applications
 
-## Language Server Integration (Clangd)
-
-The plugin provides seamless integration with clangd language server for advanced Qt development features.
-
-### LSP Setup
-
-#### 1. Install clangd
-
-**Linux:**
-
-```bash
-# Ubuntu/Debian
-sudo apt install clangd
-
-# Arch Linux
-sudo pacman -S clang
-
-# CentOS/RHEL
-sudo yum install clang-tools-extra
-```
-
-**macOS:**
-
-```bash
-# Homebrew
-brew install llvm
-
-# Add to PATH
-echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> ~/.zshrc
-
-# Or install Xcode
-xcode-select --install
-```
-
-#### 2. Install LSP Config (recommended)
-
-```lua
--- Lazy.nvim
-{'neovim/nvim-lspconfig'}
-
--- Packer
-use 'neovim/nvim-lspconfig'
-```
-
-#### 3. Setup Qt LSP
-
-```vim
-:QtLspSetup                 " One-time setup for Qt + clangd
-:QtLspGenerate              " Generate compile_commands.json
-:QtLspStatus                " Check LSP configuration
-```
-
-### LSP Features
-
-- **Auto-configuration**: Automatically detects Qt headers and includes
-- **Compile commands**: Generates compile_commands.json for CMake/qmake projects
-- **Qt-aware**: Configured with Qt-specific flags and definitions
-- **Cross-platform**: Works on Linux, macOS, and Windows
-- **Smart completion**: Qt class/method completion with signatures
-- **Error checking**: Real-time syntax and semantic error detection
-
-### LSP Keymaps
-
-Standard LSP keymaps are automatically configured when clangd attaches:
-
-| Keymap       | Description              |
-| ------------ | ------------------------ |
-| `gd`         | Go to definition         |
-| `gD`         | Go to declaration        |
-| `gr`         | Find references          |
-| `gi`         | Go to implementation     |
-| `K`          | Show hover documentation |
-| `<C-k>`      | Signature help           |
-| `<leader>rn` | Rename symbol            |
-| `<leader>ca` | Code actions             |
-| `<leader>f`  | Format code              |
-
 ## Configuration
 
 ```lua
 require('qt-assistant').setup({
     -- Auto-update CMakeLists.txt when creating files
-    auto_update_cmake = true,
-    
-    -- Auto-rebuild when CMakeLists.txt changes (disabled by default)
-    -- When enabled, saving CMakeLists.txt will automatically trigger project build
-    auto_rebuild_on_cmake_change = false,
+   auto_update_cmake = true,
 
     -- Project directory structure
     directories = {
@@ -428,14 +331,7 @@ require('qt-assistant').setup({
    :QtRun
    ```
 
-6. **Setup language server (optional):**
-
-   ```vim
-   :QtLspSetup                 " Setup clangd with Qt configuration
-   " Provides: autocomplete, go-to-definition, error checking
-   ```
-
-7. **Debug (optional):**
+6. **Debug (optional):**
 
    ```vim
    :QtDebug                    " Start debugging session
@@ -711,48 +607,6 @@ cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 cd build && qmake CONFIG+=debug .. && make debug
 ```
 
-### 🔧 LSP Issues
-
-#### clangd not found
-
-```bash
-# Linux
-sudo apt install clangd              # Ubuntu/Debian
-sudo pacman -S clang                 # Arch
-sudo yum install clang-tools-extra   # CentOS/RHEL
-
-# macOS
-brew install llvm
-export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-
-# Check installation
-which clangd
-```
-
-#### No autocomplete/errors
-
-```vim
-" Check LSP status
-:QtLspStatus
-
-" Regenerate compile commands
-:QtLspGenerate
-
-" Restart LSP
-:LspRestart clangd
-```
-
-#### Qt headers not found
-
-```bash
-# Ensure Qt development packages are installed
-sudo apt install qt6-base-dev        # Ubuntu Qt6
-sudo apt install qtbase5-dev         # Ubuntu Qt5
-
-# Check Qt installation
-qmake -query QT_INSTALL_HEADERS
-```
-
 ### 🔧 Platform-Specific Issues
 
 #### Linux
@@ -781,7 +635,6 @@ qmake -query QT_INSTALL_HEADERS
 | **UI Designer**        | ✅ Core     | Qt Designer         | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
 | **Class Generation**   | ✅ Core     | uic tool            | `:QtCreateClass`                       |
 | **Build System**       | ✅ Core     | CMake/qmake         | `:QtBuild`, `:QtRun`                   |
-| **Language Server**    | ✅ Enhanced | clangd              | `:QtLspSetup`, `:QtLspGenerate`        |
 | **Debugging**          | ✅ Enhanced | nvim-dap + debugger | `:QtDebug`, `:QtDebugAttach`           |
 | **Quick Keymaps**      | ✅ Core     | None                | `<leader>q*` shortcuts                 |
 | **Cross-Platform**     | ✅ Core     | Platform Qt         | Linux, macOS, Windows                  |

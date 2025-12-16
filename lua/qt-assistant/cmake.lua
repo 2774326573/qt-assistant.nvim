@@ -413,38 +413,6 @@ function M.backup_cmake_file()
     return false, "Failed to create backup"
 end
 
--- 自动构建当CMakeLists.txt发生变化之后
-function M.setup_auto_rebuild()
-    local config = get_config()
-    -- 检查配置开关,如果关闭则不设置自动构建
-    if not config.auto_rebuild_on_cmake_change then
-        vim.notify("Auto rebuild is disabled in config", vim.log.levels.DEBUG)
-        return
-    end
-    
-    -- 创建autocommand监听CMakeLists.txt文件变化
-    vim.api.nvim_create_autocmd({"BufWritePost"}, {
-        pattern = "CMakeLists.txt",
-        group = vim.api.nvim_create_augroup("QtAssistantAutoRebuild", {clear = true}),
-        callback = function()
-            vim.schedule(function()
-                vim.notify("CMakeLists.txt changed, triggering rebuild...", vim.log.levels.INFO)
-                local build_manager = require('qt-assistant.build_manager')
-                build_manager.build_project()
-            end)
-        end,
-        desc = "Auto rebuild when CMakeLists.txt changes"
-    })
-    
-    vim.notify("Auto rebuild on CMakeLists.txt changes enabled", vim.log.levels.INFO)
-end
-
--- 禁用自动构建
-function M.disable_auto_rebuild()
-    vim.api.nvim_del_augroup_by_name("QtAssistantAutoRebuild")
-    vim.notify("Auto rebuild disabled", vim.log.levels.INFO)
-end
-
 -- 生成CMakePresets.json文件
 function M.generate_cmake_presets()
     local cmake_file = M.find_cmake_file()
