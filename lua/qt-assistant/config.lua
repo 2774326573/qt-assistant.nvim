@@ -10,6 +10,31 @@ M._config = nil
 function M.setup(user_config)
     local default_config = {
         project_root = vim.fn.getcwd(),
+        cmake_presets = {
+            -- Default generator used by :QtCMakePresets when writing CMakePresets.json.
+            -- Common values:
+            --   - "Ninja"
+            --   - "Ninja Multi-Config"
+            --   - "Unix Makefiles"
+            --   - "MinGW Makefiles"
+            --   - "NMake Makefiles"
+            --   - "Visual Studio 17 2022"
+            generator = "Ninja"
+        },
+        export = {
+            -- When enabled, :QtBuild will export build outputs into export/<project>/...
+            enabled = true,
+            -- Root directory name under project_root.
+            dir = "export",
+            -- Windows: run windeployqt for produced executables to copy required Qt DLLs/plugins.
+            deploy_qt = true,
+            -- Also deploy compiler runtime (MSVC/MinGW runtime) when using windeployqt.
+            deploy_compiler_runtime = true,
+            -- Deploy the test executable if present (CMake only).
+            include_tests = true,
+            -- Deploy demo executable if present.
+            include_demo = true
+        },
         directories = {
             source = "src",
             include = "include", 

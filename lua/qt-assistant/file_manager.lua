@@ -136,6 +136,28 @@ function M.directory_exists(dir_path)
     return stat and stat.type == "directory"
 end
 
+-- Copy a file (best-effort cross-platform)
+function M.copy_file(src_path, dst_path)
+    if not src_path or src_path == '' or not dst_path or dst_path == '' then
+        return false, 'Invalid source/destination'
+    end
+
+    local dst_dir = vim.fn.fnamemodify(dst_path, ":h")
+    local ok, err = M.ensure_directory_exists(dst_dir)
+    if not ok then
+        return false, err
+    end
+
+    local ok_copy, copy_err = pcall(function()
+        vim.loop.fs_copyfile(src_path, dst_path)
+    end)
+    if not ok_copy then
+        return false, copy_err
+    end
+
+    return true
+end
+
 -- 创建文件
 function M.create_files(files, target_dirs)
     -- 确保目标目录存在

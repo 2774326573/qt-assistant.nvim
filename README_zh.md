@@ -147,6 +147,34 @@ brew install lldb
 :QtNewProject MyApp widget_app 17 gtest
 ```
 
+### CMakePresets.json（生成器切换）
+
+生成默认的 `CMakePresets.json`：
+
+```vim
+:QtCMakePresets
+```
+
+生成时指定生成器（generator）：
+
+```vim
+:QtCMakePresets Ninja
+:QtCMakePresets "Visual Studio 17 2022"
+:QtCMakePresets "MinGW Makefiles"
+```
+
+也可以在插件配置里设置默认生成器：
+
+```lua
+require('qt-assistant').setup({
+    cmake_presets = {
+        generator = "Ninja"
+    }
+})
+```
+
+注意：同一个构建目录只能使用一种生成器。切换生成器后，如果之前已经生成过 `build/<presetName>`，请删除旧目录或修改 presets 的 `binaryDir` 指向新目录。
+
 2. **创建UI文件:**
 
    ```vim
@@ -171,6 +199,28 @@ brew install lldb
    :QtBuild
    :QtRun
    ```
+
+### 构建产物导出（export 目录）
+
+默认情况下，插件会在构建成功后把可执行文件（以及 tests/demo 若存在）导出到：
+
+- `export/<项目名>/bin/`
+- `export/<项目名>/lib/`（若工程产出库）
+
+Windows 下如果能找到 `windeployqt`，导出后还会自动把 Qt 运行时依赖 DLL/插件拷贝到 `export/<项目名>/bin/`。
+
+可在配置中关闭/调整：
+
+```lua
+require('qt-assistant').setup({
+    export = {
+        enabled = true,
+        deploy_qt = true,
+        include_tests = true,
+        include_demo = true,
+    }
+})
+```
 
 6. **调试（可选）:**
 

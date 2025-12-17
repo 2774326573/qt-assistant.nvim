@@ -230,10 +230,11 @@ end, { desc = 'Package CMake project via CPack' })
 
 -- ==================== CMake Commands ====================
 
-vim.api.nvim_create_user_command('QtCMakePresets', function()
+vim.api.nvim_create_user_command('QtCMakePresets', function(opts)
     if not ensure_loaded() then return end
-    require('qt-assistant.cmake').generate_cmake_presets()
-end, { desc = 'Generate CMakePresets.json for Qt project' })
+    local generator = opts and opts.args ~= '' and opts.args or nil
+    require('qt-assistant.cmake').generate_cmake_presets(generator)
+end, { desc = 'Generate CMakePresets.json for Qt project', nargs = '?' })
 
 vim.api.nvim_create_user_command('QtBuildPreset', function(opts)
     if not ensure_loaded() then return end

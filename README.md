@@ -422,6 +422,26 @@ Generate standardized build configurations:
 :QtCMakePresets
 ```
 
+You can also override the generator when creating the presets:
+
+```vim
+:QtCMakePresets Ninja
+:QtCMakePresets "Visual Studio 17 2022"
+:QtCMakePresets "MinGW Makefiles"
+```
+
+Or set a default generator in your plugin config:
+
+```lua
+require('qt-assistant').setup({
+   cmake_presets = {
+      generator = "Ninja" -- or "Visual Studio 17 2022", "MinGW Makefiles", ...
+   }
+})
+```
+
+Note: one build directory can only use one generator. If you switch generators, delete the old build folder (e.g. `build/debug`) or change the preset `binaryDir`.
+
 This creates a `CMakePresets.json` file with:
 - **debug**: Debug configuration with symbols
 - **release**: Optimized release build
@@ -459,6 +479,28 @@ The Qt Assistant focuses on essential project files only - no additional scripts
 - **Modern CMake**: Uses contemporary CMake practices and presets
 - **Cross-Platform**: Works consistently across Linux, macOS, and Windows
 - **Minimal Dependencies**: No external scripts or complex setup required
+
+### Export Build Outputs
+
+By default, after a successful build (`:QtBuild`) the plugin exports build outputs into:
+
+- `export/<project>/bin/` (executables, including tests/demo when present)
+- `export/<project>/lib/` (libraries when present)
+
+On Windows, if `windeployqt` is available, it will also deploy required Qt DLLs/plugins into `export/<project>/bin/`.
+
+Configure it via:
+
+```lua
+require('qt-assistant').setup({
+   export = {
+      enabled = true,
+      deploy_qt = true,
+      include_tests = true,
+      include_demo = true,
+   }
+})
+```
 
 ### Example CMake Workflow
 

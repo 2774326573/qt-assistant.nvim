@@ -51,13 +51,144 @@ function M.build_project(build_type, opts)
         vim.notify("🔨 Building Qt project (" .. build_system .. ")...", vim.log.levels.INFO)
         
         if build_system == "cmake" then
-            M.build_with_cmake_async(project_root, build_dir, build_type)
+            M.build_with_cmake_async(project_root, build_dir, build_type, opts)
         elseif build_system == "qmake" then
-            M.build_with_qmake_async(project_root, build_dir)
+            M.build_with_qmake_async(project_root, build_dir, opts)
         end
     end)
     
     return true
+end
+
+local function ensure_dir(path)
+    local file_manager = require('qt-assistant.file_manager')
+    local ok, err = file_manager.ensure_directory_exists(path)
+    return ok, err
+end
+
+local function get_export_root(project_root)
+    local cfg = get_config()
+    local dir = (cfg.export and cfg.export.dir) or 'export'
+    local project_name = vim.fn.fnamemodify(project_root, ":t")
+    return project_root .. "/" .. dir .. "/" .. project_name
+end
+
+local function run_windeployqt_if_available(exe_path, opts)
+    local system = require('qt-assistant.system')
+    if system.get_os() ~= 'windows' then
+        return true
+    end
+
+    local cfg = get_config()
+    if not (cfg.export and cfg.export.deploy_qt) then
+        return true
+    end
+
+    local windeployqt = system.find_qt_tool('windeployqt')
+    if not windeployqt then
+        vim.notify("⚠️  windeployqt not found; skip Qt DLL deployment", vim.log.levels.WARN)
+        return false
+    end
+
+    local args = { windeployqt, '--no-translations' }
+    if cfg.export.deploy_compiler_runtime then
+        table.insert(args, '--compiler-runtime')
+    end
+    table.insert(args, exe_path)
+
+    vim.notify("📦 Deploying Qt runtime: " .. vim.fn.fnamemodify(exe_path, ':t'), vim.log.levels.INFO)
+    vim.fn.jobstart(args, {
+        on_stderr = function(_, data)
+            if data and #data > 0 then
+                for _, line in ipairs(data) do
+                    if line and line ~= '' and not line:match('^%s*$') then
+                        vim.schedule(function()
+                            vim.notify("windeployqt: " .. line, vim.log.levels.WARN)
+                        end)
+                    end
+                end
+            end
+        end,
+    })
+    return true
+end
+
+local function export_after_cmake_build(project_root, build_dir, build_type)
+    local cfg = get_config()
+    if not (cfg.export and cfg.export.enabled) then
+        return
+    end
+
+    local system = require('qt-assistant.system')
+    local cmake_path = system.find_executable('cmake')
+    if not cmake_path then
+        vim.notify('❌ CMake not found. Cannot export build artifacts.', vim.log.levels.ERROR)
+        return
+    end
+
+    local export_root = get_export_root(project_root)
+    local ok, err = ensure_dir(export_root)
+    if not ok then
+        vim.notify('❌ Failed to create export directory: ' .. tostring(err), vim.log.levels.ERROR)
+        return
+    end
+
+    local cmd = { cmake_path, '--install', build_dir }
+    table.insert(cmd, '--prefix')
+    table.insert(cmd, export_root)
+    table.insert(cmd, '--config')
+    table.insert(cmd, build_type or 'Release')
+
+    vim.notify('📤 Exporting to: ' .. export_root, vim.log.levels.INFO)
+    vim.fn.jobstart(cmd, {
+        cwd = project_root,
+        on_stderr = function(_, data)
+            if data and #data > 0 then
+                for _, line in ipairs(data) do
+                    if line and line ~= '' and not line:match('^%s*$') then
+                        vim.schedule(function()
+                            vim.notify('Export: ' .. line, vim.log.levels.WARN)
+                        end)
+                    end
+                end
+            end
+        end,
+        on_exit = function(_, exit_code)
+            vim.schedule(function()
+                if exit_code ~= 0 then
+                    vim.notify('❌ Export failed (exit code: ' .. exit_code .. ')', vim.log.levels.ERROR)
+                    return
+                end
+
+                vim.notify('✅ Export completed', vim.log.levels.INFO)
+
+                -- Deploy Qt DLLs on Windows
+                local file_manager = require('qt-assistant.file_manager')
+                local project_name = vim.fn.fnamemodify(project_root, ":t")
+                local bin_dir = export_root .. '/bin'
+                local exe_suffix = (system.get_os() == 'windows') and '.exe' or ''
+
+                local main_exe = bin_dir .. '/' .. project_name .. exe_suffix
+                if file_manager.file_exists(main_exe) then
+                    run_windeployqt_if_available(main_exe)
+                end
+
+                if cfg.export.include_tests then
+                    local tests_exe = bin_dir .. '/' .. project_name .. '_tests' .. exe_suffix
+                    if file_manager.file_exists(tests_exe) then
+                        run_windeployqt_if_available(tests_exe)
+                    end
+                end
+
+                if cfg.export.include_demo then
+                    local demo_exe = bin_dir .. '/' .. project_name .. '_demo' .. exe_suffix
+                    if file_manager.file_exists(demo_exe) then
+                        run_windeployqt_if_available(demo_exe)
+                    end
+                end
+            end)
+        end
+    })
 end
 
 -- Install project (CMake only)
@@ -263,7 +394,7 @@ function M.package_project()
 end
 
 -- Build with CMake (async)
-function M.build_with_cmake_async(project_root, build_dir, build_type)
+function M.build_with_cmake_async(project_root, build_dir, build_type, opts)
     local system = require('qt-assistant.system')
     local cmake_path = system.find_executable("cmake")
     
@@ -312,7 +443,7 @@ function M.build_with_cmake_async(project_root, build_dir, build_type)
             vim.schedule(function()
                 if exit_code == 0 then
                     vim.notify("✅ CMake configure completed", vim.log.levels.INFO)
-                    M.start_cmake_build(cmake_path, build_dir)
+                    M.start_cmake_build(cmake_path, project_root, build_dir, build_type)
                 else
                     vim.notify("❌ CMake configure failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
                 end
@@ -322,7 +453,7 @@ function M.build_with_cmake_async(project_root, build_dir, build_type)
 end
 
 -- Start CMake build step
-function M.start_cmake_build(cmake_path, build_dir)
+function M.start_cmake_build(cmake_path, project_root, build_dir, build_type)
     local build_cmd = {cmake_path, "--build", build_dir, "--parallel"}
     
     vim.notify("🔨 Building project...", vim.log.levels.INFO)
@@ -343,6 +474,7 @@ function M.start_cmake_build(cmake_path, build_dir)
             vim.schedule(function()
                 if exit_code == 0 then
                     vim.notify("🎉 Build completed successfully!", vim.log.levels.INFO)
+                    export_after_cmake_build(project_root, build_dir, build_type)
                 else
                     vim.notify("❌ Build failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
                 end
@@ -352,7 +484,7 @@ function M.start_cmake_build(cmake_path, build_dir)
 end
 
 -- Build with qmake (async)
-function M.build_with_qmake_async(project_root, build_dir)
+function M.build_with_qmake_async(project_root, build_dir, opts)
     local system = require('qt-assistant.system')
     local qmake_path = system.find_qt_tool("qmake")
     
@@ -381,7 +513,7 @@ function M.build_with_qmake_async(project_root, build_dir)
             vim.schedule(function()
                 if exit_code == 0 then
                     vim.notify("✅ qmake completed", vim.log.levels.INFO)
-                    M.start_make_build(build_dir)
+                    M.start_make_build(project_root, build_dir)
                 else
                     vim.notify("❌ qmake failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
                 end
@@ -391,7 +523,7 @@ function M.build_with_qmake_async(project_root, build_dir)
 end
 
 -- Start make build
-function M.start_make_build(build_dir)
+function M.start_make_build(project_root, build_dir)
     local system = require('qt-assistant.system')
     local make_tool = system.find_executable('mingw32-make')
         or system.find_executable('nmake')
@@ -418,6 +550,26 @@ function M.start_make_build(build_dir)
             vim.schedule(function()
                 if exit_code == 0 then
                     vim.notify("🎉 Build completed successfully!", vim.log.levels.INFO)
+
+                    -- Best-effort export for qmake builds: copy main exe to export/bin and deploy Qt runtime on Windows.
+                    local cfg = get_config()
+                    if cfg.export and cfg.export.enabled then
+                        local export_root = get_export_root(project_root)
+                        ensure_dir(export_root .. '/bin')
+                        local project_name = vim.fn.fnamemodify(project_root, ":t")
+                        local exe_suffix = (system.get_os() == 'windows') and '.exe' or ''
+                        local src_exe = build_dir .. '/' .. project_name .. exe_suffix
+                        local dst_exe = export_root .. '/bin/' .. project_name .. exe_suffix
+
+                        local file_manager = require('qt-assistant.file_manager')
+                        if file_manager.file_exists(src_exe) then
+                            file_manager.copy_file(src_exe, dst_exe)
+                            vim.notify('📤 Exported executable to: ' .. dst_exe, vim.log.levels.INFO)
+                            run_windeployqt_if_available(dst_exe)
+                        else
+                            vim.notify('⚠️  qmake build succeeded but executable not found for export: ' .. src_exe, vim.log.levels.WARN)
+                        end
+                    end
                 else
                     vim.notify("❌ Build failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
                 end

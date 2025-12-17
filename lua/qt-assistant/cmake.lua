@@ -10,6 +10,36 @@ local function get_config()
     return require('qt-assistant.config').get()
 end
 
+local function json_escape(s)
+    if s == nil then
+        return ""
+    end
+    return tostring(s):gsub('\\', '\\\\'):gsub('"', '\\"')
+end
+
+local function normalize_generator_arg(arg)
+    if not arg then
+        return nil
+    end
+    local s = tostring(arg):match('^%s*(.-)%s*$')
+    if s == '' then
+        return nil
+    end
+    -- Allow passing quoted generator names: :QtCMakePresets "Visual Studio 17 2022"
+    if (s:sub(1, 1) == '"' and s:sub(-1) == '"') or (s:sub(1, 1) == "'" and s:sub(-1) == "'") then
+        s = s:sub(2, -2)
+    end
+    return s ~= '' and s or nil
+end
+
+local function is_multi_config_generator(generator)
+    local g = (generator or ''):lower()
+    -- Typical multi-config generators: Visual Studio, Xcode, Ninja Multi-Config
+    return g:find('visual studio', 1, true) ~= nil
+        or g:find('xcode', 1, true) ~= nil
+        or g:find('multi%-config', 1, true) ~= nil
+end
+
 -- 查找CMakeLists.txt文件 (根据不同的目录更新对应目录的cmakelists.txt文档)
 function M.find_cmake_file(start_dir)
     start_dir = system.normalize_path(start_dir or vim.fn.getcwd())
@@ -499,7 +529,7 @@ function M.backup_cmake_file()
 end
 
 -- 生成CMakePresets.json文件
-function M.generate_cmake_presets()
+function M.generate_cmake_presets(generator_override)
     local cmake_file = M.find_cmake_file()
     if not cmake_file then
         vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
@@ -515,90 +545,150 @@ function M.generate_cmake_presets()
             prompt = 'CMakePresets.json already exists. Overwrite?'
         }, function(choice)
             if choice == 'Yes' then
-                M.write_cmake_presets_file(presets_file)
+                M.write_cmake_presets_file(presets_file, generator_override)
             end
         end)
     else
-        M.write_cmake_presets_file(presets_file)
+        M.write_cmake_presets_file(presets_file, generator_override)
     end
 
     return true
 end
 
 -- 写入CMakePresets.json文件
-function M.write_cmake_presets_file(presets_file)
-    local presets_content = [[
-{
+function M.write_cmake_presets_file(presets_file, generator_override)
+    local config = get_config()
+    local generator = normalize_generator_arg(generator_override)
+        or (config.cmake_presets and config.cmake_presets.generator)
+        or "Ninja"
+
+    local multi_config = is_multi_config_generator(generator)
+    local gen_desc = multi_config and "Default build using multi-config generator" or "Default build using single-config generator"
+
+    local default_cache
+    if multi_config then
+        default_cache = [[
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        ]]
+    else
+        default_cache = [[
+            "CMAKE_BUILD_TYPE": "Debug",
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        ]]
+    end
+
+    local function configure_cache_for(name)
+        if multi_config then
+            return ""
+        end
+        local map = {
+            debug = "Debug",
+            release = "Release",
+            relwithdebinfo = "RelWithDebInfo"
+        }
+        local bt = map[name]
+        if not bt then
+            return ""
+        end
+        return string.format([[,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "%s"
+            }
+        ]], bt)
+    end
+
+    local function build_configuration_for(name)
+        if not multi_config then
+            return ""
+        end
+        local map = {
+            debug = "Debug",
+            release = "Release",
+            relwithdebinfo = "RelWithDebInfo"
+        }
+        local cfg = map[name]
+        if not cfg then
+            return ""
+        end
+        return string.format([[,
+            "configuration": "%s"
+        ]], cfg)
+    end
+
+    local generator_json = json_escape(generator)
+    local presets_content = string.format([[{
     "version": 3,
     "configurePresets": [
         {
             "name": "default",
             "displayName": "Default Config",
-            "description": "Default build using Ninja generator",
-            "generator": "Ninja",
+            "description": "%s",
+            "generator": "%s",
             "binaryDir": "${sourceDir}/build/${presetName}",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+%s
             }
         },
         {
             "name": "debug",
             "inherits": "default",
             "displayName": "Debug",
-            "description": "Debug build configuration",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
+            "description": "Debug build configuration"%s
         },
         {
             "name": "release",
             "inherits": "default",
             "displayName": "Release",
-            "description": "Release build configuration",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            }
+            "description": "Release build configuration"%s
         },
         {
             "name": "relwithdebinfo",
             "inherits": "default",
             "displayName": "RelWithDebInfo",
-            "description": "Release with debug info",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-            }
+            "description": "Release with debug info"%s
         }
     ],
     "buildPresets": [
         {
             "name": "debug",
-            "configurePreset": "debug"
+            "configurePreset": "debug"%s
         },
         {
             "name": "release",
-            "configurePreset": "release"
+            "configurePreset": "release"%s
         }
     ],
     "testPresets": [
         {
             "name": "debug",
             "configurePreset": "debug",
-            "output": {"outputOnFailure": true}
+            "output": {"outputOnFailure": true}%s
         },
         {
             "name": "release",
             "configurePreset": "release",
-            "output": {"outputOnFailure": true}
+            "output": {"outputOnFailure": true}%s
         }
     ]
 }
-]]
+]],
+        json_escape(gen_desc),
+        generator_json,
+        default_cache,
+        configure_cache_for("debug"),
+        configure_cache_for("release"),
+        configure_cache_for("relwithdebinfo"),
+        build_configuration_for("debug"),
+        build_configuration_for("release"),
+        build_configuration_for("debug"),
+        build_configuration_for("release")
+    )
 
     local success, error_msg = file_manager.write_file(presets_file, presets_content)
     if success then
         vim.notify("CMakePresets.json created successfully", vim.log.levels.INFO)
-        vim.notify("Use: cmake --preset=debug to build", vim.log.levels.INFO)
+        vim.notify("Use: cmake --preset=debug to configure", vim.log.levels.INFO)
+        vim.notify("Use: cmake --build --preset=debug to build", vim.log.levels.INFO)
     else
         vim.notify("Error creating CMakePresets.json: " .. error_msg, vim.log.levels.ERROR)
     end
@@ -627,12 +717,15 @@ function M.get_available_presets()
 
     -- 简单解析预设名称（真实实现应该使用JSON解析）
     local presets = {}
+    local seen = {}
     for preset_name in content:gmatch('"name":%s*"([^"]+)"') do
-        if preset_name ~= "default" then -- 跳过default预设
+        if preset_name ~= "default" and not seen[preset_name] then
+            seen[preset_name] = true
             table.insert(presets, preset_name)
         end
     end
 
+    table.sort(presets)
     return presets
 end
 

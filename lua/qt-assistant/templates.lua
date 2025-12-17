@@ -991,6 +991,8 @@ endif()
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})  # Default from template
@@ -1130,6 +1132,12 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+if(TARGET ${PROJECT_NAME}_demo)
+    install(TARGETS ${PROJECT_NAME}_demo
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
 # Packaging (default: ZIP)
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
@@ -1180,6 +1188,8 @@ if(WIN32)
 endif()
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+include(GNUInstallDirs)
 
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -1341,6 +1351,13 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(TARGET ${PROJECT_NAME}_demo)
+    install(TARGETS ${PROJECT_NAME}_demo
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 # Packaging (default: ZIP)
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
@@ -1881,6 +1898,10 @@ else()
 endif()
 
 add_test(NAME {{PROJECT_NAME}}_tests COMMAND {{PROJECT_NAME}}_tests)
+
+install(TARGETS {{PROJECT_NAME}}_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 ]]
 
     builtin_templates.cmake_tests_lib = [[
@@ -1928,6 +1949,10 @@ else()
 endif()
 
 add_test(NAME {{PROJECT_NAME}}_tests COMMAND {{PROJECT_NAME}}_tests)
+
+install(TARGETS {{PROJECT_NAME}}_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 ]]
 
     builtin_templates.qt_test_app = [[
@@ -2000,6 +2025,10 @@ else()
 endif()
 
 add_test(NAME {{PROJECT_NAME}}_tests COMMAND {{PROJECT_NAME}}_tests)
+
+install(TARGETS {{PROJECT_NAME}}_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 ]]
 
     builtin_templates.cmake_gtest_tests_lib = [[
@@ -2035,6 +2064,10 @@ else()
 endif()
 
 add_test(NAME {{PROJECT_NAME}}_tests COMMAND {{PROJECT_NAME}}_tests)
+
+install(TARGETS {{PROJECT_NAME}}_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 ]]
 
     builtin_templates.gtest_test_app = [[
@@ -2358,8 +2391,18 @@ cmake --build build
 - 编译：MinGW 用 `mingw32-make`；MSVC 用 `nmake`；Linux/macOS 用 `make`
 
 ## 运行主程序
+### 推荐：使用 Qt Assistant 一键构建并导出
+- 构建：`:QtBuild`
+- 导出目录（默认）：`export/{{PROJECT_NAME}}/`
+    - 主程序：`export/{{PROJECT_NAME}}/bin/`
+    - 动态库：`export/{{PROJECT_NAME}}/lib/`（若有）
+    - 测试程序（若启用 tests/gtest）：`export/{{PROJECT_NAME}}/bin/{{PROJECT_NAME}}_tests[.exe]`
+
+> Windows：若系统能找到 `windeployqt`，插件会在导出后自动拷贝 Qt 运行时 DLL/插件到 `export/{{PROJECT_NAME}}/bin/`，并尽量包含编译器运行库（`--compiler-runtime`）。
+
+### 手动构建（不使用插件）
 - 生成：`cmake --build <build-dir> --target {{PROJECT_NAME}}`（VS 需加 `--config Debug/Release`）
-- 运行：可执行文件位置取决于生成器；常见为 `<build-dir>/bin/`。
+- 运行：若使用 `cmake --install` 导出，则可执行文件通常在 `export/{{PROJECT_NAME}}/bin/`；否则取决于生成器（常见为 `<build-dir>/bin/`）。
 
 ## 运行示例程序（如存在）
 - 构建：`cmake --build <build-dir> --target {{PROJECT_NAME}}_demo`（VS 需加 `--config Debug/Release`）
