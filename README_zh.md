@@ -209,6 +209,10 @@ require('qt-assistant').setup({
 
 Windows 下如果能找到 `windeployqt`，导出后还会自动把 Qt 运行时依赖 DLL/插件拷贝到 `export/<项目名>/bin/`。
 
+macOS 下如果能找到 `macdeployqt`，且导出结果包含 `.app`（例如 `export/<项目名>/bin/<项目名>.app`），插件会尝试对该 `.app` 执行 `macdeployqt`。
+
+Linux 下默认依赖系统安装的 Qt 运行时；如果安装了 `linuxdeployqt`，插件会尝试调用它做打包式部署。
+
 可在配置中关闭/调整：
 
 ```lua

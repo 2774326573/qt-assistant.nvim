@@ -1346,6 +1346,12 @@ if(WIN32)
     )
 endif()
 
+if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+    )
+endif()
+
 # Install rules
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -2399,6 +2405,10 @@ cmake --build build
     - 测试程序（若启用 tests/gtest）：`export/{{PROJECT_NAME}}/bin/{{PROJECT_NAME}}_tests[.exe]`
 
 > Windows：若系统能找到 `windeployqt`，插件会在导出后自动拷贝 Qt 运行时 DLL/插件到 `export/{{PROJECT_NAME}}/bin/`，并尽量包含编译器运行库（`--compiler-runtime`）。
+
+> macOS：若系统能找到 `macdeployqt` 且安装导出了 `.app`（例如 `export/{{PROJECT_NAME}}/bin/{{PROJECT_NAME}}.app`），插件会尝试对该 `.app` 执行 `macdeployqt`。
+
+> Linux：默认依赖系统安装的 Qt 运行时（发行版包管理器/系统路径）。如果你安装了 `linuxdeployqt`，插件会尝试调用它做打包式部署。
 
 ### 手动构建（不使用插件）
 - 生成：`cmake --build <build-dir> --target {{PROJECT_NAME}}`（VS 需加 `--config Debug/Release`）

@@ -73,44 +73,103 @@ local function get_export_root(project_root)
     return project_root .. "/" .. dir .. "/" .. project_name
 end
 
-local function run_windeployqt_if_available(exe_path, opts)
+local function run_qt_deploy_if_available(target_path)
     local system = require('qt-assistant.system')
-    if system.get_os() ~= 'windows' then
-        return true
-    end
-
     local cfg = get_config()
     if not (cfg.export and cfg.export.deploy_qt) then
         return true
     end
 
-    local windeployqt = system.find_qt_tool('windeployqt')
-    if not windeployqt then
-        vim.notify("⚠️  windeployqt not found; skip Qt DLL deployment", vim.log.levels.WARN)
-        return false
-    end
+    local os_type = system.get_os()
 
-    local args = { windeployqt, '--no-translations' }
-    if cfg.export.deploy_compiler_runtime then
-        table.insert(args, '--compiler-runtime')
-    end
-    table.insert(args, exe_path)
+    if os_type == 'windows' then
+        local windeployqt = system.find_qt_tool('windeployqt')
+        if not windeployqt then
+            vim.notify("⚠️  windeployqt not found; skip Qt DLL deployment", vim.log.levels.WARN)
+            return false
+        end
 
-    vim.notify("📦 Deploying Qt runtime: " .. vim.fn.fnamemodify(exe_path, ':t'), vim.log.levels.INFO)
-    vim.fn.jobstart(args, {
-        on_stderr = function(_, data)
-            if data and #data > 0 then
-                for _, line in ipairs(data) do
-                    if line and line ~= '' and not line:match('^%s*$') then
-                        vim.schedule(function()
-                            vim.notify("windeployqt: " .. line, vim.log.levels.WARN)
-                        end)
+        local args = { windeployqt, '--no-translations' }
+        if cfg.export.deploy_compiler_runtime then
+            table.insert(args, '--compiler-runtime')
+        end
+        table.insert(args, target_path)
+
+        vim.notify("📦 Deploying Qt runtime: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.INFO)
+        vim.fn.jobstart(args, {
+            on_stderr = function(_, data)
+                if data and #data > 0 then
+                    for _, line in ipairs(data) do
+                        if line and line ~= '' and not line:match('^%s*$') then
+                            vim.schedule(function()
+                                vim.notify("windeployqt: " .. line, vim.log.levels.WARN)
+                            end)
+                        end
                     end
                 end
-            end
-        end,
-    })
-    return true
+            end,
+        })
+        return true
+    end
+
+    if os_type == 'macos' then
+        local macdeployqt = system.find_qt_tool('macdeployqt')
+        if not macdeployqt then
+            vim.notify("⚠️  macdeployqt not found; skip macOS Qt deployment", vim.log.levels.WARN)
+            return false
+        end
+
+        -- macdeployqt expects an .app bundle. If a plain executable is provided, warn and skip.
+        if not tostring(target_path):match('%.app$') then
+            vim.notify("⚠️  macdeployqt expects a .app bundle; skip: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.WARN)
+            return false
+        end
+
+        local args = { macdeployqt, target_path }
+        vim.notify("📦 Deploying Qt runtime: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.INFO)
+        vim.fn.jobstart(args, {
+            on_stderr = function(_, data)
+                if data and #data > 0 then
+                    for _, line in ipairs(data) do
+                        if line and line ~= '' and not line:match('^%s*$') then
+                            vim.schedule(function()
+                                vim.notify("macdeployqt: " .. line, vim.log.levels.WARN)
+                            end)
+                        end
+                    end
+                end
+            end,
+        })
+        return true
+    end
+
+    -- Linux: linuxdeployqt is not part of Qt; run it only if available.
+    if os_type == 'linux' then
+        local linuxdeployqt = system.find_executable('linuxdeployqt')
+        if not linuxdeployqt then
+            -- Best-effort: rely on system Qt runtime / package manager.
+            return false
+        end
+
+        local args = { linuxdeployqt, target_path, '-no-translations' }
+        vim.notify("📦 Deploying Qt runtime: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.INFO)
+        vim.fn.jobstart(args, {
+            on_stderr = function(_, data)
+                if data and #data > 0 then
+                    for _, line in ipairs(data) do
+                        if line and line ~= '' and not line:match('^%s*$') then
+                            vim.schedule(function()
+                                vim.notify("linuxdeployqt: " .. line, vim.log.levels.WARN)
+                            end)
+                        end
+                    end
+                end
+            end,
+        })
+        return true
+    end
+
+    return false
 end
 
 local function export_after_cmake_build(project_root, build_dir, build_type)
@@ -168,22 +227,29 @@ local function export_after_cmake_build(project_root, build_dir, build_type)
                 local bin_dir = export_root .. '/bin'
                 local exe_suffix = (system.get_os() == 'windows') and '.exe' or ''
 
-                local main_exe = bin_dir .. '/' .. project_name .. exe_suffix
-                if file_manager.file_exists(main_exe) then
-                    run_windeployqt_if_available(main_exe)
+                -- Prefer deploying bundles on macOS when they exist.
+                local main_target = bin_dir .. '/' .. project_name .. exe_suffix
+                if system.get_os() == 'macos' then
+                    local main_app = bin_dir .. '/' .. project_name .. '.app'
+                    if vim.fn.isdirectory(main_app) == 1 then
+                        main_target = main_app
+                    end
+                end
+                if file_manager.file_exists(main_target) or vim.fn.isdirectory(main_target) == 1 then
+                    run_qt_deploy_if_available(main_target)
                 end
 
                 if cfg.export.include_tests then
-                    local tests_exe = bin_dir .. '/' .. project_name .. '_tests' .. exe_suffix
-                    if file_manager.file_exists(tests_exe) then
-                        run_windeployqt_if_available(tests_exe)
+                    local tests_target = bin_dir .. '/' .. project_name .. '_tests' .. exe_suffix
+                    if file_manager.file_exists(tests_target) then
+                        run_qt_deploy_if_available(tests_target)
                     end
                 end
 
                 if cfg.export.include_demo then
-                    local demo_exe = bin_dir .. '/' .. project_name .. '_demo' .. exe_suffix
-                    if file_manager.file_exists(demo_exe) then
-                        run_windeployqt_if_available(demo_exe)
+                    local demo_target = bin_dir .. '/' .. project_name .. '_demo' .. exe_suffix
+                    if file_manager.file_exists(demo_target) then
+                        run_qt_deploy_if_available(demo_target)
                     end
                 end
             end)
@@ -565,7 +631,7 @@ function M.start_make_build(project_root, build_dir)
                         if file_manager.file_exists(src_exe) then
                             file_manager.copy_file(src_exe, dst_exe)
                             vim.notify('📤 Exported executable to: ' .. dst_exe, vim.log.levels.INFO)
-                            run_windeployqt_if_available(dst_exe)
+                            run_qt_deploy_if_available(dst_exe)
                         else
                             vim.notify('⚠️  qmake build succeeded but executable not found for export: ' .. src_exe, vim.log.levels.WARN)
                         end

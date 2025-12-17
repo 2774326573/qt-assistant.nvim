@@ -489,6 +489,10 @@ By default, after a successful build (`:QtBuild`) the plugin exports build outpu
 
 On Windows, if `windeployqt` is available, it will also deploy required Qt DLLs/plugins into `export/<project>/bin/`.
 
+On macOS, if `macdeployqt` is available, deployment requires an `.app` bundle (e.g. `export/<project>/bin/<project>.app`).
+
+On Linux, if `linuxdeployqt` is available it will be used; otherwise export only (Qt runtime is expected from the system).
+
 Configure it via:
 
 ```lua
