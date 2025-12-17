@@ -153,15 +153,18 @@ function M.open_designer(ui_file)
 end
 
 -- Create new UI file
-function M.create_new_ui(filename)
+function M.create_new_ui(filename, target_dir)
     if not filename:match("%.ui$") then
         filename = filename .. ".ui"
     end
     
     local project_root = get_config().project_root
-    local ui_dir = project_root .. "/ui"
     local system = require('qt-assistant.system')
-    
+
+    local ui_dir = target_dir and target_dir ~= ''
+        and vim.fs.normalize(target_dir)
+        or (project_root .. "/ui")
+
     -- Ensure ui directory exists
     if not file_manager.directory_exists(ui_dir) then
         local success, error_msg = file_manager.ensure_directory_exists(ui_dir)
@@ -170,7 +173,7 @@ function M.create_new_ui(filename)
             return false
         end
     end
-    
+
     local ui_file_path = system.join_path(ui_dir, filename)
     
     -- Check if file already exists

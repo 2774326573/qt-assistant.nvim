@@ -198,7 +198,7 @@ function M.show_class_creator()
     table.insert(menu_items, "")
     
     for i, class_type in ipairs(class_types) do
-        local class_info = core.get_class_type_info(class_type)
+        local class_info = get_class_type_info(class_type)
         if class_info then
             table.insert(menu_items, string.format("%d. %s", i, class_info.name))
             table.insert(menu_items, string.format("   %s", class_info.description))
@@ -337,7 +337,8 @@ function M.show_options_config(class_name, class_type)
         generate_ui = class_info.files and vim.tbl_contains(class_info.files, "ui"),
         add_to_cmake = get_config().auto_update_cmake,
         generate_comments = get_config().generate_comments,
-        target_subdir = nil
+        target_subdir = nil,
+        custom_dir = nil
     }
     
     local option_keys = {}
@@ -358,6 +359,8 @@ function M.show_options_config(class_name, class_type)
                                             option_index, options.generate_comments and "x" or " "))
     option_keys[option_index] = "generate_comments"
     option_index = option_index + 1
+
+    table.insert(options_items, "  p. Target directory: " .. (options.custom_dir or "[default]") .. " (press p to change)")
     
     table.insert(options_items, "")
     table.insert(options_items, "Target subdir: (relative to include/src/ui) [default]")
@@ -458,6 +461,26 @@ function M.show_options_config(class_name, class_type)
                     options.target_subdir = input
                     update_display()
                 end
+            end)
+        end,
+        noremap = true,
+        silent = true
+    })
+
+    -- 自定义目录（覆盖默认目录放置所有文件）
+    vim.api.nvim_buf_set_keymap(buf, 'n', 'p', '', {
+        callback = function()
+            vim.ui.input({
+                prompt = "Target directory (absolute or relative to cwd): ",
+                default = options.custom_dir or "",
+                completion = 'dir'
+            }, function(input)
+                if input ~= nil and input ~= '' then
+                    options.custom_dir = vim.fs.normalize(input)
+                else
+                    options.custom_dir = nil
+                end
+                update_display()
             end)
         end,
         noremap = true,
@@ -661,20 +684,13 @@ function M.show_project_manager()
     end
     
     table.insert(menu_items, "Actions:")
-    table.insert(menu_items, "1. Auto Open Project (Smart & Fast)")
-    table.insert(menu_items, "2. Quick Project Switcher (⚡ Recent Projects)")
-    table.insert(menu_items, "3. Select Project (Choose Manually)")
-    table.insert(menu_items, "4. Create new project")
-    table.insert(menu_items, "5. Show project templates")
-    table.insert(menu_items, "6. Build project")
-    table.insert(menu_items, "7. Run project")
-    table.insert(menu_items, "8. Clean project")
-    table.insert(menu_items, "")
-    table.insert(menu_items, "Advanced Options:")
-    table.insert(menu_items, "s - Search Qt projects")
-    table.insert(menu_items, "g - Global search all drives (comprehensive)")
-    table.insert(menu_items, "r - Recent projects")
-    table.insert(menu_items, "m - Manual path input")
+    table.insert(menu_items, "1. Open project (interactive)")
+    table.insert(menu_items, "2. Create new project")
+    table.insert(menu_items, "3. Show project templates")
+    table.insert(menu_items, "4. Build project")
+    table.insert(menu_items, "5. Run project")
+    table.insert(menu_items, "6. Clean project")
+    table.insert(menu_items, "m. Open project by path")
     table.insert(menu_items, "")
     table.insert(menu_items, "Press number/letter to select, 'q' to quit")
     
@@ -714,17 +730,9 @@ function M.show_project_manager()
     local actions = {
         ['1'] = function()
             close_window()
-            project_manager.show_smart_project_selector()
+            require('qt-assistant').open_project_interactive()
         end,
         ['2'] = function()
-            close_window()
-            project_manager.show_quick_project_switcher()
-        end,
-        ['3'] = function()
-            close_window()
-            project_manager.show_smart_project_selector_with_choice()
-        end,
-        ['4'] = function()
             close_window()
             vim.ui.input({prompt = 'Project name: '}, function(name)
                 if name then
@@ -746,37 +754,24 @@ function M.show_project_manager()
                 end
             end)
         end,
-        ['5'] = function()
+        ['3'] = function()
             close_window()
             project_manager.list_templates()
         end,
-        ['6'] = function()
+        ['4'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.build_project()
         end,
-        ['7'] = function()
+        ['5'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.run_project()
         end,
-        ['8'] = function()
+        ['6'] = function()
             close_window()
             local build_manager = require('qt-assistant.build_manager')
             build_manager.clean_project()
-        end,
-        -- 高级选项
-        ['s'] = function()
-            close_window()
-            project_manager.search_and_select_project()
-        end,
-        ['g'] = function()
-            close_window()
-            project_manager.start_global_search()
-        end,
-        ['r'] = function()
-            close_window()
-            project_manager.show_recent_projects()
         end,
         ['m'] = function()
             close_window()

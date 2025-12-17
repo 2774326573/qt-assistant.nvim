@@ -3,6 +3,9 @@
 
 local M = {}
 
+-- Remember last requested build type for subsequent install/package steps
+M._last_build_type = nil
+
 -- Get configuration
 local function get_config()
     return require('qt-assistant.config').get()
@@ -24,6 +27,8 @@ end
 function M.build_project(build_type, opts)
     build_type = build_type or "Debug"
     opts = opts or {}
+
+    M._last_build_type = build_type
     
     vim.schedule(function()
         local build_system = M.detect_build_system()
@@ -55,6 +60,208 @@ function M.build_project(build_type, opts)
     return true
 end
 
+-- Install project (CMake only)
+function M.install_project(prefix)
+    vim.schedule(function()
+        local build_system = M.detect_build_system()
+        if build_system ~= "cmake" then
+            vim.notify("❌ Install is supported for CMake projects only", vim.log.levels.ERROR)
+            return
+        end
+
+        local project_root = get_config().project_root
+        local build_dir = project_root .. "/build"
+        if vim.fn.isdirectory(build_dir) ~= 1 then
+            vim.notify("❌ Build directory not found. Please run :QtBuild first.", vim.log.levels.ERROR)
+            return
+        end
+
+        local system = require('qt-assistant.system')
+        local cmake_path = system.find_executable("cmake")
+        if not cmake_path then
+            vim.notify("❌ CMake not found. Please install CMake.", vim.log.levels.ERROR)
+            return
+        end
+
+        local cmd = { cmake_path, "--install", build_dir }
+        local build_type = M._last_build_type or "Release"
+        table.insert(cmd, "--config")
+        table.insert(cmd, build_type)
+
+        if prefix and prefix ~= "" then
+            table.insert(cmd, "--prefix")
+            table.insert(cmd, prefix)
+        end
+
+        vim.notify("📦 Installing project...", vim.log.levels.INFO)
+
+        vim.fn.jobstart(cmd, {
+            cwd = project_root,
+            on_stderr = function(_, data)
+                if data and #data > 0 then
+                    for _, line in ipairs(data) do
+                        if line and line ~= "" and not line:match("^%s*$") then
+                            vim.schedule(function()
+                                vim.notify("Install: " .. line, vim.log.levels.WARN)
+                            end)
+                        end
+                    end
+                end
+            end,
+            on_exit = function(_, exit_code)
+                vim.schedule(function()
+                    if exit_code == 0 then
+                        vim.notify("✅ Install completed", vim.log.levels.INFO)
+                    else
+                        vim.notify("❌ Install failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    end
+                end)
+            end
+        })
+    end)
+end
+
+-- Package project (CMake + CPack only)
+function M.package_project()
+    vim.schedule(function()
+        local build_system = M.detect_build_system()
+        local project_root = get_config().project_root
+        local build_dir = project_root .. "/build"
+        if vim.fn.isdirectory(build_dir) ~= 1 then
+            vim.notify("❌ Build directory not found. Please run :QtBuild first.", vim.log.levels.ERROR)
+            return
+        end
+
+        if build_system == "cmake" then
+            local system = require('qt-assistant.system')
+            local cmake_path = system.find_executable("cmake")
+            if not cmake_path then
+                vim.notify("❌ CMake not found. Please install CMake.", vim.log.levels.ERROR)
+                return
+            end
+
+            local build_type = M._last_build_type or "Release"
+            local cmd = { cmake_path, "--build", build_dir, "--target", "package" }
+            table.insert(cmd, "--config")
+            table.insert(cmd, build_type)
+
+            vim.notify("📦 Packaging project (CPack)...", vim.log.levels.INFO)
+
+            vim.fn.jobstart(cmd, {
+                cwd = project_root,
+                on_stderr = function(_, data)
+                    if data and #data > 0 then
+                        for _, line in ipairs(data) do
+                            if line and line ~= "" and not line:match("^%s*$") then
+                                vim.schedule(function()
+                                    vim.notify("Package: " .. line, vim.log.levels.WARN)
+                                end)
+                            end
+                        end
+                    end
+                end,
+                on_exit = function(_, exit_code)
+                    vim.schedule(function()
+                        if exit_code == 0 then
+                            vim.notify("✅ Package completed", vim.log.levels.INFO)
+                        else
+                            vim.notify("❌ Package failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                        end
+                    end)
+                end
+            })
+
+            return
+        end
+
+        if build_system == "qmake" then
+            local system = require('qt-assistant.system')
+            local project_name = vim.fn.fnamemodify(project_root, ":t")
+            local zip_path = build_dir .. "/" .. project_name .. ".zip"
+
+            local function escape_ps_single_quotes(s)
+                return tostring(s):gsub("'", "''")
+            end
+
+            if system.get_os() == 'windows' then
+                local pwsh = system.find_executable('pwsh') or system.find_executable('powershell')
+                if not pwsh then
+                    vim.notify("❌ PowerShell not found (pwsh/powershell). Cannot create ZIP.", vim.log.levels.ERROR)
+                    return
+                end
+
+                local build_dir_escaped = escape_ps_single_quotes(build_dir)
+                local zip_path_escaped = escape_ps_single_quotes(zip_path)
+                local ps_cmd = "Compress-Archive -Path (Join-Path '" .. build_dir_escaped .. "' '*') -DestinationPath '" .. zip_path_escaped .. "' -Force"
+                local cmd = { pwsh, "-NoProfile", "-NonInteractive", "-Command", ps_cmd }
+
+                vim.notify("📦 Packaging project (ZIP)...", vim.log.levels.INFO)
+                vim.fn.jobstart(cmd, {
+                    cwd = project_root,
+                    on_stderr = function(_, data)
+                        if data and #data > 0 then
+                            for _, line in ipairs(data) do
+                                if line and line ~= "" and not line:match("^%s*$") then
+                                    vim.schedule(function()
+                                        vim.notify("Package: " .. line, vim.log.levels.WARN)
+                                    end)
+                                end
+                            end
+                        end
+                    end,
+                    on_exit = function(_, exit_code)
+                        vim.schedule(function()
+                            if exit_code == 0 then
+                                vim.notify("✅ ZIP created: " .. zip_path, vim.log.levels.INFO)
+                            else
+                                vim.notify("❌ ZIP failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                            end
+                        end)
+                    end
+                })
+
+                return
+            end
+
+            local zip_exe = system.find_executable('zip')
+            if not zip_exe then
+                vim.notify("❌ 'zip' not found. Please install zip to package qmake builds.", vim.log.levels.ERROR)
+                return
+            end
+
+            local cmd = { zip_exe, "-r", zip_path, "." }
+            vim.notify("📦 Packaging project (ZIP)...", vim.log.levels.INFO)
+            vim.fn.jobstart(cmd, {
+                cwd = build_dir,
+                on_stderr = function(_, data)
+                    if data and #data > 0 then
+                        for _, line in ipairs(data) do
+                            if line and line ~= "" and not line:match("^%s*$") then
+                                vim.schedule(function()
+                                    vim.notify("Package: " .. line, vim.log.levels.WARN)
+                                end)
+                            end
+                        end
+                    end
+                end,
+                on_exit = function(_, exit_code)
+                    vim.schedule(function()
+                        if exit_code == 0 then
+                            vim.notify("✅ ZIP created: " .. zip_path, vim.log.levels.INFO)
+                        else
+                            vim.notify("❌ ZIP failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                        end
+                    end)
+                end
+            })
+
+            return
+        end
+
+        vim.notify("❌ No build system detected (CMakeLists.txt or *.pro)", vim.log.levels.ERROR)
+    end)
+end
+
 -- Build with CMake (async)
 function M.build_with_cmake_async(project_root, build_dir, build_type)
     local system = require('qt-assistant.system')
@@ -73,6 +280,18 @@ function M.build_with_cmake_async(project_root, build_dir, build_type)
         "-DCMAKE_BUILD_TYPE=" .. build_type,
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     }
+    
+    -- Add vcpkg toolchain file if enabled
+    local config = get_config()
+    if config.vcpkg and config.vcpkg.enabled then
+        local vcpkg_toolchain = require('qt-assistant.config').get_vcpkg_toolchain_file()
+        if vcpkg_toolchain then
+            table.insert(configure_cmd, "-DCMAKE_TOOLCHAIN_FILE=" .. vcpkg_toolchain)
+            vim.notify("🔧 Using vcpkg toolchain: " .. vcpkg_toolchain, vim.log.levels.INFO)
+        else
+            vim.notify("⚠️  vcpkg enabled but toolchain file not found", vim.log.levels.WARN)
+        end
+    end
     
     vim.notify("⚙️  Configuring with CMake...", vim.log.levels.INFO)
     

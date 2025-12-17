@@ -38,7 +38,13 @@ This plugin implements all core requirements from the Product Requirements Docum
         require('qt-assistant').setup({
             -- Optional configuration
             auto_update_cmake = true,
-            enable_default_keymaps = true
+            enable_default_keymaps = true,
+            -- vcpkg support (optional)
+            vcpkg = {
+                enabled = false,           -- Enable vcpkg support
+                vcpkg_root = nil,          -- vcpkg root directory (auto-detected)
+                toolchain_file = nil       -- vcpkg toolchain file path (auto-inferred)
+            }
         })
     end
 }
@@ -53,6 +59,42 @@ use {
         require('qt-assistant').setup()
     end
 }
+```
+
+### vcpkg Integration
+
+The plugin supports integration with [vcpkg](https://github.com/microsoft/vcpkg) package manager for managing C++ dependencies.
+
+#### Enable vcpkg
+
+```lua
+require('qt-assistant').setup({
+    vcpkg = {
+        enabled = true,                               -- Enable vcpkg
+        vcpkg_root = "C:/vcpkg",                     -- Optional: specify vcpkg root directory
+        toolchain_file = "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"  -- Optional: specify toolchain file
+    }
+})
+```
+
+**Auto-detection:** The plugin automatically detects vcpkg installation by checking:
+- Environment variable `VCPKG_ROOT`
+- `~/vcpkg`, `~/.vcpkg`
+- `C:/vcpkg`, `C:/dev/vcpkg`, `C:/Tools/vcpkg` (Windows)
+- `/usr/local/vcpkg`, `/opt/vcpkg` (Linux/macOS)
+
+**Usage:**
+1. When vcpkg is enabled, CMake configuration will automatically include the vcpkg toolchain file
+2. Use `vcpkg.json` in your project or install dependencies via `vcpkg install`
+3. CMake will automatically find packages installed by vcpkg
+
+**Qt tools via vcpkg:** If Qt is installed through vcpkg, the plugin will also try to locate Qt tools (e.g. `designer`, `uic`, `qmake`) under `VCPKG_ROOT/installed/*/tools/*` when they are not found in PATH or common Qt install locations.
+
+**CMake template behavior:** vcpkg is a fallback option. New project templates will not enable vcpkg automatically just because `VCPKG_ROOT` is set. Enable it explicitly via the plugin config (`vcpkg.enabled = true`) or by passing `-DQT_ASSISTANT_USE_VCPKG=ON` when configuring with CMake.
+
+```bash
+# Example: Install dependencies
+vcpkg install qt5-base qt5-tools
 ```
 
 ## Dependencies
@@ -128,7 +170,7 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 
 | Command                             | Description                     | Example                                      |
 | ----------------------------------- | ------------------------------- | -------------------------------------------- |
-| `:QtNewProject <name> <type>`       | Create new Qt project           | `:QtNewProject MyApp widget_app`             |
+| `:QtNewProject <name> <type> [cxx_standard] [tests_or_gtest]` | Create new Qt project           | `:QtNewProject MyApp widget_app 17 gtest`             |
 | `:QtOpenProject [path]`             | Open existing Qt project        | `:QtOpenProject ~/MyProject`                 |
 | `:QtAddModule <name> <type>`        | Add module to project            | `:QtAddModule core shared_lib`               |
 | `:QtNewUi <filename>`               | Create new UI file              | `:QtNewUi mainwindow`                        |

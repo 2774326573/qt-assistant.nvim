@@ -36,7 +36,7 @@ local project_templates = {
     shared_lib = {
         name = "Qt Shared Library",
         description = "Qt shared library module",
-        files = {"CMakeLists.txt", "ProjectGuide.md"},
+        files = {"CMakeLists.txt", "ProjectGuide.md", "SharedLibraryGuide.md"},
         type = "library"
     },
     static_lib = {
@@ -48,7 +48,7 @@ local project_templates = {
     plugin = {
         name = "Qt Plugin Module",
         description = "Qt plugin module",
-        files = {"CMakeLists.txt", "ProjectGuide.md"},
+        files = {"CMakeLists.txt", "ProjectGuide.md", "SharedLibraryGuide.md"},
         type = "plugin"
     }
 }
@@ -215,7 +215,14 @@ function M.open_project(project_path)
 end
 
 -- Create new project with optional C++ standard
-function M.new_project(project_name, template_type, cxx_standard)
+-- opts:
+--   enable_tests: boolean (default false)
+function M.new_project(project_name, template_type, cxx_standard, root_dir, opts)
+    opts = opts or {}
+    if opts.enable_tests == nil then
+        -- Default ON: new projects include runnable tests & demo code
+        opts.enable_tests = true
+    end
     if not project_name or project_name == "" then
         vim.notify("Project name is required", vim.log.levels.ERROR)
         return false
@@ -229,6 +236,26 @@ function M.new_project(project_name, template_type, cxx_standard)
     
     -- Default C++ standard if not specified
     cxx_standard = cxx_standard or "17"
+
+    -- If no root directory provided, ask the user once and recurse with the choice
+    if not root_dir then
+        local base_dir = vim.fs.normalize(vim.fn.getcwd())
+        vim.ui.input({
+            prompt = "Project location (directory): ",
+            default = base_dir,
+            completion = 'dir'
+        }, function(dir_input)
+            if dir_input == nil then
+                return
+            end
+            local target_root = dir_input ~= '' and vim.fs.normalize(dir_input) or base_dir
+            M.new_project(project_name, template_type, cxx_standard, target_root, opts)
+        end)
+        return true
+    end
+
+    -- Root directory to place the new project (default: cwd)
+    local base_dir = vim.fs.normalize(root_dir)
     
     -- Validate C++ standard
     if not M.validate_cxx_standard(cxx_standard) then
@@ -237,7 +264,7 @@ function M.new_project(project_name, template_type, cxx_standard)
     end
     
     -- Create project directory
-    local project_path = vim.fn.getcwd() .. "/" .. project_name
+    local project_path = base_dir .. "/" .. project_name
     local success, error_msg = file_manager.ensure_directory_exists(project_path)
     if not success then
         vim.notify("Failed to create project directory: " .. error_msg, vim.log.levels.ERROR)
@@ -245,10 +272,10 @@ function M.new_project(project_name, template_type, cxx_standard)
     end
     
     -- Create project structure
-    M.create_project_structure(project_path, template_type)
+    M.create_project_structure(project_path, template_type, opts)
     
     -- Generate project files with C++ standard
-    M.create_project_files(project_path, template_type, project_name, cxx_standard)
+    M.create_project_files(project_path, template_type, project_name, cxx_standard, opts)
     
     vim.notify(string.format("Project '%s' created successfully", project_name), vim.log.levels.INFO)
     
@@ -265,7 +292,8 @@ function M.new_project(project_name, template_type, cxx_standard)
 end
 
 -- Create project directory structure
-function M.create_project_structure(project_path, template_type)
+function M.create_project_structure(project_path, template_type, opts)
+    opts = opts or {}
     local project_dirname = vim.fn.fnamemodify(project_path, ":t")
     local directories = {"src", "include", "doc"}
 
@@ -276,12 +304,17 @@ function M.create_project_structure(project_path, template_type)
         table.insert(directories, "qml")
         table.insert(directories, "resources")
     elseif template_type == "shared_lib" or template_type == "static_lib" or template_type == "plugin" then
-        directories = {"src", "include/" .. project_dirname}
+        directories = {"src/" .. project_dirname, "include/" .. project_dirname, "doc"}
     end
 
     for _, dir in ipairs(directories) do
         local dir_path = project_path .. "/" .. dir
         file_manager.ensure_directory_exists(dir_path)
+    end
+
+    if opts.enable_tests then
+        file_manager.ensure_directory_exists(project_path .. "/tests")
+        file_manager.ensure_directory_exists(project_path .. "/examples")
     end
 
     -- Default export directory: export/<project_name>
@@ -290,14 +323,17 @@ function M.create_project_structure(project_path, template_type)
 end
 
 -- Create project files
-function M.create_project_files(project_path, template_type, project_name, cxx_standard)
+function M.create_project_files(project_path, template_type, project_name, cxx_standard, opts)
     local templates = require('qt-assistant.templates')
     templates.init()
+
+    opts = opts or {}
     
     cxx_standard = cxx_standard or "17"  -- Default to C++17
     
     local template_vars = {
         PROJECT_NAME = project_name,
+        PROJECT_NAME_UPPER = string.upper(project_name),
         CLASS_NAME = M.project_name_to_class_name(project_name),
         FILE_NAME = "mainwindow",
         HEADER_GUARD = "MAINWINDOW_H",
@@ -311,6 +347,10 @@ function M.create_project_files(project_path, template_type, project_name, cxx_s
     for _, file_name in ipairs(template.files) do
         local file_content = M.generate_template_file(file_name, template_type, template_vars)
         if file_content then
+            if file_name == "CMakeLists.txt" and opts.enable_tests then
+                file_content = file_content .. "\n\n# Testing (optional)\ninclude(CTest)\nenable_testing()\nadd_subdirectory(tests)\n"
+            end
+
             local target_dir = M.get_target_directory(file_name, template_type)
             local file_path = project_path
             if target_dir ~= "" then
@@ -322,15 +362,59 @@ function M.create_project_files(project_path, template_type, project_name, cxx_s
         end
     end
 
+    if opts.enable_tests then
+        local framework = tostring(opts.test_framework or "qt"):lower()
+        local tests_dir = project_path .. "/tests"
+        file_manager.ensure_directory_exists(tests_dir)
+
+        local is_app = template_type == "widget_app" or template_type == "console_app" or template_type == "quick_app"
+
+        -- Tests
+        local tests_cmake_template
+        local test_cpp_template
+        if framework == "gtest" then
+            tests_cmake_template = is_app and "cmake_gtest_tests_app" or "cmake_gtest_tests_lib"
+            test_cpp_template = is_app and "gtest_test_app" or "gtest_test_lib"
+        else
+            tests_cmake_template = is_app and "cmake_tests_app" or "cmake_tests_lib"
+            test_cpp_template = is_app and "qt_test_app" or "qt_test_lib"
+        end
+
+        local tests_cmake = templates.render_template(tests_cmake_template, template_vars)
+        file_manager.write_file(tests_dir .. "/CMakeLists.txt", tests_cmake)
+
+        local test_cpp = templates.render_template(test_cpp_template, template_vars)
+        file_manager.write_file(tests_dir .. "/test_basic.cpp", test_cpp)
+
+        -- Runnable demo (callable test program)
+        local examples_dir = project_path .. "/examples"
+        file_manager.ensure_directory_exists(examples_dir)
+        local demo_template = is_app and "demo_app" or "demo_lib"
+        local demo_cpp = templates.render_template(demo_template, template_vars)
+        file_manager.write_file(examples_dir .. "/demo.cpp", demo_cpp)
+
+        -- App core (calculator) to be called by tests/demo
+        if is_app then
+            local calc_h = templates.render_template("calculator_header", template_vars)
+            local calc_cpp = templates.render_template("calculator_source", template_vars)
+            file_manager.write_file(project_path .. "/include/calculator.h", calc_h)
+            file_manager.write_file(project_path .. "/src/calculator.cpp", calc_cpp)
+        end
+    end
+
     if template_type == "shared_lib" or template_type == "static_lib" or template_type == "plugin" then
         local include_dir = project_path .. "/include/" .. project_name
-        local source_dir = project_path .. "/src"
+        local source_dir = project_path .. "/src/" .. project_name
 
         file_manager.ensure_directory_exists(include_dir)
         file_manager.ensure_directory_exists(source_dir)
 
         local header_content = M.generate_library_header(project_name, template_type, template_vars)
         file_manager.write_file(include_dir .. "/" .. project_name .. ".h", header_content)
+
+        -- Export macro header for shared/static/plugin targets
+        local export_content = templates.render_template("library_export_header", template_vars)
+        file_manager.write_file(include_dir .. "/" .. project_name .. "_export.h", export_content)
 
         local source_content = M.generate_library_source(project_name, template_type, template_vars)
         file_manager.write_file(source_dir .. "/" .. project_name .. ".cpp", source_content)
@@ -370,7 +454,8 @@ function M.generate_template_file(file_name, template_type, vars)
         ["qml.qrc"] = "qml_qrc",
         ["CMakeLists.txt"] = "cmake_" .. template_type,
         ["README.md"] = template_type == "multi_project" and "multi_project_readme" or nil,
-        ["ProjectGuide.md"] = "doc_project_guide"
+        ["ProjectGuide.md"] = "doc_project_guide",
+        ["SharedLibraryGuide.md"] = "doc_shared_library_guide"
     }
     
     local template_name = template_map[file_name]
@@ -424,48 +509,79 @@ function M.new_project_interactive()
         vim.notify("Project name cannot be empty", vim.log.levels.ERROR)
         return
     end
-    
-    -- Template selection
-    local template_options = {"widget_app", "console_app", "quick_app", "static_lib", "shared_lib", "plugin"}
-    local template_choice = vim.fn.inputlist({
-        "Select project template:",
-        "1. Widget Application (QMainWindow)",
-        "2. Console Application", 
-        "3. Quick Application (QML)",
-        "4. Static Library",
-        "5. Shared Library",
-        "6. Plugin Module"
-    })
-    
-    if template_choice < 1 or template_choice > #template_options then
-        vim.notify("Invalid template selection", vim.log.levels.ERROR)
-        return
-    end
-    
-    local template_type = template_options[template_choice]
-    
-    -- C++ standard selection
-    local cxx_choice = vim.fn.inputlist({
-        "Select C++ standard:",
-        "1. C++11 (Qt5 compatible)",
-        "2. C++14 (Qt5 compatible)",
-        "3. C++17 (Qt5/Qt6 compatible, recommended)",
-        "4. C++20 (Modern C++, Qt6 preferred)",
-        "5. C++23 (Latest standard)"
-    })
-    
-    local cxx_standards = {"11", "14", "17", "20", "23"}
-    local cxx_standard = "17"  -- Default
-    
-    if cxx_choice >= 1 and cxx_choice <= 5 then
-        cxx_standard = cxx_standards[cxx_choice]
-    end
-    
-    -- Show selection summary
-    vim.notify(string.format("Creating %s project '%s' with C++%s", template_type, project_name, cxx_standard), vim.log.levels.INFO)
-    
-    -- Create project
-    return M.new_project(project_name, template_type, cxx_standard)
+
+    -- Choose base directory to place the project
+    local base_dir = vim.fs.normalize(vim.fn.getcwd())
+    vim.ui.input({
+        prompt = "Project location (directory): ",
+        default = base_dir,
+        completion = 'dir'
+    }, function(dir_input)
+        if dir_input == nil then
+            return
+        end
+
+        local target_root = dir_input ~= '' and vim.fs.normalize(dir_input) or base_dir
+
+        -- Template selection
+        local template_options = {"widget_app", "console_app", "quick_app", "static_lib", "shared_lib", "plugin"}
+        local template_choice = vim.fn.inputlist({
+            "Select project template:",
+            "1. Widget Application (QMainWindow)",
+            "2. Console Application", 
+            "3. Quick Application (QML)",
+            "4. Static Library",
+            "5. Shared Library",
+            "6. Plugin Module"
+        })
+        
+        if template_choice < 1 or template_choice > #template_options then
+            vim.notify("Invalid template selection", vim.log.levels.ERROR)
+            return
+        end
+        
+        local template_type = template_options[template_choice]
+        
+        -- C++ standard selection
+        local cxx_choice = vim.fn.inputlist({
+            "Select C++ standard:",
+            "1. C++11 (Qt5 compatible)",
+            "2. C++14 (Qt5 compatible)",
+            "3. C++17 (Qt5/Qt6 compatible, recommended)",
+            "4. C++20 (Modern C++, Qt6 preferred)",
+            "5. C++23 (Latest standard)"
+        })
+        
+        local cxx_standards = {"11", "14", "17", "20", "23"}
+        local cxx_standard = "17"  -- Default
+        
+        if cxx_choice >= 1 and cxx_choice <= 5 then
+            cxx_standard = cxx_standards[cxx_choice]
+        end
+        
+        vim.ui.select({ 'No tests', 'Qt Test', 'GoogleTest (gtest)' }, {
+            prompt = 'Include tests?'
+        }, function(choice)
+            local enable_tests = choice ~= 'No tests'
+            local test_framework = nil
+            if choice == 'Qt Test' then
+                test_framework = 'qt'
+            elseif choice == 'GoogleTest (gtest)' then
+                test_framework = 'gtest'
+            end
+
+            vim.notify(string.format(
+                "Creating %s project '%s' in %s with C++%s%s",
+                template_type,
+                project_name,
+                target_root,
+                cxx_standard,
+                enable_tests and (" + " .. (test_framework == 'gtest' and 'gtest' or 'QtTest')) or ""
+            ), vim.log.levels.INFO)
+
+            return M.new_project(project_name, template_type, cxx_standard, target_root, { enable_tests = enable_tests, test_framework = test_framework })
+        end)
+    end)
 end
 
 -- Add module to existing multi-module project
@@ -513,17 +629,21 @@ end
 
 -- Create module directory structure
 function M.create_module_structure(module_path, module_type)
-    local directories = {}
+    local directories = {"doc"}
 
     if module_type == "shared_lib" or module_type == "static_lib" or module_type == "plugin" then
-        directories = {"src", "include/" .. vim.fn.fnamemodify(module_path, ":t")}
+        directories = {
+            "doc",
+            "src/" .. vim.fn.fnamemodify(module_path, ":t"),
+            "include/" .. vim.fn.fnamemodify(module_path, ":t")
+        }
     elseif module_type == "widget_app" or module_type == "quick_app" then
-        directories = {"src", "include", "ui"}
+        directories = {"doc", "src", "include", "ui"}
         if module_type == "quick_app" then
             table.insert(directories, "qml")
         end
     elseif module_type == "console_app" then
-        directories = {"src"}
+        directories = {"doc", "src"}
     end
 
     for _, dir in ipairs(directories) do
@@ -537,14 +657,34 @@ function M.create_module_files(module_path, module_type, module_name)
     local templates = require('qt-assistant.templates')
     templates.init()
 
+    local is_shared_lib = module_type == "shared_lib"
+    local is_static_lib = module_type == "static_lib"
+    local is_plugin = module_type == "plugin"
+    local is_widget_app = module_type == "widget_app"
+    local is_quick_app = module_type == "quick_app"
+    local is_console_app = module_type == "console_app"
+    local is_app = is_widget_app or is_quick_app or is_console_app
+
     local template_vars = {
         PROJECT_NAME = module_name,
+        PROJECT_NAME_UPPER = string.upper(module_name),
         CLASS_NAME = M.project_name_to_class_name(module_name),
         FILE_NAME = module_name:lower(),
         HEADER_GUARD = string.upper(module_name) .. "_H",
         DATE = os.date('%Y-%m-%d'),
         YEAR = os.date('%Y'),
-        CXX_STANDARD = "17"  -- Default for modules
+        CXX_STANDARD = "17",  -- Default for modules
+        MODULE_TYPE = module_type,
+
+        -- Flags for docs/templates
+        IS_SHARED_LIB = is_shared_lib,
+        IS_STATIC_LIB = is_static_lib,
+        IS_PLUGIN = is_plugin,
+        IS_WIDGET_APP = is_widget_app,
+        IS_QUICK_APP = is_quick_app,
+        IS_CONSOLE_APP = is_console_app,
+        IS_APP = is_app,
+        IS_LIBRARY = (is_shared_lib or is_static_lib),
     }
 
     -- Create CMakeLists.txt for the module
@@ -560,9 +700,38 @@ function M.create_module_files(module_path, module_type, module_name)
         local header_path = module_path .. "/include/" .. module_name .. "/" .. module_name .. ".h"
         file_manager.write_file(header_path, header_content)
 
+        -- Export macro header
+        local export_content = templates.render_template("library_export_header", template_vars)
+        local export_path = module_path .. "/include/" .. module_name .. "/" .. module_name .. "_export.h"
+        file_manager.write_file(export_path, export_content)
+
         local source_content = M.generate_library_source(module_name, module_type, template_vars)
-        local source_path = module_path .. "/src/" .. module_name .. ".cpp"
+        local source_path = module_path .. "/src/" .. module_name .. "/" .. module_name .. ".cpp"
         file_manager.write_file(source_path, source_content)
+    end
+
+    -- Documentation for modules
+    local module_doc_dir = module_path .. "/doc"
+    file_manager.ensure_directory_exists(module_doc_dir)
+
+    local module_guide = templates.render_template("doc_module_guide", template_vars)
+    if module_guide then
+        file_manager.write_file(module_doc_dir .. "/ModuleGuide.md", module_guide)
+    end
+
+    -- Reuse project guides where appropriate
+    if module_type == "widget_app" or module_type == "quick_app" or module_type == "console_app" then
+        local guide = templates.render_template("doc_project_guide", template_vars)
+        if guide then
+            file_manager.write_file(module_doc_dir .. "/ProjectGuide.md", guide)
+        end
+    end
+
+    if module_type == "shared_lib" or module_type == "static_lib" or module_type == "plugin" then
+        local lib_guide = templates.render_template("doc_shared_library_guide", template_vars)
+        if lib_guide then
+            file_manager.write_file(module_doc_dir .. "/SharedLibraryGuide.md", lib_guide)
+        end
     end
 end
 
@@ -571,7 +740,8 @@ function M.generate_library_header(module_name, module_type, template_vars)
     local templates = require('qt-assistant.templates')
     local vars = vim.tbl_extend("force", template_vars or {}, {
         HEADER_GUARD = (template_vars and template_vars.HEADER_GUARD) or (string.upper(module_name) .. "_H"),
-        PLUGIN_IID = "org.example." .. module_name
+        PLUGIN_IID = "org.example." .. module_name,
+        PROJECT_NAME_UPPER = string.upper(module_name)
     })
 
     if module_type == "plugin" then

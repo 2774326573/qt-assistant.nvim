@@ -38,9 +38,21 @@ vim.api.nvim_create_user_command('QtNewProject', function(opts)
     if ensure_loaded() then
         local args = vim.split(opts.args, '%s+')
         if #args >= 3 then
-            -- QtNewProject <name> <template> <cxx_standard>
+            -- QtNewProject <name> <template> <cxx_standard> [tests|gtest]
             local project_manager = require('qt-assistant.project_manager')
-            project_manager.new_project(args[1], args[2], args[3])
+            local enable_tests = false
+            local test_framework = nil
+            if #args >= 4 then
+                local flag = tostring(args[4]):lower()
+                if flag == 'tests' or flag == 'test' or flag == 'with_tests' then
+                    enable_tests = true
+                    test_framework = 'qt'
+                elseif flag == 'gtest' or flag == 'googletest' then
+                    enable_tests = true
+                    test_framework = 'gtest'
+                end
+            end
+            project_manager.new_project(args[1], args[2], args[3], nil, { enable_tests = enable_tests, test_framework = test_framework })
         elseif #args >= 2 then
             -- QtNewProject <name> <template>
             local project_manager = require('qt-assistant.project_manager')
@@ -53,7 +65,7 @@ vim.api.nvim_create_user_command('QtNewProject', function(opts)
     end
 end, { 
     nargs = '*',
-    desc = 'Create new Qt project [name] [template] [cxx_standard]',
+    desc = 'Create new Qt project [name] [template] [cxx_standard] [tests|gtest]',
     complete = function(arg_lead, cmd_line, cursor_pos)
         local args = vim.split(cmd_line, '%s+')
         local arg_count = #args - 1  -- Subtract command name
@@ -64,6 +76,8 @@ end, {
         elseif arg_count == 2 then
             -- Complete C++ standard
             return {'11', '14', '17', '20', '23'}
+        elseif arg_count == 3 then
+            return {'tests', 'gtest'}
         end
         return {}
     end
@@ -198,6 +212,21 @@ vim.api.nvim_create_user_command('QtRun', function()
     if not ensure_loaded() then return end
     require('qt-assistant').run_project()
 end, { desc = 'Run Qt project' })
+
+vim.api.nvim_create_user_command('QtInstall', function(opts)
+    if not ensure_loaded() then return end
+    local prefix = opts.args ~= '' and opts.args or nil
+    require('qt-assistant').install_project(prefix)
+end, {
+    nargs = '?',
+    desc = 'Install CMake project (optional prefix)',
+    complete = 'dir'
+})
+
+vim.api.nvim_create_user_command('QtPackage', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant').package_project()
+end, { desc = 'Package CMake project via CPack' })
 
 -- ==================== CMake Commands ====================
 

@@ -38,7 +38,13 @@
         require('qt-assistant').setup({
             -- 可选配置
             auto_update_cmake = true,
-            enable_default_keymaps = true
+            enable_default_keymaps = true,
+            -- vcpkg 支持 (可选)
+            vcpkg = {
+                enabled = false,           -- 启用 vcpkg 支持
+                vcpkg_root = nil,          -- vcpkg 根目录 (自动检测)
+                toolchain_file = nil       -- vcpkg 工具链文件路径 (自动推断)
+            }
         })
     end
 }
@@ -53,6 +59,42 @@ use {
         require('qt-assistant').setup()
     end
 }
+```
+
+### vcpkg 集成
+
+插件支持与 [vcpkg](https://github.com/microsoft/vcpkg) 包管理器集成，用于管理 C++ 依赖。
+
+#### 启用 vcpkg
+
+```lua
+require('qt-assistant').setup({
+    vcpkg = {
+        enabled = true,                               -- 启用 vcpkg
+        vcpkg_root = "C:/vcpkg",                     -- 可选：指定 vcpkg 根目录
+        toolchain_file = "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"  -- 可选：指定工具链文件
+    }
+})
+```
+
+**自动检测：** 插件会自动检测 vcpkg 安装位置，检查以下位置：
+- 环境变量 `VCPKG_ROOT`
+- `~/vcpkg`, `~/.vcpkg`
+- `C:/vcpkg`, `C:/dev/vcpkg`, `C:/Tools/vcpkg` (Windows)
+- `/usr/local/vcpkg`, `/opt/vcpkg` (Linux/macOS)
+
+**使用方法：**
+1. 启用 vcpkg 后，CMake 配置将自动包含 vcpkg 工具链文件
+2. 在项目中使用 `vcpkg.json` 或通过 `vcpkg install` 安装依赖
+3. CMake 将自动找到 vcpkg 安装的包
+
+**通过 vcpkg 查找 Qt 工具：** 如果你的 Qt 是通过 vcpkg 安装的，当系统 PATH/常见 Qt 安装目录找不到时，插件也会尝试在 `VCPKG_ROOT/installed/*/tools/*` 下定位 Qt 工具（例如 `designer` / `uic` / `qmake`）。
+
+**CMake 模板行为：** vcpkg 作为“备用选项”，新建项目的模板不会因为设置了 `VCPKG_ROOT` 就自动启用 vcpkg。需要显式开启：要么在插件配置里设置 `vcpkg.enabled = true`，要么在 CMake 配置时传入 `-DQT_ASSISTANT_USE_VCPKG=ON`。
+
+```bash
+# 安装依赖示例
+vcpkg install qt5-base qt5-tools
 ```
 
 ## 依赖项
@@ -96,8 +138,14 @@ brew install lldb
 :QtDebugAttach              " 附加到运行的Qt进程
 :QtDebugStatus              " 检查调试配置
 ```
-   :QtNewProject MyApp widget_app
-   ```
+
+```vim
+:QtNewProject MyApp widget_app
+" 可选：生成 Qt Test 测试模板
+:QtNewProject MyApp widget_app 17 tests
+" 可选：生成 GoogleTest(gtest) 测试模板（适合 vcpkg 安装的 gtest）
+:QtNewProject MyApp widget_app 17 gtest
+```
 
 2. **创建UI文件:**
 

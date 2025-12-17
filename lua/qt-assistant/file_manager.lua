@@ -66,6 +66,16 @@ function M.determine_target_directories(class_type, opts)
     local project_root = config.project_root
     local dirs = config.directories
     local subdir = opts and opts.target_subdir
+    local custom_dir = opts and opts.custom_dir
+
+    -- If user specified a custom directory, place all generated files there
+    if custom_dir and custom_dir ~= '' then
+        return {
+            header = custom_dir,
+            source = custom_dir,
+            ui = custom_dir
+        }
+    end
 
     local function with_subdir(base)
         if subdir and subdir ~= '' then
@@ -118,6 +128,12 @@ end
 function M.file_exists(file_path)
     local stat = vim.loop.fs_stat(file_path)
     return stat and stat.type == "file"
+end
+
+-- 检查目录是否存在
+function M.directory_exists(dir_path)
+    local stat = vim.loop.fs_stat(dir_path)
+    return stat and stat.type == "directory"
 end
 
 -- 创建文件

@@ -301,9 +301,9 @@ function M.open_project_interactive()
 	end)
 end
 
-function M.new_project(name, template_type)
+function M.new_project(name, template_type, root_dir)
 	local project_manager = require("qt-assistant.project_manager")
-	project_manager.new_project(name, template_type)
+	project_manager.new_project(name, template_type, nil, root_dir)
 end
 
 function M.open_project(path)
@@ -314,15 +314,28 @@ end
 -- UI Designer Integration
 function M.create_new_ui_interactive()
 	vim.ui.input({ prompt = 'UI filename: ' }, function(filename)
-		if filename and filename ~= "" then
-			M.create_new_ui(filename)
+		if not filename or filename == "" then
+			return
 		end
+
+		local default_dir = vim.fs.normalize(require('qt-assistant.config').get().project_root .. "/ui")
+		vim.ui.input({
+			prompt = 'Target directory for UI file:',
+			default = default_dir,
+			completion = 'dir'
+		}, function(dir_choice)
+			if dir_choice == nil then
+				return
+			end
+			local target_dir = dir_choice ~= '' and vim.fs.normalize(dir_choice) or default_dir
+			M.create_new_ui(filename, target_dir)
+		end)
 	end)
 end
 
-function M.create_new_ui(filename)
+function M.create_new_ui(filename, target_dir)
 	local designer = require("qt-assistant.designer")
-	designer.create_new_ui(filename)
+	designer.create_new_ui(filename, target_dir)
 end
 
 function M.edit_ui_file(filename)
@@ -472,6 +485,16 @@ end
 function M.run_project()
 	local build_manager = require("qt-assistant.build_manager")
 	build_manager.run_project()
+end
+
+function M.install_project(prefix)
+	local build_manager = require("qt-assistant.build_manager")
+	build_manager.install_project(prefix)
+end
+
+function M.package_project()
+	local build_manager = require("qt-assistant.build_manager")
+	build_manager.package_project()
 end
 
 -- Debug Management
@@ -661,6 +684,8 @@ function M.show_help()
 		"Build System:",
 		"  :QtBuild                     - Build project",
 		"  :QtRun                       - Run project",
+		"  :QtInstall [prefix]           - Install (CMake only)",
+		"  :QtPackage                    - Package ZIP (CMake: CPack, qmake: zip build dir)",
 		"",
 		"CMake Management:",
 		"  :QtCMakePresets              - Generate CMakePresets.json",
@@ -735,9 +760,21 @@ function M.new_project_quick()
 		vim.notify("Project name cannot be empty", vim.log.levels.ERROR)
 		return
 	end
-	
-	local project_manager = require('qt-assistant.project_manager')
-	project_manager.new_project(project_name, "widget_app", "17")
+
+	local base_dir = vim.fs.normalize(vim.fn.getcwd())
+	vim.ui.input({
+		prompt = "Project location (directory): ",
+		default = base_dir,
+		completion = 'dir'
+	}, function(dir_input)
+		if dir_input == nil then
+			return
+		end
+
+		local target_root = dir_input ~= '' and vim.fs.normalize(dir_input) or base_dir
+		local project_manager = require('qt-assistant.project_manager')
+		project_manager.new_project(project_name, "widget_app", "17", target_root)
+	end)
 end
 
 -- Build with specific C++ standard

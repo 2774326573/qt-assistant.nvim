@@ -24,6 +24,11 @@ function M.setup(user_config)
             cmake_path = M._detect_qt_tool("cmake"),
             creator_path = M._detect_qt_tool("qtcreator")
         },
+        vcpkg = {
+            enabled = false,
+            vcpkg_root = M._detect_vcpkg_root(),
+            toolchain_file = nil -- 自动从 vcpkg_root 推断
+        },
         enable_default_keymaps = true
     }
     
@@ -75,6 +80,63 @@ function M.set_value(key, value)
     end
     
     current[keys[#keys]] = value
+end
+
+-- Detect vcpkg root directory
+function M._detect_vcpkg_root()
+    -- Check VCPKG_ROOT environment variable
+    local vcpkg_root = vim.fn.getenv('VCPKG_ROOT')
+    if vcpkg_root ~= vim.NIL and vcpkg_root ~= '' and vim.fn.isdirectory(vcpkg_root) == 1 then
+        return vcpkg_root
+    end
+    
+    -- Check common installation paths
+    local common_paths = {
+        vim.fn.expand('~/vcpkg'),
+        vim.fn.expand('~/.vcpkg'),
+        -- Windows
+        'C:/vcpkg',
+        'C:/dev/vcpkg',
+        'C:/Tools/vcpkg',
+        -- Linux/macOS
+        '/usr/local/vcpkg',
+        '/opt/vcpkg'
+    }
+    
+    for _, path in ipairs(common_paths) do
+        if vim.fn.isdirectory(path) == 1 then
+            -- Verify it's a valid vcpkg installation
+            local vcpkg_exe = path .. (vim.fn.has('win32') == 1 and '/vcpkg.exe' or '/vcpkg')
+            if vim.fn.filereadable(vcpkg_exe) == 1 then
+                return path
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- Get vcpkg toolchain file path
+function M.get_vcpkg_toolchain_file()
+    local config = M.get()
+    if not config.vcpkg or not config.vcpkg.enabled then
+        return nil
+    end
+    
+    -- Use explicitly configured toolchain file if provided
+    if config.vcpkg.toolchain_file and vim.fn.filereadable(config.vcpkg.toolchain_file) == 1 then
+        return config.vcpkg.toolchain_file
+    end
+    
+    -- Infer from vcpkg_root
+    if config.vcpkg.vcpkg_root and vim.fn.isdirectory(config.vcpkg.vcpkg_root) == 1 then
+        local toolchain = config.vcpkg.vcpkg_root .. '/scripts/buildsystems/vcpkg.cmake'
+        if vim.fn.filereadable(toolchain) == 1 then
+            return toolchain
+        end
+    end
+    
+    return nil
 end
 
 -- Detect Qt tool paths

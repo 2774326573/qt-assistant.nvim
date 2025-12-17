@@ -50,6 +50,11 @@ end
 
 -- Find Qt tool (designer, uic, qmake, etc.)
 function M.find_qt_tool(tool_name)
+    -- If caller passed an explicit path, honor it
+    if vim.fn.executable(tool_name) == 1 then
+        return tool_name
+    end
+
     -- First try direct executable search
     local exe_path = M.find_executable(tool_name)
     if exe_path then
@@ -69,7 +74,120 @@ function M.find_qt_tool(tool_name)
             return tool_path
         end
     end
+
+    -- Finally, try vcpkg-installed tools (Qt installed via vcpkg)
+    local vcpkg_tool = M.find_vcpkg_tool(tool_name)
+    if vcpkg_tool then
+        return vcpkg_tool
+    end
     
+    return nil
+end
+
+local function scandir_dirs(path)
+    local dirs = {}
+    local handle = vim.loop.fs_scandir(path)
+    if not handle then
+        return dirs
+    end
+
+    while true do
+        local name, t = vim.loop.fs_scandir_next(handle)
+        if not name then break end
+        if t == 'directory' then
+            table.insert(dirs, name)
+        end
+    end
+
+    return dirs
+end
+
+local function get_vcpkg_candidate_roots()
+    local roots = {}
+
+    local env = vim.fn.getenv('VCPKG_ROOT')
+    if env ~= vim.NIL and env ~= '' then
+        table.insert(roots, env)
+    end
+
+    table.insert(roots, vim.fn.expand('~/vcpkg'))
+    table.insert(roots, vim.fn.expand('~/.vcpkg'))
+
+    if M.get_os() == 'windows' then
+        table.insert(roots, 'C:/vcpkg')
+        table.insert(roots, 'C:/dev/vcpkg')
+        table.insert(roots, 'C:/Tools/vcpkg')
+    else
+        table.insert(roots, '/usr/local/vcpkg')
+        table.insert(roots, '/opt/vcpkg')
+    end
+
+    -- Deduplicate + filter existing dirs
+    local seen = {}
+    local out = {}
+    for _, r in ipairs(roots) do
+        if r and r ~= '' then
+            local norm = r:gsub('\\', '/')
+            if not seen[norm] and vim.fn.isdirectory(r) == 1 then
+                seen[norm] = true
+                table.insert(out, r)
+            end
+        end
+    end
+    return out
+end
+
+-- Try to find a tool installed by vcpkg under installed/<triplet>/tools/*
+function M.find_vcpkg_tool(tool_name)
+    local exe = tool_name
+    if M.get_os() == 'windows' and not exe:match('%.exe$') then
+        exe = exe .. '.exe'
+    end
+
+    for _, root in ipairs(get_vcpkg_candidate_roots()) do
+        local installed_dir = root:gsub('\\', '/') .. '/installed'
+        if vim.fn.isdirectory(installed_dir) == 1 then
+            local triplets = scandir_dirs(installed_dir)
+            for _, triplet in ipairs(triplets) do
+                -- Skip internal/metadata directories commonly present
+                if triplet ~= 'vcpkg' and triplet ~= 'packages' then
+                    local tools_dir = installed_dir .. '/' .. triplet .. '/tools'
+                    if vim.fn.isdirectory(tools_dir) == 1 then
+                        -- Fast paths for common Qt ports
+                        local common_ports = {
+                            'qt6', 'qt5', 'qtbase', 'qt',
+                            'qt6-base', 'qt5-base',
+                            'qt6-tools', 'qt5-tools'
+                        }
+
+                        for _, port in ipairs(common_ports) do
+                            local p1 = tools_dir .. '/' .. port .. '/bin/' .. exe
+                            if vim.fn.executable(p1) == 1 then
+                                return p1
+                            end
+                            local p2 = tools_dir .. '/' .. port .. '/' .. exe
+                            if vim.fn.executable(p2) == 1 then
+                                return p2
+                            end
+                        end
+
+                        -- Generic scan one level: tools/<port>/(bin/)?<exe>
+                        for _, portdir in ipairs(scandir_dirs(tools_dir)) do
+                            local p1 = tools_dir .. '/' .. portdir .. '/bin/' .. exe
+                            if vim.fn.executable(p1) == 1 then
+                                return p1
+                            end
+                            local p2 = tools_dir .. '/' .. portdir .. '/' .. exe
+                            if vim.fn.executable(p2) == 1 then
+                                return p2
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     return nil
 end
 
