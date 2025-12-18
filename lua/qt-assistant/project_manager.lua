@@ -348,6 +348,15 @@ function M.create_project_files(project_path, template_type, project_name, cxx_s
         YEAR = os.date('%Y'),
         CXX_STANDARD = cxx_standard
     }
+
+    -- widget_app: wire MainWindow class to the generated .ui file.
+    -- CMake template already lists ui/mainwindow.ui and enables AUTOUIC.
+    if template_type == 'widget_app' then
+        template_vars.HAS_UI_FILE = true
+        template_vars.UI_HEADER = 'ui_' .. template_vars.FILE_NAME .. '.h'
+        -- The <class> tag inside mainwindow.ui uses {{CLASS_NAME}}, so uic generates Ui_{{CLASS_NAME}}.
+        template_vars.UI_CLASS_NAME = template_vars.CLASS_NAME
+    end
     
     -- Create files based on template
     local template = project_templates[template_type]
