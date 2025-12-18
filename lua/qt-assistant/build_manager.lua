@@ -95,8 +95,23 @@ local function run_qt_deploy_if_available(target_path)
         end
         table.insert(args, target_path)
 
-        vim.notify("📦 Deploying Qt runtime: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.INFO)
+        local target_dir = vim.fn.fnamemodify(target_path, ':h')
+        vim.notify("📦 Deploying Qt runtime via: " .. tostring(windeployqt), vim.log.levels.INFO)
+        vim.notify("📦 Target: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.INFO)
         vim.fn.jobstart(args, {
+            cwd = target_dir,
+            on_stdout = function(_, data)
+                if data and #data > 0 then
+                    for _, line in ipairs(data) do
+                        if line and line ~= '' and not line:match('^%s*$') then
+                            vim.schedule(function()
+                                -- windeployqt reports most useful info on stdout
+                                vim.notify("windeployqt: " .. line, vim.log.levels.INFO)
+                            end)
+                        end
+                    end
+                end
+            end,
             on_stderr = function(_, data)
                 if data and #data > 0 then
                     for _, line in ipairs(data) do
@@ -107,6 +122,15 @@ local function run_qt_deploy_if_available(target_path)
                         end
                     end
                 end
+            end,
+            on_exit = function(_, code)
+                vim.schedule(function()
+                    if code == 0 then
+                        vim.notify("✅ windeployqt completed", vim.log.levels.INFO)
+                    else
+                        vim.notify("❌ windeployqt failed (exit code: " .. tostring(code) .. ")", vim.log.levels.ERROR)
+                    end
+                end)
             end,
         })
         return true

@@ -51,11 +51,11 @@ end
 -- Find Qt tool (designer, uic, qmake, etc.)
 function M.find_qt_tool(tool_name)
     -- If caller passed an explicit path, honor it
-    if vim.fn.executable(tool_name) == 1 then
+    if tool_name and (tostring(tool_name):find('[/\\]') ~= nil) and vim.fn.executable(tool_name) == 1 then
         return tool_name
     end
 
-    -- First try direct executable search
+    -- First try direct executable search (returns a full path when available)
     local exe_path = M.find_executable(tool_name)
     if exe_path then
         return exe_path
