@@ -73,7 +73,7 @@ local function get_export_root(project_root)
     return project_root .. "/" .. dir .. "/" .. project_name
 end
 
-local function run_qt_deploy_if_available(target_path)
+local function run_qt_deploy_if_available(target_path, build_type)
     local system = require('qt-assistant.system')
     local cfg = get_config()
     if not (cfg.export and cfg.export.deploy_qt) then
@@ -83,13 +83,155 @@ local function run_qt_deploy_if_available(target_path)
     local os_type = system.get_os()
 
     if os_type == 'windows' then
+        local function normalize_glob_path(p)
+            return tostring(p or ''):gsub('\\', '/')
+        end
+
+        local function safe_isdir(p)
+            return p and p ~= '' and vim.fn.isdirectory(p) == 1
+        end
+
+        local function is_debug_build(bt)
+            local s = tostring(bt or ''):lower()
+            return s == 'debug' or s:find('debug', 1, true) ~= nil
+        end
+
+        local function fallback_copy_adjacent_dlls(export_exe_path, bt)
+            local file_manager = require('qt-assistant.file_manager')
+            local project_root = get_config().project_root
+            local build_root = project_root .. '/build'
+
+            local export_bin = vim.fn.fnamemodify(export_exe_path, ':h')
+            if not export_bin or export_bin == '' then
+                return false, 'invalid export bin dir'
+            end
+
+            local config_name = is_debug_build(bt) and 'Debug' or 'Release'
+            -- Common CMake layouts (VS multi-config, Ninja multi-config, custom)
+            local candidates = {
+                build_root .. '/bin/' .. config_name,
+                build_root .. '/bin',
+                build_root .. '/' .. config_name .. '/bin',
+                build_root .. '/' .. config_name,
+                -- Some users configure runtime output under build/bin/<cfg>/<arch>/...
+                build_root .. '/bin/' .. config_name .. '/x64',
+                build_root .. '/bin/' .. config_name .. '/Win32',
+            }
+
+            local copied = 0
+            local searched = 0
+            local seen_src = {}
+
+            for _, dir in ipairs(candidates) do
+                if safe_isdir(dir) then
+                    searched = searched + 1
+                    local dlls = vim.fn.glob(normalize_glob_path(dir) .. '/*.dll', false, true)
+                    if type(dlls) == 'table' and #dlls > 0 then
+                        for _, src in ipairs(dlls) do
+                            local src_key = normalize_glob_path(src):lower()
+                            if not seen_src[src_key] then
+                                seen_src[src_key] = true
+                                local name = vim.fn.fnamemodify(src, ':t')
+                                local dst = export_bin .. '/' .. name
+                                if not file_manager.file_exists(dst) then
+                                    local ok = file_manager.copy_file(src, dst)
+                                    if ok then
+                                        copied = copied + 1
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            if copied > 0 then
+                vim.notify('🧩 Fallback: copied ' .. tostring(copied) .. ' DLL(s) into export/bin', vim.log.levels.WARN)
+                return true
+            end
+
+            if searched == 0 then
+                return false, 'no candidate build bin directories found'
+            end
+            return false, 'no DLLs found in build bin directories'
+        end
+
         local windeployqt = system.find_qt_tool('windeployqt')
         if not windeployqt then
             vim.notify("⚠️  windeployqt not found; skip Qt DLL deployment", vim.log.levels.WARN)
             return false
         end
 
+        local function normalize_slash(p)
+            return tostring(p or ''):gsub('\\', '/')
+        end
+
+        local function normalize_os_path(p)
+            if not p or p == '' then
+                return p
+            end
+            return system.normalize_path(p)
+        end
+
+        local function derive_vcpkg_bins_from_tool(tool_path)
+            local norm = normalize_slash(tool_path)
+            -- vcpkg Qt layout: <VCPKG_ROOT>/installed/<triplet>/tools/<port>/bin/windeployqt.exe
+            local installed_triplet = norm:match('^(.*)/tools/')
+            if not installed_triplet then
+                return nil
+            end
+            if not installed_triplet:match('/installed/[^/]+$') then
+                return nil
+            end
+            return normalize_os_path(installed_triplet .. '/bin'), normalize_os_path(installed_triplet .. '/debug/bin')
+        end
+
+        local function prepend_path(existing, paths)
+            local sep = ';'
+            local parts = {}
+            local seen = {}
+            for _, p in ipairs(paths or {}) do
+                if p and p ~= '' then
+                    local key = normalize_slash(p):lower()
+                    if not seen[key] then
+                        seen[key] = true
+                        table.insert(parts, p)
+                    end
+                end
+            end
+            if existing and existing ~= '' then
+                table.insert(parts, existing)
+            end
+            return table.concat(parts, sep)
+        end
+
+        local debug_build = is_debug_build(build_type or M._last_build_type)
+        local extra_paths = {}
+        local windeployqt_dir = normalize_os_path(vim.fn.fnamemodify(windeployqt, ':h'))
+        if windeployqt_dir and windeployqt_dir ~= '' then
+            table.insert(extra_paths, windeployqt_dir)
+        end
+
+        local vcpkg_release_bin, vcpkg_debug_bin = derive_vcpkg_bins_from_tool(windeployqt)
+        if vcpkg_release_bin and vcpkg_debug_bin then
+            -- Ensure windeployqt can load Qt DLLs and can discover the right Qt runtime.
+            -- Prefer debug/bin for Debug builds, but keep both as fallback.
+            if debug_build then
+                table.insert(extra_paths, vcpkg_debug_bin)
+                table.insert(extra_paths, vcpkg_release_bin)
+            else
+                table.insert(extra_paths, vcpkg_release_bin)
+                table.insert(extra_paths, vcpkg_debug_bin)
+            end
+            vim.notify('ℹ️  Detected vcpkg Qt; extending PATH for windeployqt', vim.log.levels.INFO)
+        end
+
         local args = { windeployqt, '--no-translations' }
+        if debug_build then
+            table.insert(args, '--debug')
+        else
+            table.insert(args, '--release')
+        end
         if cfg.export.deploy_compiler_runtime then
             table.insert(args, '--compiler-runtime')
         end
@@ -98,8 +240,23 @@ local function run_qt_deploy_if_available(target_path)
         local target_dir = vim.fn.fnamemodify(target_path, ':h')
         vim.notify("📦 Deploying Qt runtime via: " .. tostring(windeployqt), vim.log.levels.INFO)
         vim.notify("📦 Target: " .. vim.fn.fnamemodify(target_path, ':t'), vim.log.levels.INFO)
+        local job_env = nil
+        if #extra_paths > 0 then
+            -- On Windows, some runtimes/tools rely on SYSTEMROOT/TEMP/etc.
+            -- `environ()` gives us a full env snapshot; then we override PATH.
+            job_env = vim.fn.environ()
+
+            -- Windows env keys are case-insensitive, but Neovim's env table can
+            -- preserve casing (commonly "Path"). Set both to be safe.
+            local base_path = vim.env.PATH or vim.env.Path or job_env.PATH or job_env.Path or ''
+            local new_path = prepend_path(base_path, extra_paths)
+            job_env.PATH = new_path
+            job_env.Path = new_path
+        end
+
         vim.fn.jobstart(args, {
             cwd = target_dir,
+            env = job_env,
             on_stdout = function(_, data)
                 if data and #data > 0 then
                     for _, line in ipairs(data) do
@@ -129,6 +286,10 @@ local function run_qt_deploy_if_available(target_path)
                         vim.notify("✅ windeployqt completed", vim.log.levels.INFO)
                     else
                         vim.notify("❌ windeployqt failed (exit code: " .. tostring(code) .. ")", vim.log.levels.ERROR)
+                        local ok_fallback, why = fallback_copy_adjacent_dlls(target_path, build_type or M._last_build_type)
+                        if not ok_fallback and why and why ~= '' then
+                            vim.notify('⚠️  Fallback DLL copy skipped: ' .. tostring(why), vim.log.levels.WARN)
+                        end
                     end
                 end)
             end,
@@ -276,20 +437,20 @@ local function export_after_cmake_build(project_root, build_dir, build_type)
                     end
                 end
                 if main_target and (file_manager.file_exists(main_target) or vim.fn.isdirectory(main_target) == 1) then
-                    run_qt_deploy_if_available(main_target)
+                    run_qt_deploy_if_available(main_target, build_type)
                 end
 
                 if cfg.export.include_tests then
                     local tests_target = resolve_executable(project_name .. '_tests')
                     if tests_target then
-                        run_qt_deploy_if_available(tests_target)
+                        run_qt_deploy_if_available(tests_target, build_type)
                     end
                 end
 
                 if cfg.export.include_demo then
                     local demo_target = resolve_executable(project_name .. '_demo')
                     if demo_target then
-                        run_qt_deploy_if_available(demo_target)
+                        run_qt_deploy_if_available(demo_target, build_type)
                     end
                 end
             end)
