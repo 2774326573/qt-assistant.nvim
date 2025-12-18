@@ -279,14 +279,21 @@ function M.new_project(project_name, template_type, cxx_standard, root_dir, opts
     
     vim.notify(string.format("Project '%s' created successfully", project_name), vim.log.levels.INFO)
     
-    -- Ask if user wants to open the project
-    vim.ui.select({'Yes', 'No'}, {
-        prompt = 'Open the new project?'
-    }, function(choice)
-        if choice == 'Yes' then
-            M.open_project(project_path)
-        end
+    -- Ask if user wants to open the project (skip in headless mode)
+    local has_ui = true
+    pcall(function()
+        has_ui = #vim.api.nvim_list_uis() > 0
     end)
+
+    if has_ui then
+        vim.ui.select({'Yes', 'No'}, {
+            prompt = 'Open the new project?'
+        }, function(choice)
+            if choice == 'Yes' then
+                M.open_project(project_path)
+            end
+        end)
+    end
     
     return true
 end
@@ -541,26 +548,10 @@ function M.new_project_interactive()
         end
         
         local template_type = template_options[template_choice]
-        
-        -- C++ standard selection
-        local cxx_choice = vim.fn.inputlist({
-            "Select C++ standard:",
-            "1. C++11 (Qt5 compatible)",
-            "2. C++14 (Qt5 compatible)",
-            "3. C++17 (Qt5/Qt6 compatible, recommended)",
-            "4. C++20 (Modern C++, Qt6 preferred)",
-            "5. C++23 (Latest standard)"
-        })
-        
-        local cxx_standards = {"11", "14", "17", "20", "23"}
-        local cxx_standard = "17"  -- Default
-        
-        if cxx_choice >= 1 and cxx_choice <= 5 then
-            cxx_standard = cxx_standards[cxx_choice]
-        end
-        
+
+        -- Test framework selection (right after template selection)
         vim.ui.select({ 'No tests', 'Qt Test', 'GoogleTest (gtest)' }, {
-            prompt = 'Include tests?'
+            prompt = 'Select test framework:'
         }, function(choice)
             local enable_tests = choice ~= 'No tests'
             local test_framework = nil
@@ -570,22 +561,110 @@ function M.new_project_interactive()
                 test_framework = 'gtest'
             end
 
-            vim.notify(string.format(
-                "Creating %s project '%s' in %s with C++%s%s",
-                template_type,
-                project_name,
-                target_root,
-                cxx_standard,
-                enable_tests and (" + " .. (test_framework == 'gtest' and 'gtest' or 'QtTest')) or ""
-            ), vim.log.levels.INFO)
+            -- C++ standard selection (use vim.ui.select for better UI compatibility)
+            local cxx_options = {
+                { label = 'C++11 (Qt5 compatible)', value = '11' },
+                { label = 'C++14 (Qt5 compatible)', value = '14' },
+                { label = 'C++17 (Qt5/Qt6 compatible, recommended)', value = '17' },
+                { label = 'C++20 (Modern C++, Qt6 preferred)', value = '20' },
+                { label = 'C++23 (Latest standard)', value = '23' },
+            }
 
-            return M.new_project(project_name, template_type, cxx_standard, target_root, { enable_tests = enable_tests, test_framework = test_framework })
+            vim.ui.select(cxx_options, {
+                prompt = 'Select C++ standard:',
+                format_item = function(item)
+                    return item.label
+                end
+            }, function(item)
+                local cxx_standard = (item and item.value) or '17'
+
+                vim.notify(string.format(
+                    "Creating %s project '%s' in %s with C++%s%s",
+                    template_type,
+                    project_name,
+                    target_root,
+                    cxx_standard,
+                    enable_tests and (" + " .. (test_framework == 'gtest' and 'gtest' or 'QtTest')) or ""
+                ), vim.log.levels.INFO)
+
+                return M.new_project(project_name, template_type, cxx_standard, target_root, { enable_tests = enable_tests, test_framework = test_framework })
+            end)
+        end)
+    end)
+end
+
+-- Semi-interactive: user provides project_name and template_type, we still prompt
+-- for location, test framework, and C++ standard.
+function M.new_project_interactive_preset(project_name, template_type)
+    if not project_name or project_name == "" then
+        vim.notify("Project name is required", vim.log.levels.ERROR)
+        return
+    end
+
+    if not template_type or template_type == "" then
+        vim.notify("Project template is required", vim.log.levels.ERROR)
+        return
+    end
+
+    -- Choose base directory to place the project
+    local base_dir = vim.fs.normalize(vim.fn.getcwd())
+    vim.ui.input({
+        prompt = "Project location (directory): ",
+        default = base_dir,
+        completion = 'dir'
+    }, function(dir_input)
+        if dir_input == nil then
+            return
+        end
+
+        local target_root = dir_input ~= '' and vim.fs.normalize(dir_input) or base_dir
+
+        vim.ui.select({ 'No tests', 'Qt Test', 'GoogleTest (gtest)' }, {
+            prompt = 'Select test framework:'
+        }, function(choice)
+            local enable_tests = choice ~= 'No tests'
+            local test_framework = nil
+            if choice == 'Qt Test' then
+                test_framework = 'qt'
+            elseif choice == 'GoogleTest (gtest)' then
+                test_framework = 'gtest'
+            end
+
+            -- C++ standard selection (use vim.ui.select for better UI compatibility)
+            local cxx_options = {
+                { label = 'C++11 (Qt5 compatible)', value = '11' },
+                { label = 'C++14 (Qt5 compatible)', value = '14' },
+                { label = 'C++17 (Qt5/Qt6 compatible, recommended)', value = '17' },
+                { label = 'C++20 (Modern C++, Qt6 preferred)', value = '20' },
+                { label = 'C++23 (Latest standard)', value = '23' },
+            }
+
+            vim.ui.select(cxx_options, {
+                prompt = 'Select C++ standard:',
+                format_item = function(item)
+                    return item.label
+                end
+            }, function(item)
+                local cxx_standard = (item and item.value) or '17'
+
+                vim.notify(string.format(
+                    "Creating %s project '%s' in %s with C++%s%s",
+                    template_type,
+                    project_name,
+                    target_root,
+                    cxx_standard,
+                    enable_tests and (" + " .. (test_framework == 'gtest' and 'gtest' or 'QtTest')) or ""
+                ), vim.log.levels.INFO)
+
+                return M.new_project(project_name, template_type, cxx_standard, target_root, { enable_tests = enable_tests, test_framework = test_framework })
+            end)
         end)
     end)
 end
 
 -- Add module to existing multi-module project
-function M.add_module(module_name, module_type, parent_dir)
+function M.add_module(module_name, module_type, parent_dir, opts)
+    opts = opts or {}
     if not module_name or module_name == "" then
         vim.notify("Module name is required", vim.log.levels.ERROR)
         return false
@@ -615,10 +694,10 @@ function M.add_module(module_name, module_type, parent_dir)
     end
 
     -- Create module structure based on type
-    M.create_module_structure(module_path, module_type)
+    M.create_module_structure(module_path, module_type, opts)
 
     -- Generate module files
-    M.create_module_files(module_path, module_type, module_name)
+    M.create_module_files(module_path, module_type, module_name, opts)
 
     -- Update root CMakeLists.txt to include new module
     M.add_module_to_root_cmake(parent_dir, module_name)
@@ -628,7 +707,8 @@ function M.add_module(module_name, module_type, parent_dir)
 end
 
 -- Create module directory structure
-function M.create_module_structure(module_path, module_type)
+function M.create_module_structure(module_path, module_type, opts)
+    opts = opts or {}
     local directories = {"doc"}
 
     if module_type == "shared_lib" or module_type == "static_lib" or module_type == "plugin" then
@@ -643,19 +723,26 @@ function M.create_module_structure(module_path, module_type)
             table.insert(directories, "qml")
         end
     elseif module_type == "console_app" then
-        directories = {"doc", "src"}
+        directories = {"doc", "src", "include"}
     end
 
     for _, dir in ipairs(directories) do
         local dir_path = module_path .. "/" .. dir
         file_manager.ensure_directory_exists(dir_path)
     end
+
+    if opts.enable_tests then
+        file_manager.ensure_directory_exists(module_path .. "/tests")
+        file_manager.ensure_directory_exists(module_path .. "/examples")
+    end
 end
 
 -- Create module files
-function M.create_module_files(module_path, module_type, module_name)
+function M.create_module_files(module_path, module_type, module_name, opts)
     local templates = require('qt-assistant.templates')
     templates.init()
+
+    opts = opts or {}
 
     local is_shared_lib = module_type == "shared_lib"
     local is_static_lib = module_type == "static_lib"
@@ -691,7 +778,45 @@ function M.create_module_files(module_path, module_type, module_name)
     local cmake_template_name = "cmake_" .. module_type
     local cmake_content = templates.render_template(cmake_template_name, template_vars)
     if cmake_content then
+        if opts.enable_tests then
+            cmake_content = cmake_content .. "\n\n# Testing (optional)\ninclude(CTest)\nenable_testing()\nadd_subdirectory(tests)\n"
+        end
         file_manager.write_file(module_path .. "/CMakeLists.txt", cmake_content)
+    end
+
+    if opts.enable_tests then
+        local framework = tostring(opts.test_framework or "qt"):lower()
+        local tests_dir = module_path .. "/tests"
+        file_manager.ensure_directory_exists(tests_dir)
+
+        local tests_cmake_template
+        local test_cpp_template
+        if framework == "gtest" then
+            tests_cmake_template = is_app and "cmake_gtest_tests_app" or "cmake_gtest_tests_lib"
+            test_cpp_template = is_app and "gtest_test_app" or "gtest_test_lib"
+        else
+            tests_cmake_template = is_app and "cmake_tests_app" or "cmake_tests_lib"
+            test_cpp_template = is_app and "qt_test_app" or "qt_test_lib"
+        end
+
+        local tests_cmake = templates.render_template(tests_cmake_template, template_vars)
+        file_manager.write_file(tests_dir .. "/CMakeLists.txt", tests_cmake)
+
+        local test_cpp = templates.render_template(test_cpp_template, template_vars)
+        file_manager.write_file(tests_dir .. "/test_basic.cpp", test_cpp)
+
+        local examples_dir = module_path .. "/examples"
+        file_manager.ensure_directory_exists(examples_dir)
+        local demo_template = is_app and "demo_app" or "demo_lib"
+        local demo_cpp = templates.render_template(demo_template, template_vars)
+        file_manager.write_file(examples_dir .. "/demo.cpp", demo_cpp)
+
+        if is_app then
+            local calc_h = templates.render_template("calculator_header", template_vars)
+            local calc_cpp = templates.render_template("calculator_source", template_vars)
+            file_manager.write_file(module_path .. "/include/calculator.h", calc_h)
+            file_manager.write_file(module_path .. "/src/calculator.cpp", calc_cpp)
+        end
     end
 
     -- Create source and header files for libraries and plugins
@@ -836,7 +961,20 @@ function M.add_module_interactive()
     end
 
     local module_type = module_types[choice]
-    return M.add_module(module_name, module_type)
+
+    vim.ui.select({ 'No tests', 'Qt Test', 'GoogleTest (gtest)' }, {
+        prompt = 'Select test framework:'
+    }, function(test_choice)
+        local enable_tests = test_choice ~= 'No tests'
+        local test_framework = nil
+        if test_choice == 'Qt Test' then
+            test_framework = 'qt'
+        elseif test_choice == 'GoogleTest (gtest)' then
+            test_framework = 'gtest'
+        end
+
+        return M.add_module(module_name, module_type, nil, { enable_tests = enable_tests, test_framework = test_framework })
+    end)
 end
 
 return M

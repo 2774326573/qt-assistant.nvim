@@ -39,6 +39,9 @@ end
 -- Setup optimized keymaps for quick development
 function M.setup_keymaps()
 	local map = vim.keymap.set
+	local config = require('qt-assistant.config').get()
+	local preset = (config.keymaps and config.keymaps.preset) or 'minimal'
+	preset = tostring(preset):lower()
 
 	-- Core Qt commands (essential workflow)
 	map("n", "<leader>qa", function() M.show_main_interface() end, { desc = "Qt Assistant" })
@@ -46,7 +49,9 @@ function M.setup_keymaps()
 	
 	-- Project management (quick access)
 	map("n", "<leader>qp", function() M.new_project_interactive() end, { desc = "New Qt Project (Interactive)" })
-	map("n", "<leader>qP", function() M.new_project_quick() end, { desc = "New Qt Project (Quick C++17)" })
+	if preset == 'full' then
+		map("n", "<leader>qP", function() M.new_project_quick() end, { desc = "New Qt Project (Quick C++17)" })
+	end
 	map("n", "<leader>qo", function() M.open_project_interactive() end, { desc = "Open Qt Project" })
 	
 	-- UI Designer (rapid UI development)
@@ -69,22 +74,29 @@ function M.setup_keymaps()
 	-- Build system (fast build & run)
 	map("n", "<leader>qb", function() M.build_project() end, { desc = "Build Project" })
 	map("n", "<leader>qr", function() M.run_project() end, { desc = "Run Project" })
-	map("n", "<leader>qA", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
+	if preset == 'full' then
+		-- Quick build+run is convenient but <leader>qq is commonly mapped to quit; avoid conflicts.
+		map("n", "<leader>qA", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
+	end
 	
 	-- C++ Standard specific builds (Windows)
-	map("n", "<leader>qb1", function() M.build_with_std("11") end, { desc = "Build with C++11" })
-	map("n", "<leader>qb4", function() M.build_with_std("14") end, { desc = "Build with C++14" })
-	map("n", "<leader>qb7", function() M.build_with_std("17") end, { desc = "Build with C++17" })
-	map("n", "<leader>qb20", function() M.build_with_std("20") end, { desc = "Build with C++20" })
+	if preset == 'full' then
+		map("n", "<leader>qb1", function() M.build_with_std("11") end, { desc = "Build with C++11" })
+		map("n", "<leader>qb4", function() M.build_with_std("14") end, { desc = "Build with C++14" })
+		map("n", "<leader>qb7", function() M.build_with_std("17") end, { desc = "Build with C++17" })
+		map("n", "<leader>qb20", function() M.build_with_std("20") end, { desc = "Build with C++20" })
+	end
 	
 	-- Debug system (integrated debugging) - conditional loading
 	map("n", "<leader>qdb", function() M.debug_application() end, { desc = "Debug Qt App" })
 	map("n", "<leader>qda", function() M.attach_to_process() end, { desc = "Attach to Qt Process" })
 	
 	-- Configuration and Standards
-	map("n", "<leader>qsc", function() M.show_current_config() end, { desc = "Show Current Config" })
-	map("n", "<leader>qss", function() M.select_cxx_standard() end, { desc = "Select C++ Standard" })
-	map("n", "<leader>qsr", function() M.reconfigure_project() end, { desc = "Reconfigure Project" })
+	if preset == 'full' then
+		map("n", "<leader>qsc", function() M.show_current_config() end, { desc = "Show Current Config" })
+		map("n", "<leader>qss", function() M.select_cxx_standard() end, { desc = "Select C++ Standard" })
+		map("n", "<leader>qsr", function() M.reconfigure_project() end, { desc = "Reconfigure Project" })
+	end
 	
 	-- File-specific keymaps (context-aware)
 	local function setup_ui_file_keymaps()
@@ -213,9 +225,11 @@ function M.new_project_interactive()
 			vim.ui.select(labels, {
 				prompt = 'Select project type:'
 			}, function(choice, idx)
-				if choice then
-					M.new_project(name, types[idx])
+				if not choice or not idx then
+					return
 				end
+				local project_manager = require('qt-assistant.project_manager')
+				project_manager.new_project_interactive_preset(name, types[idx])
 			end)
 		end
 	end)
@@ -661,6 +675,10 @@ end
 
 -- Show help
 function M.show_help()
+	local config = require('qt-assistant.config').get()
+	local preset = (config.keymaps and config.keymaps.preset) or 'minimal'
+	preset = tostring(preset):lower()
+
 	local help_text = {
 		"=== Qt Assistant - Essential Commands ===",
 		"",
@@ -711,7 +729,6 @@ function M.show_help()
 		"  <leader>qf  - Create class from current UI",
 		"  <leader>qb  - Build project",
 		"  <leader>qr  - Run project",
-		"  <leader>qA  - Quick build & run",
 		"  <leader>qdb - Debug application (nvim-dap)",
 		"  <leader>qda - Attach to Qt process",
 		"",
@@ -723,6 +740,19 @@ function M.show_help()
 		"Project Types: widget_app, quick_app, console_app, static_lib, shared_lib, plugin",
 		"Class Types: main_window, dialog, widget, model, delegate, thread, utility, singleton"
 	}
+
+	if preset == 'full' then
+		table.insert(help_text, 1, "(Keymaps preset: full)")
+		-- Mention optional/legacy keymaps at the end
+		table.insert(help_text, "")
+		table.insert(help_text, "Extra keymaps (full preset):")
+		table.insert(help_text, "  <leader>qP  - New project (quick widget_app + C++17)")
+		table.insert(help_text, "  <leader>qA  - Quick build & run")
+		table.insert(help_text, "  <leader>qb1/qb4/qb7/qb20 - Build with specific C++ standard (Windows)")
+		table.insert(help_text, "  <leader>qsc/qss/qsr - Config & reconfigure helpers")
+	else
+		table.insert(help_text, 1, "(Keymaps preset: minimal)")
+	end
 	
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, help_text)
@@ -755,6 +785,10 @@ end
 
 -- Quick project creation with C++17 default
 function M.new_project_quick()
+	vim.notify(
+		"Quick project mode: creates a widget_app with C++17 defaults (no prompts). Use <leader>qp or :QtNewProject for interactive test/C++ selection.",
+		vim.log.levels.INFO
+	)
 	local project_name = vim.fn.input("Project name: ")
 	if project_name == "" then
 		vim.notify("Project name cannot be empty", vim.log.levels.ERROR)

@@ -55,8 +55,9 @@ vim.api.nvim_create_user_command('QtNewProject', function(opts)
             project_manager.new_project(args[1], args[2], args[3], nil, { enable_tests = enable_tests, test_framework = test_framework })
         elseif #args >= 2 then
             -- QtNewProject <name> <template>
+            -- Semi-interactive: still prompt for location/tests/C++ standard
             local project_manager = require('qt-assistant.project_manager')
-            project_manager.new_project(args[1], args[2])
+            project_manager.new_project_interactive_preset(args[1], args[2])
         else
             -- Interactive mode
             local project_manager = require('qt-assistant.project_manager')
@@ -102,7 +103,20 @@ vim.api.nvim_create_user_command('QtAddModule', function(opts)
     if not ensure_loaded() then return end
     local args = vim.split(opts.args, '%s+')
     if #args >= 2 then
-        require('qt-assistant.project_manager').add_module(args[1], args[2])
+        -- QtAddModule <name> <type> [tests|gtest]
+        local enable_tests = false
+        local test_framework = nil
+        if #args >= 3 then
+            local flag = tostring(args[3]):lower()
+            if flag == 'tests' or flag == 'test' or flag == 'with_tests' then
+                enable_tests = true
+                test_framework = 'qt'
+            elseif flag == 'gtest' or flag == 'googletest' then
+                enable_tests = true
+                test_framework = 'gtest'
+            end
+        end
+        require('qt-assistant.project_manager').add_module(args[1], args[2], nil, { enable_tests = enable_tests, test_framework = test_framework })
     else
         require('qt-assistant.project_manager').add_module_interactive()
     end
@@ -117,10 +131,12 @@ end, {
             -- Complete module type
             local project_manager = require('qt-assistant.project_manager')
             return project_manager.get_available_module_types()
+        elseif #args == 4 then
+            return { 'tests', 'gtest' }
         end
         return {}
     end,
-    desc = 'Add module to multi-module Qt project'
+    desc = 'Add module to multi-module Qt project [name] [type] [tests|gtest]'
 })
 
 -- ==================== UI Designer Commands (PRD Core) ====================
@@ -288,6 +304,43 @@ vim.api.nvim_create_user_command('QtHelp', function()
     require('qt-assistant').show_help()
 end, { desc = 'Show Qt Assistant help' })
 
+-- ==================== Diagnostics ====================
+
+vim.api.nvim_create_user_command('QtDoctor', function()
+    if not ensure_loaded() then return end
+
+    local config = require('qt-assistant.config').get()
+    local system = require('qt-assistant.system')
+
+    local function fmt(v)
+        if v == nil then return 'nil' end
+        if v == vim.NIL then return 'nil' end
+        if type(v) == 'boolean' then return v and 'true' or 'false' end
+        return tostring(v)
+    end
+
+    local vcpkg_root = config.vcpkg and config.vcpkg.vcpkg_root or nil
+    local vcpkg_enabled = config.vcpkg and config.vcpkg.enabled or false
+    local toolchain = require('qt-assistant.config').get_vcpkg_toolchain_file()
+
+    vim.notify('QtDoctor: os=' .. fmt(system.get_os()), vim.log.levels.INFO)
+    vim.notify('QtDoctor: vcpkg.enabled=' .. fmt(vcpkg_enabled), vim.log.levels.INFO)
+    vim.notify('QtDoctor: vcpkg.root=' .. fmt(vcpkg_root), vim.log.levels.INFO)
+    vim.notify('QtDoctor: vcpkg.toolchain=' .. fmt(toolchain), vim.log.levels.INFO)
+
+    if config.export then
+        vim.notify('QtDoctor: export.enabled=' .. fmt(config.export.enabled)
+            .. ' deploy_qt=' .. fmt(config.export.deploy_qt)
+            .. ' compiler_runtime=' .. fmt(config.export.deploy_compiler_runtime), vim.log.levels.INFO)
+    end
+
+    local tools = { 'cmake', 'qmake', 'windeployqt', 'macdeployqt', 'uic', 'designer' }
+    for _, name in ipairs(tools) do
+        local p = (name == 'cmake') and system.find_executable('cmake') or system.find_qt_tool(name)
+        vim.notify('QtDoctor: ' .. name .. '=' .. fmt(p), vim.log.levels.INFO)
+    end
+end, { desc = 'Show environment/tooling diagnostics (vcpkg/Qt tools/export)' })
+
 
 -- Lazy initialization - only setup when first command is used
 local initialized = false
@@ -299,7 +352,11 @@ local function lazy_init()
     end
     local ok, qt_assistant = pcall(require, 'qt-assistant')
     if ok and qt_assistant.setup then
-        qt_assistant.setup({})
+        -- Do not overwrite user configuration. Only auto-setup if not already configured.
+        local cfg = require('qt-assistant.config')
+        if not cfg._config then
+            qt_assistant.setup({})
+        end
     end
     initialized = true
     return true

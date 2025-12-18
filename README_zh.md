@@ -145,6 +145,11 @@ brew install lldb
 :QtNewProject MyApp widget_app 17 tests
 " 可选：生成 GoogleTest(gtest) 测试模板（适合 vcpkg 安装的 gtest）
 :QtNewProject MyApp widget_app 17 gtest
+
+" 多模块工程：添加模块（可选生成测试模板）
+:QtAddModule core shared_lib
+:QtAddModule core shared_lib tests
+:QtAddModule core shared_lib gtest
 ```
 
 ### CMakePresets.json（生成器切换）
@@ -409,12 +414,22 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 })
 ```
 | ---- | ---- | ---- | ---- |
-| **项目管理** | ✅ 核心 | Qt工具 | `:QtNewProject`, `:QtOpenProject` |
+| **项目管理** | ✅ 核心 | Qt工具 | `:QtNewProject`, `:QtOpenProject`, `:QtAddModule` |
 | **UI设计器** | ✅ 核心 | Qt Designer | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
 | **类生成** | ✅ 核心 | uic工具 | `:QtCreateClass` |
 | **构建系统** | ✅ 核心 | CMake/qmake | `:QtBuild`, `:QtRun` |
 | **调试** | ✅ 增强 | nvim-dap + 调试器 | `:QtDebug`, `:QtDebugAttach` |
 | **快速键映射** | ✅ 核心 | 无 | `<leader>q*` 快捷键 |
+
+默认使用 **minimal** 快捷键预设（更精简，和文档示例一致）。如果你需要更多/历史快捷键（例如快速新建、指定 C++ 标准构建等），可在配置中开启：
+
+```lua
+require('qt-assistant').setup({
+    keymaps = { preset = "full" }
+})
+```
+
+说明：很多人的 `<leader>qq` 会映射为“退出/关闭”，所以本插件不会默认占用它；`full` 预设里提供快速构建运行：`<leader>qA`。
 | **跨平台** | ✅ 核心 | 平台Qt | Linux, macOS, Windows |
 
 ## 许可证

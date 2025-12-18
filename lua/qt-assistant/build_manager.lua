@@ -227,28 +227,44 @@ local function export_after_cmake_build(project_root, build_dir, build_type)
                 local bin_dir = export_root .. '/bin'
                 local exe_suffix = (system.get_os() == 'windows') and '.exe' or ''
 
+                -- Many templates set DEBUG_POSTFIX to "d". When building Debug with multi-config
+                -- generators, the exported binaries are typically <name>d.exe. Best-effort: probe
+                -- both without/with the postfix.
+                local function resolve_executable(base_name)
+                    local candidates = {
+                        bin_dir .. '/' .. base_name .. exe_suffix,
+                        bin_dir .. '/' .. base_name .. 'd' .. exe_suffix,
+                    }
+                    for _, p in ipairs(candidates) do
+                        if file_manager.file_exists(p) then
+                            return p
+                        end
+                    end
+                    return nil
+                end
+
                 -- Prefer deploying bundles on macOS when they exist.
-                local main_target = bin_dir .. '/' .. project_name .. exe_suffix
+                local main_target = resolve_executable(project_name)
                 if system.get_os() == 'macos' then
                     local main_app = bin_dir .. '/' .. project_name .. '.app'
                     if vim.fn.isdirectory(main_app) == 1 then
                         main_target = main_app
                     end
                 end
-                if file_manager.file_exists(main_target) or vim.fn.isdirectory(main_target) == 1 then
+                if main_target and (file_manager.file_exists(main_target) or vim.fn.isdirectory(main_target) == 1) then
                     run_qt_deploy_if_available(main_target)
                 end
 
                 if cfg.export.include_tests then
-                    local tests_target = bin_dir .. '/' .. project_name .. '_tests' .. exe_suffix
-                    if file_manager.file_exists(tests_target) then
+                    local tests_target = resolve_executable(project_name .. '_tests')
+                    if tests_target then
                         run_qt_deploy_if_available(tests_target)
                     end
                 end
 
                 if cfg.export.include_demo then
-                    local demo_target = bin_dir .. '/' .. project_name .. '_demo' .. exe_suffix
-                    if file_manager.file_exists(demo_target) then
+                    local demo_target = resolve_executable(project_name .. '_demo')
+                    if demo_target then
                         run_qt_deploy_if_available(demo_target)
                     end
                 end
@@ -520,7 +536,16 @@ end
 
 -- Start CMake build step
 function M.start_cmake_build(cmake_path, project_root, build_dir, build_type)
-    local build_cmd = {cmake_path, "--build", build_dir, "--parallel"}
+    local build_cmd = { cmake_path, "--build", build_dir }
+
+    -- For multi-config generators (Visual Studio, Xcode, Ninja Multi-Config), passing --config is required.
+    -- It's harmless/ignored for most single-config generators.
+    if build_type and tostring(build_type) ~= "" then
+        table.insert(build_cmd, "--config")
+        table.insert(build_cmd, build_type)
+    end
+
+    table.insert(build_cmd, "--parallel")
     
     vim.notify("🔨 Building project...", vim.log.levels.INFO)
     

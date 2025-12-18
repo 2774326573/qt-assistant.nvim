@@ -172,7 +172,7 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | ----------------------------------- | ------------------------------- | -------------------------------------------- |
 | `:QtNewProject <name> <type> [cxx_standard] [tests_or_gtest]` | Create new Qt project           | `:QtNewProject MyApp widget_app 17 gtest`             |
 | `:QtOpenProject [path]`             | Open existing Qt project        | `:QtOpenProject ~/MyProject`                 |
-| `:QtAddModule <name> <type>`        | Add module to project            | `:QtAddModule core shared_lib`               |
+| `:QtAddModule <name> <type> [tests_or_gtest]` | Add module to project            | `:QtAddModule core shared_lib gtest`               |
 | `:QtNewUi <filename>`               | Create new UI file              | `:QtNewUi mainwindow`                        |
 | `:QtEditUi [filename]`              | Edit existing UI file           | `:QtEditUi mainwindow.ui`                    |
 | `:QtDesigner [file]`                | Open Qt Designer                | `:QtDesigner`                                |
@@ -211,6 +211,8 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 
 ### Optimized Keymaps for Quick Development
 
+By default, the plugin uses a **minimal** keymap preset (matches the tables below). You can enable extra/legacy shortcuts by setting `keymaps.preset = "full"`.
+
 #### Essential Workflow Keymaps
 
 | Keymap       | Command      | Description                      |
@@ -235,7 +237,8 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | ------------ | ------- | -------------------------- |
 | `<leader>qb` | Build   | Build project (async)      |
 | `<leader>qr` | Run     | Run project                |
-| `<leader>qq` | Quick   | Build & run in one command |
+
+Quick build & run is available in the **full** keymap preset as `<leader>qA` (avoids the common `<leader>qq` quit mapping).
 
 #### Debug Keymaps (requires nvim-dap)
 
@@ -540,6 +543,12 @@ require('qt-assistant').setup({
 2. **Add core library module:**
    ```vim
    :QtAddModule core shared_lib
+   ```
+
+   Optional (generate tests scaffolding):
+   ```vim
+   :QtAddModule core shared_lib tests
+   :QtAddModule core shared_lib gtest
    ```
 
 3. **Add UI library module:**

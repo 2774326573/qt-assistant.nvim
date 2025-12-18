@@ -110,6 +110,15 @@ local function get_vcpkg_candidate_roots()
         table.insert(roots, env)
     end
 
+    -- Also honor plugin configuration (useful when Neovim doesn't inherit env vars)
+    local ok_cfg, cfg_mod = pcall(require, 'qt-assistant.config')
+    if ok_cfg and cfg_mod then
+        local cfg = cfg_mod.get()
+        if cfg and cfg.vcpkg and cfg.vcpkg.vcpkg_root and cfg.vcpkg.vcpkg_root ~= '' then
+            table.insert(roots, cfg.vcpkg.vcpkg_root)
+        end
+    end
+
     table.insert(roots, vim.fn.expand('~/vcpkg'))
     table.insert(roots, vim.fn.expand('~/.vcpkg'))
 

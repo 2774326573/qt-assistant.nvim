@@ -824,9 +824,10 @@ else()
     endif()
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/lib)
+# Build output directories (keep build artifacts under the build tree)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # 源文件列表
 set(SOURCES
@@ -859,7 +860,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # 链接Qt库（版本感知）
 if(QT_VERSION_MAJOR EQUAL 6)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core
         Qt6::Widgets
     )
@@ -870,10 +871,9 @@ if(QT_VERSION_MAJOR EQUAL 6)
         MACOSX_BUNDLE TRUE
     )
 else()
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt5::Core
         Qt5::Widgets
-        ${CMAKE_CURRENT_LIST_DIR}/thridLibrary/ElaWidgetTools/lib/ElaWidgetTools.lib
     )
 
     # Qt5特定设置
@@ -888,9 +888,6 @@ endif()
 target_include_directories(${PROJECT_NAME} PRIVATE
     include
     ${CMAKE_CURRENT_LIST_DIR}/include
-    ${CMAKE_CURRENT_LIST_DIR}/thridLibrary/ElaWidgetTools/include
-    ${CMAKE_CURRENT_LIST_DIR}/TestLibrary/TestDll/include  # TestDll头文件（用于了解接口）
-    ${CMAKE_CURRENT_LIST_DIR}/TestLibrary/TestPlugin/include  # TestPlugin头文件（用于了解接口）
     ${CMAKE_CURRENT_BINARY_DIR}  # 用于生成的UI头文件
 )
 
@@ -1072,6 +1069,11 @@ else()
     endif()
 endif()
 
+# Build output directories (keep build artifacts under the build tree)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 # Source files
 set(SOURCES
     src/main.cpp
@@ -1097,9 +1099,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # Link Qt libraries
 if(QT_VERSION_MAJOR EQUAL 6)
-    target_link_libraries(${PROJECT_NAME} Qt6::Core)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core)
 else()
-    target_link_libraries(${PROJECT_NAME} Qt5::Core)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core)
 endif()
 
 if(TARGET ${PROJECT_NAME}_core)
@@ -1294,13 +1296,13 @@ endif()
 
 # Link Qt libraries
 if(QT_VERSION_MAJOR EQUAL 6)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core
         Qt6::Quick
         Qt6::Qml
     )
 else()
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt5::Core
         Qt5::Quick
         Qt5::Qml
@@ -1393,12 +1395,6 @@ project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
-# Default export output directories
-set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EXPORT_ROOT}/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
-
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
@@ -1486,17 +1482,18 @@ endif()
 
 project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
 # C++ Standard Configuration
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Default export output directories (shared library: bin/lib split)
-set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EXPORT_ROOT}/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+# Build output directories (keep build artifacts under the build tree)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Qt settings
 set(CMAKE_AUTOMOC ON)
@@ -1609,6 +1606,13 @@ install(TARGETS {{PROJECT_NAME}}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/{{PROJECT_NAME}}
 )
 
+if(TARGET {{PROJECT_NAME}}_demo)
+    install(TARGETS {{PROJECT_NAME}}_demo
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
 install(EXPORT {{PROJECT_NAME}}Targets
     FILE {{PROJECT_NAME}}Targets.cmake
     NAMESPACE {{PROJECT_NAME}}::
@@ -1651,9 +1655,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Default export output directories (static library: lib only)
-set(EXPORT_ROOT "${CMAKE_SOURCE_DIR}/export/${PROJECT_NAME}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${EXPORT_ROOT}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Qt settings
 set(CMAKE_AUTOMOC ON)
@@ -1732,6 +1736,13 @@ install(TARGETS {{PROJECT_NAME}}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/{{PROJECT_NAME}}
 )
+
+if(TARGET {{PROJECT_NAME}}_demo)
+    install(TARGETS {{PROJECT_NAME}}_demo
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 install(EXPORT {{PROJECT_NAME}}Targets
     FILE {{PROJECT_NAME}}Targets.cmake
@@ -1812,7 +1823,9 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${
 add_library({{PROJECT_NAME}} SHARED ${SOURCES} ${HEADERS})
 
 set_target_properties({{PROJECT_NAME}} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/plugins
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/plugins
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/plugins
     PREFIX ""  # Remove 'lib' prefix on Unix
     DEBUG_POSTFIX "d"
 )
@@ -1855,6 +1868,13 @@ install(TARGETS {{PROJECT_NAME}}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if(TARGET {{PROJECT_NAME}}_demo)
+    install(TARGETS {{PROJECT_NAME}}_demo
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
 # Packaging (default: ZIP)
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
@@ -1890,7 +1910,7 @@ add_executable({{PROJECT_NAME}}_tests
 )
 
 target_include_directories({{PROJECT_NAME}}_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../include
 )
 
 if(TARGET {{PROJECT_NAME}}_core)
@@ -1937,7 +1957,7 @@ add_executable({{PROJECT_NAME}}_tests
 )
 
 target_include_directories({{PROJECT_NAME}}_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../include
 )
 
 if(TARGET {{PROJECT_NAME}})
@@ -2015,7 +2035,7 @@ add_executable({{PROJECT_NAME}}_tests
 )
 
 target_include_directories({{PROJECT_NAME}}_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../include
 )
 
 if(TARGET {{PROJECT_NAME}}_core)
@@ -2051,7 +2071,7 @@ add_executable({{PROJECT_NAME}}_tests
 )
 
 target_include_directories({{PROJECT_NAME}}_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../include
 )
 
 if(TARGET {{PROJECT_NAME}})
@@ -2390,6 +2410,58 @@ cmake --build build
 
 > 注意：不要用 `x64-windows` 的 Qt 去配 MinGW 构建，也不要反过来混用；切换工具链请换新的构建目录。
 
+## 添加第三方库/依赖（指南）
+下面给出两类最常见的接入方式：vcpkg（推荐）与手动/源码接入。你可以把它们用于任何库（例如 spdlog / fmt / boost / opencv 等）。
+
+### 方式 A：vcpkg（推荐）
+1) 安装依赖
+- 经典模式（命令行安装）：
+    - Windows 示例：`vcpkg install spdlog:x64-windows`
+    - MinGW 示例：`vcpkg install spdlog:x64-mingw-dynamic`
+- Manifest 模式（推荐，项目根目录放 `vcpkg.json`）：
+    - 在项目根目录执行：`vcpkg install`
+
+2) 让 CMake 使用 vcpkg
+- 你已经在上面配置了 `-DCMAKE_TOOLCHAIN_FILE=<VCPKG_ROOT>/scripts/buildsystems/vcpkg.cmake` 或启用了 Qt Assistant 的 `vcpkg.enabled = true`。
+- 确保 triplet 与编译器匹配（MSVC/MinGW/clang-cl 不要混）。
+
+3) 在 CMakeLists.txt 里 `find_package` 并链接
+```cmake
+# 例：spdlog（vcpkg 通常提供 CONFIG 包）
+find_package(spdlog CONFIG REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+```
+
+> 如果依赖的 CMake target 名称不确定：查看 vcpkg 安装输出、或在库的文档里搜索 “CMake target”。
+
+### 方式 B：手动/源码接入（不使用 vcpkg）
+根据第三方库的交付形式选择其一：
+
+1) 该库提供 CMake 安装包（有 `FooConfig.cmake`）
+- 把库安装到某个前缀（例如 `C:/3rd/install/foo`），然后二选一：
+    - 设置 `CMAKE_PREFIX_PATH`：`-DCMAKE_PREFIX_PATH=C:/3rd/install/foo`
+    - 或设置 `Foo_DIR`：`-DFoo_DIR=C:/3rd/install/foo/lib/cmake/Foo`
+- 在项目中：
+```cmake
+find_package(Foo CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Foo::Foo)
+```
+
+2) 该库以源码形式提供（可被 `add_subdirectory`）
+- 建议放到 `external/Foo/` 或作为 git submodule：
+```cmake
+add_subdirectory(external/Foo)
+target_link_libraries(${PROJECT_NAME} PRIVATE Foo)
+```
+
+3) 只有头文件/只有二进制库（.lib/.a/.dll）
+- 头文件：用 `target_include_directories`
+- 库文件：用 `target_link_libraries` 指向 `.lib/.a`，或提供 import library
+- Windows 运行时：把 `.dll` 放到可执行文件同目录（例如 `export/{{PROJECT_NAME}}/bin/`）或加入 `PATH`
+
+> 建议优先使用“方式 A(vcpkg)”或“方式 B-1/2”，能最大化 CMake 可移植性。
+
 ### （若使用 qmake 工程）
 如果你的工程是 `*.pro`（qmake），构建通常是：
 
@@ -2421,6 +2493,12 @@ cmake --build build
 ## 运行测试（如存在）
 - 构建：`cmake --build <build-dir> --target {{PROJECT_NAME}}_tests`（VS 需加 `--config Debug/Release`）
 - 执行：`ctest --test-dir <build-dir> --output-on-failure`（VS 加 `-C Debug/Release`）
+
+> 说明：本模板支持两种测试框架：Qt Test 与 GoogleTest（gtest）。
+> - Qt Test：随 Qt 提供，通常无需额外安装。
+> - gtest：需要你先安装 GTest（例如 vcpkg：`vcpkg install gtest:<triplet>`），然后 CMake 会通过 `find_package(GTest ...)` 找到它。
+>   - 交互创建项目时选择 `GoogleTest (gtest)`
+>   - 或命令行：`:QtNewProject <name> <template> <cxx_standard> gtest`
 
 ## clangd / 编译数据库
 - 若根目录缺少 `compile_commands.json`，请把构建目录中的文件复制/链接到根目录，或在 clangd 参数中指定 `--compile-commands-dir=<build-dir>`。
@@ -2553,6 +2631,10 @@ cmake --build <root-build-dir> --target {{PROJECT_NAME}}
 # 假设你的可执行/库目标名为 MyAppTarget
 target_link_libraries(MyAppTarget PRIVATE {{PROJECT_NAME}})
 ```
+
+## 第三方依赖（建议在根工程统一管理）
+- 推荐做法：在根工程统一 `find_package(...)`/`FetchContent(...)`/`add_subdirectory(external/...)`，然后在需要的模块里用 `target_link_libraries(...)` 连接。
+- 这样能避免每个模块各自配置依赖导致的重复、冲突（尤其是 Windows 上 MSVC/MinGW/clang-cl 与 vcpkg triplet 的匹配问题）。
 
 通常无需手动 `target_include_directories(MyAppTarget ...)`，因为本模块模板会把 `include/` 作为 `PUBLIC` 导出（可通过查看本模块 `CMakeLists.txt` 的 `target_include_directories` 验证）。
 

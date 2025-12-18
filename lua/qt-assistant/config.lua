@@ -54,7 +54,12 @@ function M.setup(user_config)
             vcpkg_root = M._detect_vcpkg_root(),
             toolchain_file = nil -- 自动从 vcpkg_root 推断
         },
-        enable_default_keymaps = true
+        enable_default_keymaps = true,
+        keymaps = {
+            -- "minimal": only the documented essentials
+            -- "full": includes extra convenience keymaps (legacy)
+            preset = "minimal"
+        }
     }
     
     M._config = vim.tbl_deep_extend('force', default_config, user_config or {})
