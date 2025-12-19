@@ -2410,8 +2410,11 @@ cmake --build build
 
 > 注意：不要用 `x64-windows` 的 Qt 去配 MinGW 构建，也不要反过来混用；切换工具链请换新的构建目录。
 
+{{#IS_APP}}
 ## 添加第三方库/依赖（指南）
 下面给出两类最常见的接入方式：vcpkg（推荐）与手动/源码接入。你可以把它们用于任何库（例如 spdlog / fmt / boost / opencv 等）。
+
+> 另：本项目同时生成了 `doc/ThirdParty.md`，里面有更集中、可复制的第三方库接入示例。
 
 ### 方式 A：vcpkg（推荐）
 1) 安装依赖
@@ -2461,6 +2464,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Foo)
 - Windows 运行时：把 `.dll` 放到可执行文件同目录（例如 `export/{{PROJECT_NAME}}/bin/`）或加入 `PATH`
 
 > 建议优先使用“方式 A(vcpkg)”或“方式 B-1/2”，能最大化 CMake 可移植性。
+
+{{/IS_APP}}
 
 ### （若使用 qmake 工程）
 如果你的工程是 `*.pro`（qmake），构建通常是：
@@ -2519,6 +2524,118 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Foo)
 - 生成器冲突：同一 build 目录只能用同一生成器，切换时请清空或改用新目录。
 - 未找到 Qt：检查 Qt5/Qt6 安装，必要时设置 `Qt5_DIR`/`Qt6_DIR`。
 - clangd 无法解析：确保根目录存在 `compile_commands.json`，或显式传入 `--compile-commands-dir`。
+]]
+
+        builtin_templates.doc_third_party_guide = [[
+# 第三方库导入指南（{{PROJECT_NAME}}）
+
+本文件专门汇总第三方库接入方式，适合在新项目里直接复制粘贴。
+
+## 推荐目录结构（相对路径）
+
+```
+{{PROJECT_NAME}}/
+├── CMakeLists.txt
+├── src/
+├── include/
+├── external/               # 建议：源码依赖 / submodule / FetchContent
+└── third_party/            # 建议：二进制预编译包（include/lib/bin）
+        └── <libname>/
+                ├── include/
+                ├── lib/
+                └── bin/            # Windows 下常见：dll
+```
+
+> 建议优先用 vcpkg 或 FetchContent；仅在必须时再用“手动 include/lib 目录”。
+
+## 方式 A：vcpkg（推荐）
+
+### 1) 工具链接入
+
+配置 CMake 工具链（二选一）：
+
+- 命令行：
+```bash
+cmake -S . -B build \
+    -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+```
+
+- 或在 `CMakePresets.json` 的 `cacheVariables` 里设置 `CMAKE_TOOLCHAIN_FILE`。
+
+### 2) 安装依赖
+
+（示例）
+```bash
+vcpkg install spdlog:x64-windows
+vcpkg install fmt:x64-windows
+```
+
+### 3) find_package + target_link_libraries
+
+```cmake
+find_package(spdlog CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog fmt::fmt)
+```
+
+## 方式 B：FetchContent（源码拉取，推荐）
+
+适合不想安装全局依赖、又希望 CMake 统一管理的场景。
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG 10.2.1
+)
+FetchContent_MakeAvailable(fmt)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+```
+
+## 方式 C：add_subdirectory（源码依赖 / git submodule）
+
+```cmake
+add_subdirectory(external/somelib)
+target_link_libraries(${PROJECT_NAME} PRIVATE somelib)
+```
+
+## 方式 D：手动接入（相对路径 include/lib）
+
+适合你已经有预编译包（例如 vendor 提供的 include/lib）。
+
+```cmake
+set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
+
+# 以 foo 为例
+set(FOO_ROOT "${THIRD_PARTY_DIR}/foo")
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${FOO_ROOT}/include"
+)
+
+# 1) 直接链接库文件（最明确）
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    "${FOO_ROOT}/lib/foo.lib"   # Windows MSVC 示例
+    # "${FOO_ROOT}/lib/libfoo.a" # MinGW/GCC 示例
+)
+```
+
+### Windows 运行时 DLL
+
+如果依赖需要 `.dll`：
+- 把 dll 放到可执行文件同目录（例如 `export/{{PROJECT_NAME}}/bin/` 或 build 输出目录）
+- 或把 `third_party/<lib>/bin` 加入 `PATH`
+
+## 小结
+
+- “想省事 + 可复现” → vcpkg（manifest 模式更佳）
+- “不想装依赖、直接 CMake 拉源码” → FetchContent
+- “已有源码仓库/子模块” → add_subdirectory
+- “只有预编译包” → 手动 include/lib（注意 dll 部署）
 ]]
 
     builtin_templates.doc_shared_library_guide = [[
@@ -2781,6 +2898,742 @@ add_subdirectory(plugins)   # Plugins (depend on core)
 add_subdirectory(app)       # Application (depends on all)
 ```
 ]]
+
+    -- Project Documentation Template
+    builtin_templates.project_doc = [[
+# {{PROJECT_NAME}} 项目文档
+
+## 项目概述
+
+**项目名称：** {{PROJECT_NAME}}
+**版本：** {{VERSION}}
+**作者：** {{AUTHOR}}
+**创建日期：** {{DATE}}
+**描述：** {{DESCRIPTION}}
+
+## 项目结构
+
+```
+{{PROJECT_NAME}}/
+├── src/                 # 源代码目录
+├── include/             # 头文件目录
+├── ui/                  # UI文件目录
+├── resources/           # 资源文件目录
+├── tests/               # 测试代码目录
+├── docs/                # 文档目录
+├── CMakeLists.txt       # CMake配置文件
+└── README.md            # 项目说明
+```
+
+## 主要功能
+
+1. 功能模块A：{{FEATURE_A}}
+2. 功能模块B：{{FEATURE_B}}
+3. 功能模块C：{{FEATURE_C}}
+
+## 技术栈
+
+- **框架：** Qt {{QT_VERSION}}
+- **构建工具：** CMake
+- **编译器：** {{COMPILER}}
+- **C++标准：** {{CXX_STANDARD}}
+
+## 依赖项
+
+### Qt模块
+{{QT_MODULES}}
+
+### 第三方库
+{{THIRD_PARTY_LIBS}}
+
+## 编译说明
+
+### 环境要求
+- Qt {{QT_VERSION}} 或更高版本
+- CMake 3.16 或更高版本
+- {{COMPILER}} 编译器
+
+### 编译步骤
+
+```bash
+# 1. 克隆项目
+git clone {{REPO_URL}}
+cd {{PROJECT_NAME}}
+
+# 2. 创建构建目录
+mkdir build
+cd build
+
+# 3. 配置项目
+cmake ..
+
+# 4. 编译
+cmake --build .
+
+# 5. 运行
+./{{PROJECT_NAME}}
+```
+
+## 使用说明
+
+### 基本用法
+
+```cpp
+// 示例代码
+{{EXAMPLE_CODE}}
+```
+
+### 配置选项
+
+{{CONFIG_OPTIONS}}
+
+## API文档
+
+详见 [API文档](docs/API.md)
+
+## 开发指南
+
+### 代码风格
+- 遵循 Qt 编码规范
+- 使用4个空格缩进
+- 类名使用大驼峰命名
+- 函数和变量使用小驼峰命名
+
+### 提交规范
+- feat: 新功能
+- fix: 错误修复
+- docs: 文档更新
+- style: 代码格式调整
+- refactor: 代码重构
+- test: 测试相关
+- chore: 构建/工具变更
+
+## 测试
+
+```bash
+# 运行测试
+cd build
+ctest
+```
+
+## 常见问题
+
+### Q: 如何配置Qt环境？
+A: {{QT_SETUP_HELP}}
+
+### Q: 编译失败怎么办？
+A: {{BUILD_ERROR_HELP}}
+
+## 更新日志
+
+### {{VERSION}} ({{DATE}})
+- 初始版本发布
+
+## 许可证
+
+{{LICENSE}}
+
+## 联系方式
+
+- 作者：{{AUTHOR}}
+- 邮箱：{{EMAIL}}
+- 项目主页：{{REPO_URL}}
+]]
+
+    -- API Documentation Template
+    builtin_templates.api_doc = [[
+# {{PROJECT_NAME}} API 文档
+
+## 类：{{CLASS_NAME}}
+
+### 继承关系
+```
+{{BASE_CLASS}}
+  └── {{CLASS_NAME}}
+```
+
+### 类说明
+
+{{CLASS_DESCRIPTION}}
+
+## 构造函数
+
+### {{CLASS_NAME}}::{{CLASS_NAME}}
+
+```cpp
+explicit {{CLASS_NAME}}(QWidget *parent = nullptr);
+```
+
+**参数：**
+- `parent`: 父窗口指针，默认为nullptr
+
+**说明：**
+构造一个新的{{CLASS_NAME}}对象。
+
+## 公共方法
+
+### 方法名称
+
+```cpp
+ReturnType methodName(ParamType param);
+```
+
+**参数：**
+- `param`: 参数说明
+
+**返回值：**
+返回值说明
+
+**示例：**
+```cpp
+{{CLASS_NAME}} obj;
+obj.methodName(value);
+```
+
+## 信号（Signals）
+
+### signalName
+
+```cpp
+void signalName(ParamType param);
+```
+
+**参数：**
+- `param`: 参数说明
+
+**说明：**
+信号触发条件和用途说明。
+
+## 槽函数（Slots）
+
+### slotName
+
+```cpp
+void slotName();
+```
+
+**说明：**
+槽函数功能说明。
+
+## 属性
+
+### propertyName
+
+```cpp
+Q_PROPERTY(Type propertyName READ getPropertyName WRITE setPropertyName NOTIFY propertyNameChanged)
+```
+
+**类型：** Type
+**访问：** 读/写
+**说明：** 属性用途说明
+
+## 枚举类型
+
+### EnumName
+
+```cpp
+enum EnumName {
+    Value1,
+    Value2,
+    Value3
+};
+```
+
+**值说明：**
+- `Value1`: 值1说明
+- `Value2`: 值2说明
+- `Value3`: 值3说明
+
+## 使用示例
+
+### 基本用法
+
+```cpp
+#include "{{FILE_NAME}}.h"
+
+{{CLASS_NAME}} *widget = new {{CLASS_NAME}}();
+// 使用示例代码
+widget->show();
+```
+
+### 信号槽连接
+
+```cpp
+connect(widget, &{{CLASS_NAME}}::signalName,
+        this, &MyClass::slotName);
+```
+
+## 注意事项
+
+{{NOTES}}
+
+## 相关类
+
+- {{RELATED_CLASS_1}}
+- {{RELATED_CLASS_2}}
+
+## 参考资料
+
+- [Qt官方文档](https://doc.qt.io/)
+- {{REFERENCE_LINKS}}
+]]
+
+    -- Module Documentation Template
+    builtin_templates.module_doc = [[
+# {{MODULE_NAME}} 模块文档
+
+## 模块概述
+
+**模块名称：** {{MODULE_NAME}}
+**版本：** {{MODULE_VERSION}}
+**说明：** {{MODULE_DESCRIPTION}}
+
+## 模块结构
+
+```
+{{MODULE_NAME}}/
+├── include/             # 公共头文件
+│   └── {{MODULE_NAME}}/
+│       ├── api.h
+│       └── types.h
+├── src/                 # 源代码实现
+│   ├── impl.cpp
+│   └── utils.cpp
+├── ui/                  # UI文件（如果有）
+├── resources/           # 资源文件
+├── tests/               # 模块测试
+└── CMakeLists.txt       # 模块构建配置
+```
+
+## 主要组件
+
+### 类列表
+
+| 类名 | 说明 | 头文件 |
+|------|------|--------|
+| {{CLASS_1}} | {{CLASS_1_DESC}} | {{CLASS_1_HEADER}} |
+| {{CLASS_2}} | {{CLASS_2_DESC}} | {{CLASS_2_HEADER}} |
+| {{CLASS_3}} | {{CLASS_3_DESC}} | {{CLASS_3_HEADER}} |
+
+### 功能说明
+
+1. **核心功能**
+   - {{CORE_FEATURE_1}}
+   - {{CORE_FEATURE_2}}
+
+2. **辅助功能**
+   - {{HELPER_FEATURE_1}}
+   - {{HELPER_FEATURE_2}}
+
+## 依赖关系
+
+### 内部依赖
+{{INTERNAL_DEPS}}
+
+### 外部依赖
+{{EXTERNAL_DEPS}}
+
+### Qt模块依赖
+```cmake
+find_package(Qt6 COMPONENTS
+    {{QT_COMPONENTS}}
+    REQUIRED
+)
+```
+
+### 第三方库依赖
+```cmake
+# 第三方库配置
+{{THIRD_PARTY_CONFIG}}
+```
+
+## 编译选项
+
+```cmake
+# 模块编译选项
+add_library({{MODULE_NAME}} SHARED
+    ${SOURCES}
+)
+
+target_compile_definitions({{MODULE_NAME}} PRIVATE
+    {{COMPILE_DEFINITIONS}}
+)
+
+target_include_directories({{MODULE_NAME}} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+```
+
+## 使用方法
+
+### 在CMakeLists.txt中添加模块
+
+```cmake
+# 添加模块
+add_subdirectory({{MODULE_NAME}})
+
+# 链接模块
+target_link_libraries(your_app PRIVATE {{MODULE_NAME}})
+```
+
+### 在代码中使用
+
+```cpp
+#include <{{MODULE_NAME}}/api.h>
+
+// 使用模块功能
+{{MODULE_NAME}}::initialize();
+```
+
+## API参考
+
+详见各类的API文档：
+{{API_DOC_LINKS}}
+
+## 配置选项
+
+### 编译时配置
+
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| {{OPTION_1}} | {{TYPE_1}} | {{DEFAULT_1}} | {{DESC_1}} |
+| {{OPTION_2}} | {{TYPE_2}} | {{DEFAULT_2}} | {{DESC_2}} |
+
+### 运行时配置
+
+{{RUNTIME_CONFIG}}
+
+## 测试
+
+### 运行模块测试
+
+```bash
+cd build
+ctest -R {{MODULE_NAME}}
+```
+
+### 测试覆盖
+
+{{TEST_COVERAGE}}
+
+## 性能考虑
+
+{{PERFORMANCE_NOTES}}
+
+## 已知问题
+
+{{KNOWN_ISSUES}}
+
+## 更新日志
+
+### {{MODULE_VERSION}}
+- {{CHANGELOG_ITEMS}}
+
+## 维护者
+
+{{MAINTAINER_INFO}}
+]]
+
+    -- Third-party Library Integration Document
+    builtin_templates.third_party_lib_doc = [[
+# 第三方库集成文档
+
+## 概述
+
+本文档说明如何在 {{PROJECT_NAME}} 项目中集成和使用第三方库。
+
+## 支持的集成方式
+
+### 1. vcpkg（推荐）
+
+vcpkg是Microsoft的C++包管理器，可以轻松管理第三方库。
+
+**配置方法：**
+
+```cmake
+# 在CMakeLists.txt中设置vcpkg工具链
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+```
+
+**安装库：**
+
+```bash
+# 安装库
+vcpkg install boost
+vcpkg install nlohmann-json
+```
+
+**在CMake中使用：**
+
+```cmake
+find_package(Boost REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+target_link_libraries({{PROJECT_NAME}} PRIVATE
+    Boost::boost
+    nlohmann_json::nlohmann_json
+)
+```
+
+### 2. 相对路径引用
+
+对于手动编译或下载的第三方库，可以使用相对路径引用。
+
+**目录结构：**
+
+```
+{{PROJECT_NAME}}/
+├── CMakeLists.txt
+├── src/
+├── include/
+└── third_party/          # 第三方库目录
+    ├── boost/
+    │   ├── include/
+    │   └── lib/
+    ├── opencv/
+    │   ├── include/
+    │   └── lib/
+    └── custom_lib/
+        ├── include/
+        └── lib/
+```
+
+**CMake配置示例：**
+
+```cmake
+# 设置第三方库根目录
+set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
+
+# 方式1：直接指定路径
+include_directories("${THIRD_PARTY_DIR}/boost/include")
+link_directories("${THIRD_PARTY_DIR}/boost/lib")
+
+# 方式2：使用find_package
+set(Boost_ROOT "${THIRD_PARTY_DIR}/boost")
+find_package(Boost REQUIRED)
+
+# 方式3：手动添加
+add_library(custom_lib SHARED IMPORTED)
+set_target_properties(custom_lib PROPERTIES
+    IMPORTED_LOCATION "${THIRD_PARTY_DIR}/custom_lib/lib/libcustom.so"
+    INTERFACE_INCLUDE_DIRECTORIES "${THIRD_PARTY_DIR}/custom_lib/include"
+)
+
+# 链接库
+target_link_libraries({{PROJECT_NAME}} PRIVATE
+    Boost::boost
+    custom_lib
+)
+```
+
+### 3. 子模块（Git Submodule）
+
+使用git submodule管理第三方库源码。
+
+```bash
+# 添加子模块
+git submodule add https://github.com/nlohmann/json.git third_party/json
+
+# 在CMakeLists.txt中
+add_subdirectory(third_party/json)
+target_link_libraries({{PROJECT_NAME}} PRIVATE nlohmann_json::nlohmann_json)
+```
+
+### 4. FetchContent（CMake 3.11+）
+
+使用CMake的FetchContent模块自动下载和构建第三方库。
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2
+)
+
+FetchContent_MakeAvailable(json)
+
+target_link_libraries({{PROJECT_NAME}} PRIVATE nlohmann_json::nlohmann_json)
+```
+
+## 常用第三方库集成示例
+
+### Boost
+
+```cmake
+# vcpkg方式
+find_package(Boost REQUIRED COMPONENTS filesystem system)
+target_link_libraries({{PROJECT_NAME}} PRIVATE Boost::filesystem Boost::system)
+
+# 相对路径方式
+set(BOOST_ROOT "${CMAKE_SOURCE_DIR}/third_party/boost")
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost REQUIRED COMPONENTS filesystem system)
+```
+
+### OpenCV
+
+```cmake
+# vcpkg方式
+find_package(OpenCV CONFIG REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE opencv_core opencv_imgproc)
+
+# 相对路径方式
+set(OpenCV_DIR "${CMAKE_SOURCE_DIR}/third_party/opencv")
+find_package(OpenCV REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE ${OpenCV_LIBS})
+```
+
+### JSON (nlohmann/json)
+
+```cmake
+# vcpkg方式
+find_package(nlohmann_json CONFIG REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE nlohmann_json::nlohmann_json)
+
+# header-only库直接包含
+include_directories("${CMAKE_SOURCE_DIR}/third_party/json/include")
+```
+
+### spdlog (日志库)
+
+```cmake
+# vcpkg方式
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE spdlog::spdlog)
+
+# 相对路径方式
+set(spdlog_DIR "${CMAKE_SOURCE_DIR}/third_party/spdlog")
+find_package(spdlog REQUIRED)
+```
+
+## Qt Assistant 插件配置
+
+在使用Qt Assistant插件时，可以在配置中设置第三方库路径：
+
+```lua
+require('qt-assistant').setup({
+    third_party = {
+        -- 启用第三方库管理
+        enabled = true,
+        
+        -- 第三方库根目录（相对于项目根目录）
+        root_dir = "third_party",
+        
+        -- 库配置
+        libraries = {
+            boost = {
+                path = "third_party/boost",
+                include_dir = "include",
+                lib_dir = "lib"
+            },
+            opencv = {
+                path = "third_party/opencv",
+                include_dir = "include",
+                lib_dir = "lib"
+            }
+        }
+    }
+})
+```
+
+## 编译配置
+
+### Windows
+
+```cmake
+# MSVC配置
+if(MSVC)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/third_party/qt")
+    set(Boost_ROOT "${CMAKE_SOURCE_DIR}/third_party/boost")
+endif()
+```
+
+### Linux
+
+```cmake
+# Linux配置
+if(UNIX)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/third_party/qt")
+    set(CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/third_party/lib")
+endif()
+```
+
+## 部署注意事项
+
+### DLL/SO依赖
+
+确保运行时能找到第三方库的动态库：
+
+```cmake
+# Windows: 复制DLL到输出目录
+if(WIN32)
+    add_custom_command(TARGET {{PROJECT_NAME}} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${THIRD_PARTY_DIR}/lib"
+        $<TARGET_FILE_DIR:{{PROJECT_NAME}}>
+    )
+endif()
+
+# Linux: 设置RPATH
+if(UNIX)
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
+endif()
+```
+
+## 故障排查
+
+### 常见问题
+
+1. **找不到库文件**
+   - 检查CMAKE_PREFIX_PATH设置
+   - 确认库文件路径正确
+   - 使用绝对路径测试
+
+2. **版本不兼容**
+   - 检查库版本要求
+   - 更新CMake最低版本
+   - 使用find_package的版本参数
+
+3. **链接错误**
+   - 检查库文件是否存在
+   - 确认debug/release配置匹配
+   - 查看详细的链接器输出
+
+### 调试方法
+
+```cmake
+# 启用详细输出
+set(CMAKE_FIND_DEBUG_MODE ON)
+find_package(SomeLib)
+set(CMAKE_FIND_DEBUG_MODE OFF)
+
+# 打印变量
+message(STATUS "Boost_FOUND: ${Boost_FOUND}")
+message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
+```
+
+## 最佳实践
+
+1. **使用vcpkg管理常用库**（推荐）
+2. **将第三方库放在独立目录中**
+3. **使用相对路径便于移植**
+4. **在README中记录依赖项**
+5. **提供依赖安装脚本**
+6. **使用版本锁定确保兼容性**
+
+## 参考资源
+
+- [vcpkg官方文档](https://vcpkg.io/)
+- [CMake FetchContent文档](https://cmake.org/cmake/help/latest/module/FetchContent.html)
+- [Qt官方文档](https://doc.qt.io/)
+]]
+
 end
 
 -- Get template configuration

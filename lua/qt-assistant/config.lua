@@ -54,6 +54,34 @@ function M.setup(user_config)
             vcpkg_root = M._detect_vcpkg_root(),
             toolchain_file = nil -- 自动从 vcpkg_root 推断
         },
+        -- Third-party libraries configuration
+        third_party = {
+            enabled = false,
+            -- Root directory for third-party libraries (relative to project root)
+            root_dir = "third_party",
+            -- Library configurations
+            libraries = {
+                -- Example:
+                -- boost = {
+                --     path = "third_party/boost",
+                --     include_dir = "include",
+                --     lib_dir = "lib",
+                --     version = "1.80.0"
+                -- }
+            },
+            -- Auto-generate CMake find_package calls
+            auto_cmake = true
+        },
+        -- Documentation configuration
+        documentation = {
+            enabled = true,
+            -- Documentation output directory
+            output_dir = "docs",
+            -- Default documentation template type
+            default_template = "project_doc",
+            -- Auto-generate API documentation
+            auto_generate_api = false
+        },
         enable_default_keymaps = true,
         keymaps = {
             -- "minimal": only the documented essentials

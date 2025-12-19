@@ -933,4 +933,142 @@ function M.reconfigure_project()
 	end
 end
 
+-- Generate project documentation
+-- 生成项目文档
+function M.generate_documentation(doc_type, output_file)
+	local templates = require('qt-assistant.templates')
+	templates.init()
+	local file_manager = require('qt-assistant.file_manager')
+	
+	doc_type = doc_type or "project_doc"
+	
+	-- Get template
+	local template_name = doc_type
+	local variables = {
+		PROJECT_NAME = vim.fn.fnamemodify(vim.fn.getcwd(), ":t"),
+		VERSION = "1.0.0",
+		AUTHOR = vim.fn.getenv("USER") or "Your Name",
+		DATE = os.date("%Y-%m-%d"),
+		DESCRIPTION = "Qt project description",
+		QT_VERSION = "6.x",
+		COMPILER = "MSVC/GCC/Clang",
+		CXX_STANDARD = "C++17",
+		QT_MODULES = "Core Gui Widgets",
+		THIRD_PARTY_LIBS = "See third_party/ directory",
+		REPO_URL = "",
+		EXAMPLE_CODE = "// TODO: Add example code",
+		CONFIG_OPTIONS = "// TODO: Add configuration options",
+		LICENSE = "MIT",
+		EMAIL = ""
+	}
+	
+	local content = templates.render_template(template_name, variables)
+	if not content then
+		vim.notify("Documentation template not found: " .. template_name, vim.log.levels.ERROR)
+		return false
+	end
+	
+	-- Determine output file
+	if not output_file then
+		local config = M.get_config()
+		local doc_dir = config.documentation and config.documentation.output_dir or "docs"
+		local project_root = file_manager.get_project_root()
+		
+		-- Ensure docs directory exists
+		local doc_path = require('qt-assistant.system').join_path(project_root, doc_dir)
+		if vim.fn.isdirectory(doc_path) == 0 then
+			vim.fn.mkdir(doc_path, "p")
+		end
+		
+		local filename_map = {
+			project_doc = "PROJECT.md",
+			api_doc = "API.md",
+			module_doc = "MODULE.md",
+			third_party_lib_doc = "THIRD_PARTY.md"
+		}
+		
+		output_file = require('qt-assistant.system').join_path(doc_path, filename_map[doc_type] or "README.md")
+	end
+	
+	-- Write documentation
+	local success = file_manager.write_file(output_file, content)
+	if success then
+		vim.notify(string.format("Generated %s documentation: %s", doc_type, output_file), vim.log.levels.INFO)
+		-- Open the generated file
+		vim.cmd(string.format("edit %s", output_file))
+	else
+		vim.notify("Failed to generate documentation", vim.log.levels.ERROR)
+	end
+	
+	return success
+end
+
+-- Add third-party library configuration
+-- 添加第三方库配置
+function M.add_third_party_library()
+	vim.ui.input({
+		prompt = "Library name: "
+	}, function(lib_name)
+		if not lib_name or lib_name == "" then
+			return
+		end
+		
+		vim.ui.input({
+			prompt = "Library path (relative to project root): ",
+			default = "third_party/" .. lib_name
+		}, function(lib_path)
+			if not lib_path or lib_path == "" then
+				lib_path = "third_party/" .. lib_name
+			end
+			
+			vim.ui.input({
+				prompt = "Include directory (relative to library path): ",
+				default = "include"
+			}, function(include_dir)
+				if not include_dir or include_dir == "" then
+					include_dir = "include"
+				end
+				
+				vim.ui.input({
+					prompt = "Library directory (relative to library path): ",
+					default = "lib"
+				}, function(lib_dir)
+					if not lib_dir or lib_dir == "" then
+						lib_dir = "lib"
+					end
+					
+					local lib_config = {
+						path = lib_path,
+						include_dir = include_dir,
+						lib_dir = lib_dir,
+						use_find_package = false,
+						required = false
+					}
+					
+					-- Add to CMakeLists.txt
+					local cmake = require('qt-assistant.cmake')
+					local success = cmake.add_third_party_library(lib_name, lib_config)
+					
+					if success then
+						vim.notify(string.format("Added third-party library: %s", lib_name), vim.log.levels.INFO)
+					end
+				end)
+			end)
+		end)
+	end)
+end
+
+-- Create third-party CMake configuration file
+-- 创建第三方库CMake配置文件
+function M.create_third_party_cmake()
+	local cmake = require('qt-assistant.cmake')
+	cmake.create_third_party_cmake_file()
+end
+
+-- Generate third-party library documentation
+-- 生成第三方库集成文档
+function M.generate_third_party_doc()
+	M.generate_documentation("third_party_lib_doc")
+end
+
 return M

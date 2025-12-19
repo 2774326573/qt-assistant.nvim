@@ -11,19 +11,19 @@ local project_templates = {
     widget_app = {
         name = "Qt Widgets Application",
         description = "Standard Qt Widgets desktop application",
-        files = {"main.cpp", "mainwindow.h", "mainwindow.cpp", "mainwindow.ui", "CMakeLists.txt", "ProjectGuide.md"},
+        files = {"main.cpp", "mainwindow.h", "mainwindow.cpp", "mainwindow.ui", "CMakeLists.txt", "ProjectGuide.md", "ThirdParty.md"},
         type = "executable"
     },
     quick_app = {
         name = "Qt Quick Application",
         description = "Qt Quick/QML application",
-        files = {"main.cpp", "main.qml", "qml.qrc", "CMakeLists.txt", "ProjectGuide.md"},
+        files = {"main.cpp", "main.qml", "qml.qrc", "CMakeLists.txt", "ProjectGuide.md", "ThirdParty.md"},
         type = "executable"
     },
     console_app = {
         name = "Qt Console Application",
         description = "Command-line Qt application",
-        files = {"main.cpp", "CMakeLists.txt", "ProjectGuide.md"},
+        files = {"main.cpp", "CMakeLists.txt", "ProjectGuide.md", "ThirdParty.md"},
         type = "executable"
     },
     -- Multi-module project templates
@@ -349,6 +349,9 @@ function M.create_project_files(project_path, template_type, project_name, cxx_s
         CXX_STANDARD = cxx_standard
     }
 
+    -- Used by doc templates to selectively show sections.
+    template_vars.IS_APP = (template_type == "widget_app" or template_type == "console_app" or template_type == "quick_app")
+
     -- widget_app: wire MainWindow class to the generated .ui file.
     -- CMake template already lists ui/mainwindow.ui and enables AUTOUIC.
     if template_type == 'widget_app' then
@@ -471,6 +474,7 @@ function M.generate_template_file(file_name, template_type, vars)
         ["CMakeLists.txt"] = "cmake_" .. template_type,
         ["README.md"] = template_type == "multi_project" and "multi_project_readme" or nil,
         ["ProjectGuide.md"] = "doc_project_guide",
+        ["ThirdParty.md"] = "doc_third_party_guide",
         ["SharedLibraryGuide.md"] = "doc_shared_library_guide"
     }
     

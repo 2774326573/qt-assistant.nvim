@@ -304,6 +304,47 @@ vim.api.nvim_create_user_command('QtHelp', function()
     require('qt-assistant').show_help()
 end, { desc = 'Show Qt Assistant help' })
 
+-- ==================== Documentation ====================
+
+vim.api.nvim_create_user_command('QtGenerateDoc', function(opts)
+    if not ensure_loaded() then return end
+    local args = vim.split(opts.args, '%s+')
+    local doc_type = args[1] or "project_doc"
+    local output_file = args[2]
+    require('qt-assistant').generate_documentation(doc_type, output_file)
+end, {
+    nargs = '*',
+    desc = 'Generate documentation [type] [output_file]',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+        local args = vim.split(cmd_line, '%s+')
+        local arg_count = #args - 1
+        
+        if arg_count == 1 then
+            return {'project_doc', 'api_doc', 'module_doc', 'third_party_lib_doc'}
+        elseif arg_count == 2 then
+            return {'file'}
+        end
+        return {}
+    end
+})
+
+-- ==================== Third-party Library Management ====================
+
+vim.api.nvim_create_user_command('QtAddThirdParty', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant').add_third_party_library()
+end, { desc = 'Add third-party library configuration' })
+
+vim.api.nvim_create_user_command('QtCreateThirdPartyCMake', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant').create_third_party_cmake()
+end, { desc = 'Create third-party CMake configuration file' })
+
+vim.api.nvim_create_user_command('QtThirdPartyDoc', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant').generate_third_party_doc()
+end, { desc = 'Generate third-party library integration documentation' })
+
 -- ==================== Diagnostics ====================
 
 vim.api.nvim_create_user_command('QtDoctor', function()
