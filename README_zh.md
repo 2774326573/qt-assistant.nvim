@@ -9,7 +9,7 @@
 - **项目管理**: 创建和打开具有标准结构的Qt项目
 - **UI设计器集成**: 创建、编辑UI文件并无缝启动Qt Designer
 - **类生成**: 从UI文件生成C++类，并正确集成uic
-- **构建系统**: 支持CMake和qmake构建系统
+- **构建系统**: 支持 CMake、qmake 和 xmake（检测 `xmake.lua`）
 - **构建工具选择**: qmake 构建会自动选择 `mingw32-make` / `nmake` / `make`（在 nmake 下不会携带 `-j`）
 - **调试**: 完整的nvim-dap集成，用于Qt应用程序调试
 - **跨平台**: 支持Linux、macOS和Windows
@@ -100,8 +100,11 @@ vcpkg install qt5-base qt5-tools
 ## 依赖项
 | `:QtCreateClass <name> <type>` | 创建Qt类 | `:QtCreateClass MyWidget widget` |
 | `:QtCreateClass <name> <type> <ui>` | 从UI创建类 | `:QtCreateClass MainWin main_window main.ui` |
-| `:QtBuild` | 构建项目 | `:QtBuild` |
+| `:QtBuild` | 构建项目（CMake / qmake / xmake） | `:QtBuild` |
 | `:QtRun` | 运行项目 | `:QtRun` |
+| `:QtClean` | 清理构建 | `:QtClean` |
+| `:QtInstall [prefix]` | 安装（CMake 或 xmake） | `:QtInstall` |
+| `:QtScripts` | 打开脚本管理器 | `:QtScripts` |
 | `:QtDebugSetup` | 设置调试环境 | `:QtDebugSetup` |
 | `:QtDebug` | 调试Qt应用程序 | `:QtDebug` |
 | `:QtDebugAttach` | 附加到运行进程 | `:QtDebugAttach` |
@@ -417,7 +420,7 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 | **项目管理** | ✅ 核心 | Qt工具 | `:QtNewProject`, `:QtOpenProject`, `:QtAddModule` |
 | **UI设计器** | ✅ 核心 | Qt Designer | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
 | **类生成** | ✅ 核心 | uic工具 | `:QtCreateClass` |
-| **构建系统** | ✅ 核心 | CMake/qmake | `:QtBuild`, `:QtRun` |
+| **构建系统** | ✅ 核心 | CMake、qmake、xmake | `:QtBuild`, `:QtRun`, `:QtClean` |
 | **调试** | ✅ 增强 | nvim-dap + 调试器 | `:QtDebug`, `:QtDebugAttach` |
 | **快速键映射** | ✅ 核心 | 无 | `<leader>q*` 快捷键 |
 

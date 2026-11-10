@@ -36,23 +36,38 @@ end, { desc = 'Open Qt Assistant interface' })
 -- Project management
 vim.api.nvim_create_user_command('QtNewProject', function(opts)
     if ensure_loaded() then
-        local args = vim.split(opts.args, '%s+')
+        local args = {}
+        for _, part in ipairs(vim.split(opts.args, '%s+')) do
+            if part ~= '' then
+                table.insert(args, part)
+            end
+        end
         if #args >= 3 then
-            -- QtNewProject <name> <template> <cxx_standard> [tests|gtest]
+            -- QtNewProject <name> <template> [cxx_standard] [tests|gtest] [xmake]
             local project_manager = require('qt-assistant.project_manager')
             local enable_tests = false
             local test_framework = nil
-            if #args >= 4 then
-                local flag = tostring(args[4]):lower()
+            local generate_xmake = false
+            local cxx_standard = nil
+            for i = 3, #args do
+                local flag = tostring(args[i]):lower()
                 if flag == 'tests' or flag == 'test' or flag == 'with_tests' then
                     enable_tests = true
                     test_framework = 'qt'
                 elseif flag == 'gtest' or flag == 'googletest' then
                     enable_tests = true
                     test_framework = 'gtest'
+                elseif flag == 'xmake' then
+                    generate_xmake = true
+                elseif flag:match('^%d%d$') then
+                    cxx_standard = flag
                 end
             end
-            project_manager.new_project(args[1], args[2], args[3], nil, { enable_tests = enable_tests, test_framework = test_framework })
+            project_manager.new_project(args[1], args[2], cxx_standard or '17', nil, {
+                enable_tests = enable_tests,
+                test_framework = test_framework,
+                generate_xmake = generate_xmake,
+            })
         elseif #args >= 2 then
             -- QtNewProject <name> <template>
             -- Semi-interactive: still prompt for location/tests/C++ standard
@@ -66,19 +81,19 @@ vim.api.nvim_create_user_command('QtNewProject', function(opts)
     end
 end, { 
     nargs = '*',
-    desc = 'Create new Qt project [name] [template] [cxx_standard] [tests|gtest]',
+    desc = 'Create new Qt project [name] [template] [cxx_standard] [tests|gtest] [xmake]',
     complete = function(arg_lead, cmd_line, cursor_pos)
         local args = vim.split(cmd_line, '%s+')
         local arg_count = #args - 1  -- Subtract command name
         
         if arg_count == 1 then
             -- Complete template type
-            return {'widget_app', 'console_app', 'quick_app'}
+            return {'widget_app', 'console_app', 'quick_app', 'static_lib', 'shared_lib', 'plugin'}
         elseif arg_count == 2 then
             -- Complete C++ standard
             return {'11', '14', '17', '20', '23'}
-        elseif arg_count == 3 then
-            return {'tests', 'gtest'}
+        elseif arg_count >= 3 then
+            return {'tests', 'gtest', 'xmake', '11', '14', '17', '20', '23'}
         end
         return {}
     end
@@ -229,13 +244,18 @@ vim.api.nvim_create_user_command('QtRun', function()
     require('qt-assistant').run_project()
 end, { desc = 'Run Qt project' })
 
+vim.api.nvim_create_user_command('QtClean', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant').clean_project()
+end, { desc = 'Clean Qt project (CMake, qmake, or xmake)' })
+
 vim.api.nvim_create_user_command('QtInstall', function(opts)
     if not ensure_loaded() then return end
     local prefix = opts.args ~= '' and opts.args or nil
     require('qt-assistant').install_project(prefix)
 end, {
     nargs = '?',
-    desc = 'Install CMake project (optional prefix)',
+    desc = 'Install CMake or xmake project (optional prefix)',
     complete = 'dir'
 })
 
@@ -299,6 +319,11 @@ end, { desc = 'Setup complete Qt debugging environment' })
 
 -- ==================== Help ====================
 
+vim.api.nvim_create_user_command('QtScripts', function()
+    if not ensure_loaded() then return end
+    require('qt-assistant.ui').show_script_manager()
+end, { desc = 'Open the Qt project script manager' })
+
 vim.api.nvim_create_user_command('QtHelp', function()
     if not ensure_loaded() then return end
     require('qt-assistant').show_help()
@@ -308,7 +333,12 @@ end, { desc = 'Show Qt Assistant help' })
 
 vim.api.nvim_create_user_command('QtGenerateDoc', function(opts)
     if not ensure_loaded() then return end
-    local args = vim.split(opts.args, '%s+')
+    local args = {}
+    for _, part in ipairs(vim.split(opts.args, '%s+')) do
+        if part ~= '' then
+            table.insert(args, part)
+        end
+    end
     local doc_type = args[1] or "project_doc"
     local output_file = args[2]
     require('qt-assistant').generate_documentation(doc_type, output_file)
@@ -375,12 +405,20 @@ vim.api.nvim_create_user_command('QtDoctor', function()
             .. ' compiler_runtime=' .. fmt(config.export.deploy_compiler_runtime), vim.log.levels.INFO)
     end
 
-    local tools = { 'cmake', 'qmake', 'windeployqt', 'macdeployqt', 'uic', 'designer' }
+    local build_manager = require('qt-assistant.build_manager')
+    vim.notify('QtDoctor: build_system=' .. fmt(build_manager.detect_build_system())
+        .. ' preference=' .. fmt(config.build_system or 'auto'), vim.log.levels.INFO)
+
+    local tools = { 'cmake', 'qmake', 'xmake', 'windeployqt', 'macdeployqt', 'uic', 'designer', 'gdb', 'lldb', 'codelldb' }
+    if system.get_os() == 'windows' then
+        table.insert(tools, 'cdb')
+    end
     for _, name in ipairs(tools) do
-        local p = (name == 'cmake') and system.find_executable('cmake') or system.find_qt_tool(name)
+        local exe_tool = name == 'cmake' or name == 'xmake' or name == 'gdb' or name == 'lldb' or name == 'codelldb' or name == 'cdb'
+        local p = exe_tool and system.find_executable(name) or system.find_qt_tool(name)
         vim.notify('QtDoctor: ' .. name .. '=' .. fmt(p), vim.log.levels.INFO)
     end
-end, { desc = 'Show environment/tooling diagnostics (vcpkg/Qt tools/export)' })
+end, { desc = 'Show environment/tooling diagnostics (vcpkg/Qt tools/xmake/export)' })
 
 
 -- Lazy initialization - only setup when first command is used

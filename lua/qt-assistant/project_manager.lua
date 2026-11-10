@@ -59,7 +59,8 @@ function M.detect_project_type(project_path)
     
     local project_files = {
         {file = "CMakeLists.txt", type = "cmake", priority = 1},
-        {file = "*.pro", type = "qmake", priority = 2}
+        {file = "*.pro", type = "qmake", priority = 2},
+        {file = "xmake.lua", type = "xmake", priority = 3}
     }
     
     for _, config in ipairs(project_files) do
@@ -163,7 +164,7 @@ function M.discover_projects(opts)
                 break
             end
             local matches = vim.fs.find(function(name)
-                return name == "CMakeLists.txt" or name:match("%.pro$")
+                return name == "CMakeLists.txt" or name == "xmake.lua" or name:match("%.pro$")
             end, {
                 path = root,
                 limit = remaining * 4,
@@ -205,6 +206,12 @@ function M.open_project(project_path)
     
     vim.notify(string.format("Opened Qt project (%s): %s", project_type, project_path), vim.log.levels.INFO)
 
+    M._current_project = {
+        path = project_path,
+        type = project_type,
+        name = vim.fn.fnamemodify(project_path, ":t"),
+    }
+
     -- Update configuration
     local config = require('qt-assistant.config')
     config.set_value('project_root', project_path)
@@ -219,6 +226,10 @@ end
 --   enable_tests: boolean (default false)
 function M.new_project(project_name, template_type, cxx_standard, root_dir, opts)
     opts = opts or {}
+    if opts.generate_xmake == nil then
+        local cfg = require('qt-assistant.config').get()
+        opts.generate_xmake = cfg.project and cfg.project.generate_xmake or false
+    end
     if opts.enable_tests == nil then
         -- Default ON: new projects include runnable tests & demo code
         opts.enable_tests = true
@@ -276,6 +287,11 @@ function M.new_project(project_name, template_type, cxx_standard, root_dir, opts
     
     -- Generate project files with C++ standard
     M.create_project_files(project_path, template_type, project_name, cxx_standard, opts)
+
+    if opts.generate_xmake then
+        local xmake_content = M.generate_xmake_content(template_type, project_name, cxx_standard, opts)
+        file_manager.write_file(project_path .. "/xmake.lua", xmake_content)
+    end
     
     vim.notify(string.format("Project '%s' created successfully", project_name), vim.log.levels.INFO)
     
@@ -988,6 +1004,147 @@ function M.add_module_interactive()
 
         return M.add_module(module_name, module_type, nil, { enable_tests = enable_tests, test_framework = test_framework })
     end)
+end
+
+function M.get_current_project()
+    if M._current_project and M._current_project.path then
+        return M._current_project
+    end
+
+    local root = require('qt-assistant.config').get().project_root
+    local project_type = M.detect_project_type(root)
+    if not project_type then
+        return nil
+    end
+    M._current_project = {
+        path = root,
+        type = project_type,
+        name = vim.fn.fnamemodify(root, ":t"),
+    }
+    return M._current_project
+end
+
+function M.list_templates()
+    local order = {
+        "widget_app",
+        "quick_app",
+        "console_app",
+        "static_lib",
+        "shared_lib",
+        "plugin",
+        "multi_project",
+    }
+    local lines = { "Qt project templates", "" }
+    for _, id in ipairs(order) do
+        local template = project_templates[id]
+        if template then
+            table.insert(lines, string.format("%s — %s", id, template.name))
+            table.insert(lines, "  " .. template.description)
+        end
+    end
+    require("qt-assistant.ui").show_info_window(lines)
+    return lines
+end
+
+function M.generate_xmake_content(template_type, project_name, cxx_standard, opts)
+    opts = opts or {}
+    cxx_standard = tostring(cxx_standard or "17")
+    project_name = project_name or "qtapp"
+
+    local rules = {
+        widget_app = "qt.widgetapp",
+        quick_app = "qt.quickapp",
+        console_app = "qt.console",
+        static_lib = "qt.static",
+        shared_lib = "qt.shared",
+        plugin = "qt.shared",
+        multi_project = "qt.console",
+    }
+    local qt_rule = rules[template_type] or "qt.console"
+    local kind = "binary"
+    if template_type == "static_lib" then
+        kind = "static"
+    elseif template_type == "shared_lib" or template_type == "plugin" then
+        kind = "shared"
+    end
+
+    local is_lib = template_type == "static_lib" or template_type == "shared_lib" or template_type == "plugin"
+    local body
+    if is_lib then
+        body = string.format([[
+    add_includedirs("include")
+    add_files("src/%s/*.cpp")
+    add_headerfiles("include/%s/*.h")]], project_name, project_name)
+    elseif template_type == "quick_app" then
+        body = [[
+    add_includedirs("include")
+    add_files("src/*.cpp")
+    add_files("*.qrc")
+    add_files("qml/*.qml")]]
+    elseif template_type == "widget_app" then
+        body = [[
+    add_includedirs("include")
+    add_files("src/*.cpp")
+    add_headerfiles("include/*.h")
+    add_files("ui/*.ui")]]
+    else
+        body = [[
+    add_includedirs("include")
+    add_files("src/*.cpp")
+    add_headerfiles("include/*.h")]]
+    end
+
+    local tests = ""
+    if opts.enable_tests then
+        local framework = tostring(opts.test_framework or "qt"):lower()
+        if is_lib then
+            tests = string.format([[
+
+target("%s_tests")
+    add_rules("qt.console")
+    set_kind("binary")
+    add_deps("%s")
+    add_includedirs("include")
+    add_files("tests/test_basic.cpp")
+]], project_name, project_name)
+        elseif framework == "gtest" then
+            tests = string.format([[
+
+target("%s_tests")
+    set_kind("binary")
+    add_includedirs("include")
+    add_files("tests/test_basic.cpp", "src/calculator.cpp")
+    add_packages("gtest")
+]], project_name)
+        else
+            tests = string.format([[
+
+target("%s_tests")
+    add_rules("qt.console")
+    set_kind("binary")
+    add_includedirs("include")
+    add_files("tests/test_basic.cpp", "src/calculator.cpp")
+    add_frameworks("QtCore", "QtTest")
+]], project_name)
+        end
+    end
+
+    return string.format([[-- Generated by qt-assistant.nvim
+add_rules("mode.debug", "mode.release", "mode.releasedbg", "mode.minsizerel")
+
+set_project("%s")
+set_version("1.0.0")
+set_languages("c++%s")
+
+target("%s")
+    add_rules("%s")
+    set_kind("%s")
+%s
+    if is_plat("windows") then
+        add_cxflags("/utf-8", {tools = "cl"})
+    end
+%s
+]], project_name, cxx_standard, project_name, qt_rule, kind, body, tests)
 end
 
 return M

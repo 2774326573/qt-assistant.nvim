@@ -87,6 +87,17 @@ function M.setup(user_config)
             -- "minimal": only the documented essentials
             -- "full": includes extra convenience keymaps (legacy)
             preset = "minimal"
+        },
+        -- "auto" keeps the historical order: CMake, then qmake, then xmake.
+        -- Set to "cmake", "qmake", or "xmake" to force that system when its project file exists.
+        build_system = "auto",
+        project = {
+            -- Also write xmake.lua when creating a project.
+            generate_xmake = false,
+        },
+        debug = {
+            -- :QtDebugSetup always offers DAP keymaps. Set true to install them during setup().
+            keymaps = false,
         }
     }
     

@@ -306,4 +306,63 @@ function M.get_ui_files_for_completion()
     return filenames
 end
 
+function M.get_editor_status()
+    local system = require('qt-assistant.system')
+    local function entry(tool, label)
+        local path = system.find_qt_tool(tool)
+        return {
+            name = label,
+            available = path ~= nil,
+            path = path,
+        }
+    end
+    return {
+        designer = entry('designer', 'Qt Designer'),
+        qtcreator = entry('qtcreator', 'Qt Creator'),
+        uic = entry('uic', 'uic'),
+    }
+end
+
+function M.open_designer_current()
+    local current = vim.fn.expand('%:p')
+    if current and current ~= '' and current:match('%.ui$') then
+        return M.open_designer(current)
+    end
+    vim.notify('Current buffer is not a .ui file. Select a UI file instead.', vim.log.levels.INFO)
+    M.select_ui_file_to_open()
+    return false
+end
+
+function M.preview_ui(ui_file)
+    ui_file = ui_file or vim.fn.expand('%:p')
+    if not ui_file or ui_file == '' or not tostring(ui_file):match('%.ui$') or vim.fn.filereadable(ui_file) ~= 1 then
+        vim.notify('Not a readable UI file: ' .. tostring(ui_file), vim.log.levels.WARN)
+        return false
+    end
+
+    local info = M.analyze_ui_file(ui_file)
+    local lines = {
+        'UI preview: ' .. (info.name or ui_file),
+        'Class: ' .. ((info.class_name and info.class_name ~= '') and info.class_name or '(unknown)'),
+        'Widgets:',
+    }
+    for _, widget in ipairs(info.widgets or {}) do
+        table.insert(lines, string.format('  %s (%s)', widget.name, widget.class))
+    end
+    if not info.widgets or #info.widgets == 0 then
+        table.insert(lines, '  (none parsed)')
+    end
+    require('qt-assistant.ui').show_info_window(lines)
+    return true
+end
+
+function M.sync_ui(ui_file)
+    ui_file = ui_file or vim.fn.expand('%:p')
+    if not ui_file or not tostring(ui_file):match('%.ui$') then
+        vim.notify('Current file is not a .ui file', vim.log.levels.ERROR)
+        return false
+    end
+    return require('qt-assistant').compile_ui_file(ui_file)
+end
+
 return M

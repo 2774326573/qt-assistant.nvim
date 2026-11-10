@@ -11,17 +11,74 @@ local function get_config()
     return require('qt-assistant.config').get()
 end
 
--- Detect build system
-function M.detect_build_system()
-    local project_root = get_config().project_root
-    
-    if vim.fn.filereadable(project_root .. "/CMakeLists.txt") == 1 then
-        return "cmake"
-    elseif vim.fn.glob(project_root .. "/*.pro") ~= "" then
-        return "qmake"
+local function project_has_build_file(project_root, kind)
+    if kind == "cmake" then
+        return vim.fn.filereadable(project_root .. "/CMakeLists.txt") == 1
+    elseif kind == "qmake" then
+        return vim.fn.glob(project_root .. "/*.pro") ~= ""
+    elseif kind == "xmake" then
+        return vim.fn.filereadable(project_root .. "/xmake.lua") == 1
     end
-    
+    return false
+end
+
+-- Detect build system.
+-- Auto order preserves existing projects: CMake, then qmake, then xmake.
+-- config.build_system = "cmake"|"qmake"|"xmake" forces that system when its file exists.
+function M.detect_build_system(project_root)
+    project_root = project_root or get_config().project_root
+
+    local prefer = get_config().build_system
+    if prefer and prefer ~= "" and prefer ~= "auto" and project_has_build_file(project_root, prefer) then
+        return prefer
+    end
+
+    if project_has_build_file(project_root, "cmake") then
+        return "cmake"
+    elseif project_has_build_file(project_root, "qmake") then
+        return "qmake"
+    elseif project_has_build_file(project_root, "xmake") then
+        return "xmake"
+    end
+
     return nil
+end
+
+function M.xmake_mode(build_type)
+    local s = tostring(build_type or "Debug"):lower()
+    if s == "relwithdebinfo" or s == "releasedbg" then
+        return "releasedbg"
+    elseif s == "minsizerel" then
+        return "minsizerel"
+    elseif s:find("release", 1, true) and not s:find("debug", 1, true) then
+        return "release"
+    end
+    return "debug"
+end
+
+function M.xmake_build_argv(xmake_path, project_root, build_type)
+    return { xmake_path, "-P", project_root, "-m", M.xmake_mode(build_type), "-y" }
+end
+
+function M.xmake_clean_argv(xmake_path, project_root)
+    return { xmake_path, "-P", project_root, "clean", "-y" }
+end
+
+function M.xmake_install_argv(xmake_path, project_root, prefix)
+    local cmd = { xmake_path, "-P", project_root, "install", "-y" }
+    if prefix and prefix ~= "" then
+        table.insert(cmd, "-o")
+        table.insert(cmd, prefix)
+    end
+    return cmd
+end
+
+function M.xmake_run_argv(xmake_path, project_root, build_type)
+    return { xmake_path, "-P", project_root, "-m", M.xmake_mode(build_type), "run", "-y" }
+end
+
+function M.cmake_clean_argv(cmake_path, build_dir)
+    return { cmake_path, "--build", build_dir, "--target", "clean" }
 end
 
 function M.build_project(build_type, opts)
@@ -33,7 +90,10 @@ function M.build_project(build_type, opts)
     vim.schedule(function()
         local build_system = M.detect_build_system()
         if not build_system then
-            vim.notify("❌ No build system detected (CMakeLists.txt or *.pro)", vim.log.levels.ERROR)
+            vim.notify("❌ No build system detected (CMakeLists.txt, *.pro, or xmake.lua)", vim.log.levels.ERROR)
+            if opts.on_failure then
+                opts.on_failure(-1)
+            end
             return
         end
         
@@ -54,6 +114,8 @@ function M.build_project(build_type, opts)
             M.build_with_cmake_async(project_root, build_dir, build_type, opts)
         elseif build_system == "qmake" then
             M.build_with_qmake_async(project_root, build_dir, opts)
+        elseif build_system == "xmake" then
+            M.build_with_xmake_async(project_root, build_type, opts)
         end
     end)
     
@@ -458,23 +520,47 @@ local function export_after_cmake_build(project_root, build_dir, build_type)
     })
 end
 
--- Install project (CMake only)
+-- Install project (CMake and xmake)
 function M.install_project(prefix)
     vim.schedule(function()
         local build_system = M.detect_build_system()
-        if build_system ~= "cmake" then
-            vim.notify("❌ Install is supported for CMake projects only", vim.log.levels.ERROR)
+        local project_root = get_config().project_root
+        local system = require('qt-assistant.system')
+
+        if build_system == "xmake" then
+            local xmake_path = system.find_executable("xmake")
+            if not xmake_path then
+                vim.notify("❌ xmake not found. Install it from https://xmake.io", vim.log.levels.ERROR)
+                return
+            end
+            local cmd = M.xmake_install_argv(xmake_path, project_root, prefix)
+            vim.notify("📦 Installing project with xmake...", vim.log.levels.INFO)
+            vim.fn.jobstart(cmd, {
+                cwd = project_root,
+                on_exit = function(_, exit_code)
+                    vim.schedule(function()
+                        if exit_code == 0 then
+                            vim.notify("✅ Install completed", vim.log.levels.INFO)
+                        else
+                            vim.notify("❌ Install failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                        end
+                    end)
+                end
+            })
             return
         end
 
-        local project_root = get_config().project_root
+        if build_system ~= "cmake" then
+            vim.notify("❌ Install is supported for CMake and xmake projects", vim.log.levels.ERROR)
+            return
+        end
+
         local build_dir = project_root .. "/build"
         if vim.fn.isdirectory(build_dir) ~= 1 then
             vim.notify("❌ Build directory not found. Please run :QtBuild first.", vim.log.levels.ERROR)
             return
         end
 
-        local system = require('qt-assistant.system')
         local cmake_path = system.find_executable("cmake")
         if not cmake_path then
             vim.notify("❌ CMake not found. Please install CMake.", vim.log.levels.ERROR)
@@ -656,7 +742,12 @@ function M.package_project()
             return
         end
 
-        vim.notify("❌ No build system detected (CMakeLists.txt or *.pro)", vim.log.levels.ERROR)
+        if build_system == "xmake" then
+            vim.notify("QtPackage does not invent an xmake pack spec. Add pack rules to xmake.lua, or package CMake projects with CPack.", vim.log.levels.WARN)
+            return
+        end
+
+        vim.notify("❌ No build system detected (CMakeLists.txt, *.pro, or xmake.lua)", vim.log.levels.ERROR)
     end)
 end
 
@@ -667,6 +758,9 @@ function M.build_with_cmake_async(project_root, build_dir, build_type, opts)
     
     if not cmake_path then
         vim.notify("❌ CMake not found. Please install CMake.", vim.log.levels.ERROR)
+        if opts and opts.on_failure then
+            opts.on_failure(-1)
+        end
         return
     end
     
@@ -710,9 +804,12 @@ function M.build_with_cmake_async(project_root, build_dir, build_type, opts)
             vim.schedule(function()
                 if exit_code == 0 then
                     vim.notify("✅ CMake configure completed", vim.log.levels.INFO)
-                    M.start_cmake_build(cmake_path, project_root, build_dir, build_type)
+                    M.start_cmake_build(cmake_path, project_root, build_dir, build_type, opts)
                 else
                     vim.notify("❌ CMake configure failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    if opts and opts.on_failure then
+                        opts.on_failure(exit_code)
+                    end
                 end
             end)
         end
@@ -720,7 +817,7 @@ function M.build_with_cmake_async(project_root, build_dir, build_type, opts)
 end
 
 -- Start CMake build step
-function M.start_cmake_build(cmake_path, project_root, build_dir, build_type)
+function M.start_cmake_build(cmake_path, project_root, build_dir, build_type, opts)
     local build_cmd = { cmake_path, "--build", build_dir }
 
     -- For multi-config generators (Visual Studio, Xcode, Ninja Multi-Config), passing --config is required.
@@ -751,8 +848,14 @@ function M.start_cmake_build(cmake_path, project_root, build_dir, build_type)
                 if exit_code == 0 then
                     vim.notify("🎉 Build completed successfully!", vim.log.levels.INFO)
                     export_after_cmake_build(project_root, build_dir, build_type)
+                    if opts and opts.on_success then
+                        opts.on_success()
+                    end
                 else
                     vim.notify("❌ Build failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    if opts and opts.on_failure then
+                        opts.on_failure(exit_code)
+                    end
                 end
             end)
         end
@@ -766,6 +869,9 @@ function M.build_with_qmake_async(project_root, build_dir, opts)
     
     if not qmake_path then
         vim.notify("❌ qmake not found. Please install Qt development tools.", vim.log.levels.ERROR)
+        if opts and opts.on_failure then
+            opts.on_failure(-1)
+        end
         return
     end
     
@@ -773,6 +879,9 @@ function M.build_with_qmake_async(project_root, build_dir, opts)
     local pro_files = vim.fn.glob(project_root .. "/*.pro", false, true)
     if #pro_files == 0 then
         vim.notify("❌ No .pro file found", vim.log.levels.ERROR)
+        if opts and opts.on_failure then
+            opts.on_failure(-1)
+        end
         return
     end
     
@@ -789,9 +898,12 @@ function M.build_with_qmake_async(project_root, build_dir, opts)
             vim.schedule(function()
                 if exit_code == 0 then
                     vim.notify("✅ qmake completed", vim.log.levels.INFO)
-                    M.start_make_build(project_root, build_dir)
+                    M.start_make_build(project_root, build_dir, opts)
                 else
                     vim.notify("❌ qmake failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    if opts and opts.on_failure then
+                        opts.on_failure(exit_code)
+                    end
                 end
             end)
         end
@@ -799,7 +911,7 @@ function M.build_with_qmake_async(project_root, build_dir, opts)
 end
 
 -- Start make build
-function M.start_make_build(project_root, build_dir)
+function M.start_make_build(project_root, build_dir, opts)
     local system = require('qt-assistant.system')
     local make_tool = system.find_executable('mingw32-make')
         or system.find_executable('nmake')
@@ -807,6 +919,9 @@ function M.start_make_build(project_root, build_dir)
 
     if not make_tool then
         vim.notify("❌ No make tool found (mingw32-make/nmake/make)", vim.log.levels.ERROR)
+        if opts and opts.on_failure then
+            opts.on_failure(-1)
+        end
         return
     end
 
@@ -846,53 +961,260 @@ function M.start_make_build(project_root, build_dir)
                             vim.notify('⚠️  qmake build succeeded but executable not found for export: ' .. src_exe, vim.log.levels.WARN)
                         end
                     end
+                    if opts and opts.on_success then
+                        opts.on_success()
+                    end
                 else
                     vim.notify("❌ Build failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    if opts and opts.on_failure then
+                        opts.on_failure(exit_code)
+                    end
                 end
             end)
         end
     })
 end
 
+local function run_in_terminal(argv)
+    local rendered = table.concat(vim.tbl_map(vim.fn.shellescape, argv), " ")
+    vim.cmd("split")
+    vim.cmd("terminal " .. rendered)
+end
+
 -- Run project (async)
 function M.run_project()
     vim.schedule(function()
         local project_root = get_config().project_root
-        local build_dir = project_root .. "/build"
-        
-        -- Find executable
-        local project_name = vim.fn.fnamemodify(project_root, ":t")
         local system = require('qt-assistant.system')
-        local exe_name = project_name
-        if system.get_os() == 'windows' then
-            exe_name = exe_name .. ".exe"
-        end
-        
-        local possible_paths = {
-            build_dir .. "/" .. exe_name,
-            build_dir .. "/Debug/" .. exe_name,
-            build_dir .. "/Release/" .. exe_name
-        }
-        
-        local exe_path = nil
-        for _, path in ipairs(possible_paths) do
-            if vim.fn.executable(path) == 1 then
-                exe_path = path
-                break
-            end
-        end
-        
-        if not exe_path then
-            vim.notify("❌ Executable not found. Please build the project first.", vim.log.levels.ERROR)
+        local build_system = M.detect_build_system()
+        local exe_path = M.find_project_executable(M._last_build_type)
+
+        if exe_path then
+            vim.notify("▶️  Running: " .. vim.fn.fnamemodify(exe_path, ":t"), vim.log.levels.INFO)
+            run_in_terminal({ exe_path })
             return
         end
-        
-        vim.notify("▶️  Running: " .. exe_name, vim.log.levels.INFO)
-        
-        -- Run in split terminal
-        vim.cmd("split")
-        vim.cmd("terminal " .. vim.fn.shellescape(exe_path))
+
+        if build_system == "xmake" then
+            local xmake_path = system.find_executable("xmake")
+            if not xmake_path then
+                vim.notify("❌ xmake not found. Install it from https://xmake.io", vim.log.levels.ERROR)
+                return
+            end
+            vim.notify("▶️  Running via xmake", vim.log.levels.INFO)
+            run_in_terminal(M.xmake_run_argv(xmake_path, project_root, M._last_build_type))
+            return
+        end
+
+        vim.notify("❌ Executable not found. Please build the project first.", vim.log.levels.ERROR)
     end)
+end
+
+function M.xmake_target_names(project_root)
+    project_root = project_root or get_config().project_root
+    local path = project_root .. "/xmake.lua"
+    if vim.fn.filereadable(path) ~= 1 then
+        return {}
+    end
+    local content = table.concat(vim.fn.readfile(path), "\n")
+    local names = {}
+    local seen = {}
+    local function add(name)
+        if name and name ~= "" and not seen[name] then
+            seen[name] = true
+            table.insert(names, name)
+        end
+    end
+    for name in content:gmatch('target%s*%(%s*"([^"]+)"') do
+        add(name)
+    end
+    for name in content:gmatch("target%s*%(%s*'([^']+)'") do
+        add(name)
+    end
+    return names
+end
+
+function M.find_project_executable(build_type)
+    local root = get_config().project_root
+    local system = require('qt-assistant.system')
+    local names = { vim.fn.fnamemodify(root, ":t") }
+    for _, target in ipairs(M.xmake_target_names(root)) do
+        table.insert(names, target)
+    end
+
+    local exe_suffix = system.get_os() == "windows" and ".exe" or ""
+    local build_dir = root .. "/build"
+    local mode = M.xmake_mode(build_type or M._last_build_type)
+    local os_dir = ({ windows = "windows", macos = "macosx", linux = "linux" })[system.get_os()] or "linux"
+    local archs = { "x86_64", "arm64", "i386", "aarch64", "x64" }
+    local modes = { mode, "debug", "release", "releasedbg" }
+
+    local function exists(path)
+        return vim.fn.filereadable(path) == 1 or vim.fn.executable(path) == 1
+    end
+
+    local seen = {}
+    for _, name in ipairs(names) do
+        if not seen[name] then
+            seen[name] = true
+            local exe = name .. exe_suffix
+            local candidates = {
+                build_dir .. "/" .. exe,
+                build_dir .. "/Debug/" .. exe,
+                build_dir .. "/Release/" .. exe,
+                build_dir .. "/RelWithDebInfo/" .. exe,
+                build_dir .. "/bin/" .. exe,
+                build_dir .. "/bin/Debug/" .. exe,
+                build_dir .. "/bin/Release/" .. exe,
+            }
+            for _, arch in ipairs(archs) do
+                for _, m in ipairs(modes) do
+                    table.insert(candidates, string.format("%s/%s/%s/%s/%s", build_dir, os_dir, arch, m, exe))
+                end
+            end
+            for _, path in ipairs(candidates) do
+                if exists(path) then
+                    return path
+                end
+            end
+            local matches = vim.fn.glob(build_dir .. "/**/" .. exe, false, true)
+            if type(matches) == "table" then
+                for _, path in ipairs(matches) do
+                    if exists(path) then
+                        return path
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function M.build_with_xmake_async(project_root, build_type, opts)
+    opts = opts or {}
+    local system = require('qt-assistant.system')
+    local xmake_path = system.find_executable("xmake")
+    if not xmake_path then
+        vim.notify("❌ xmake not found. Install it from https://xmake.io", vim.log.levels.ERROR)
+        if opts.on_failure then
+            opts.on_failure(-1)
+        end
+        return
+    end
+
+    local cmd = M.xmake_build_argv(xmake_path, project_root, build_type)
+    vim.notify("⚙️  Building with xmake (" .. M.xmake_mode(build_type) .. ")...", vim.log.levels.INFO)
+    vim.fn.jobstart(cmd, {
+        cwd = project_root,
+        on_stderr = function(_, data)
+            if data and #data > 0 then
+                for _, line in ipairs(data) do
+                    if line and line ~= "" and not line:match("^%s*$") then
+                        vim.schedule(function()
+                            vim.notify("xmake: " .. line, vim.log.levels.WARN)
+                        end)
+                    end
+                end
+            end
+        end,
+        on_exit = function(_, exit_code)
+            vim.schedule(function()
+                if exit_code == 0 then
+                    vim.notify("🎉 Build completed successfully!", vim.log.levels.INFO)
+                    if opts.on_success then
+                        opts.on_success()
+                    end
+                else
+                    vim.notify("❌ xmake build failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    if opts.on_failure then
+                        opts.on_failure(exit_code)
+                    end
+                end
+            end)
+        end
+    })
+end
+
+function M.clean_project()
+    vim.schedule(function()
+        local system = require('qt-assistant.system')
+        local build_system = M.detect_build_system()
+        local project_root = get_config().project_root
+        local build_dir = project_root .. "/build"
+        if not build_system then
+            vim.notify("❌ No build system detected (CMakeLists.txt, *.pro, or xmake.lua)", vim.log.levels.ERROR)
+            return
+        end
+
+        local cmd, cwd
+        if build_system == "cmake" then
+            local cmake_path = system.find_executable("cmake")
+            if not cmake_path then
+                vim.notify("❌ CMake not found. Please install CMake.", vim.log.levels.ERROR)
+                return
+            end
+            if vim.fn.isdirectory(build_dir) ~= 1 then
+                vim.notify("Nothing to clean (no build directory).", vim.log.levels.INFO)
+                return
+            end
+            cmd = M.cmake_clean_argv(cmake_path, build_dir)
+            cwd = project_root
+        elseif build_system == "qmake" then
+            local make_tool = system.find_executable("mingw32-make")
+                or system.find_executable("nmake")
+                or system.find_executable("make")
+            if not make_tool then
+                vim.notify("❌ No make tool found to clean the qmake build.", vim.log.levels.ERROR)
+                return
+            end
+            if vim.fn.filereadable(build_dir .. "/Makefile") ~= 1
+                and vim.fn.filereadable(build_dir .. "/Makefile.Release") ~= 1
+                and vim.fn.filereadable(build_dir .. "/Makefile.Debug") ~= 1 then
+                vim.notify("Nothing to clean (no qmake Makefile).", vim.log.levels.INFO)
+                return
+            end
+            cmd = { make_tool, "clean" }
+            cwd = build_dir
+        else
+            local xmake_path = system.find_executable("xmake")
+            if not xmake_path then
+                vim.notify("❌ xmake not found. Install it from https://xmake.io", vim.log.levels.ERROR)
+                return
+            end
+            cmd = M.xmake_clean_argv(xmake_path, project_root)
+            cwd = project_root
+        end
+
+        vim.notify("🧹 Cleaning project (" .. build_system .. ")...", vim.log.levels.INFO)
+        vim.fn.jobstart(cmd, {
+            cwd = cwd,
+            on_exit = function(_, exit_code)
+                vim.schedule(function()
+                    if exit_code == 0 then
+                        vim.notify("✅ Clean completed", vim.log.levels.INFO)
+                    else
+                        vim.notify("❌ Clean failed (exit code: " .. exit_code .. ")", vim.log.levels.ERROR)
+                    end
+                end)
+            end
+        })
+    end)
+end
+
+function M.show_build_status()
+    local project_root = get_config().project_root
+    local build_system = M.detect_build_system() or "none"
+    local exe = M.find_project_executable()
+    local lines = {
+        "Qt build status",
+        "Project: " .. project_root,
+        "Build system: " .. build_system,
+        "Last build type: " .. tostring(M._last_build_type or "n/a"),
+        "Build directory: " .. project_root .. "/build",
+        "Executable: " .. (exe or "not found"),
+    }
+    require("qt-assistant.ui").show_info_window(lines)
+    return lines
 end
 
 return M

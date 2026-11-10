@@ -28,8 +28,8 @@ temp/
 # Lua字节码
 *.luac
 
-# 调试文件
-debug.lua
+# Scratch debug script at the repo root. The plugin module is lua/qt-assistant/debug.lua.
+/debug.lua
 
 # 本地配置
 local_config.lua
