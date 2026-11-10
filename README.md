@@ -99,13 +99,11 @@ require('qt-assistant').setup({
 })
 ```
 
-## 🤝 贡献与测试
+## 🧪 测试
 
 ```bash
 nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.lua')"
 ```
-
-欢迎 Issue / PR。提交前请跑一遍上面的 headless 测试。
 
 ## 📄 License
 
