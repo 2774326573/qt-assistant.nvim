@@ -1,802 +1,112 @@
-# Neovim Qt Assistant | ch: Neovim Qt 助手
+<h1 align="center">Qt Assistant for Neovim</h1>
 
-A streamlined Neovim plugin for Qt development that provides essential Qt project management and UI design tools without leaving your editor.
+<p align="center">
+  <b>在 Neovim 里完成 Qt C++ 开发闭环 —— 工程管理 · UI Designer · 类生成 · 构建 · 调试</b>
+</p>
 
-## Features
+<p align="center">
+  <a href="https://github.com/2774326573/qt-assistant.nvim/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/2774326573/qt-assistant.nvim/tests.yml?branch=main&label=tests&style=flat-square" alt="tests" /></a>
+  <img src="https://img.shields.io/badge/Neovim-0.8%2B-green?style=flat-square" alt="Neovim 0.8+" />
+  <img src="https://img.shields.io/badge/Lua-100%25-blue?style=flat-square" alt="Lua" />
+  <img src="https://img.shields.io/badge/License-MIT-orange?style=flat-square" alt="MIT" />
+  <img src="https://img.shields.io/badge/Qt-5.15%20%7C%206.x-41cd52?style=flat-square" alt="Qt" />
+</p>
 
-### Core Qt Development Workflow
+---
 
-- **Project Management**: Create and open Qt projects with standard structure
-- **UI Designer Integration**: Create, edit UI files and launch Qt Designer seamlessly
-- **Class Generation**: Generate C++ classes from UI files with proper uic integration
-- **Build System**: CMake, qmake, and xmake (`xmake.lua`)
-- **Make Tool Selection**: qmake builds auto-pick `mingw32-make` / `nmake` / `make` based on platform (nmake runs without `-j`)
-- **Debugging**: Full nvim-dap integration for Qt application debugging
-- **Cross-Platform**: Works on Linux, macOS, and Windows
+## ✨ 特性速览
 
-### PRD Compliance
+| 功能 | 说明 | 入口 |
+| --- | --- | --- |
+| 🗂 工程管理 | 标准结构创建/打开 Qt 工程，支持多模块工作区 | `:QtNewProject` |
+| 🎨 UI Designer | 创建/编辑 `.ui` 并一键唤起 Qt Designer | `:QtDesigner` |
+| ⚙️ 类生成 | 基于 `uic` 从 `.ui` 生成配套 C++ 类 | `:QtCreateClass` |
+| 🔨 构建系统 | CMake / qmake / xmake 自动探测，CMake Presets | `:QtBuild` |
+| 🐞 调试 | nvim-dap 集成，自动定位可执行文件 | `:QtDebug` |
+| 🔌 工具链管理 | 自动探测本机 Qt 工具链，宿主自主选择并持久化 | `:QtSelectKit` |
+| 📝 模板自定义 | 模板数据目录化 + 宿主覆盖接口 | [docs/TEMPLATES.md](docs/TEMPLATES.md) |
 
-This plugin implements all core requirements from the Product Requirements Document:
+## 📦 安装
 
-- ✅ **F1.1**: Create new Qt projects (`:QtNewProject`)
-- ✅ **F2.1**: Launch Qt Designer (`:QtDesigner`)
-- ✅ **F2.2**: Create new UI files (`:QtNewUi`)
-- ✅ **F2.3**: Edit existing UI files (`:QtEditUi`)
-- ✅ **F3.1**: Generate C++ classes from UI files (`:QtCreateClass`)
-- ✅ **F3.2**: Auto-update CMakeLists.txt
-- ✅ **F4.3**: Command completion for UI files
-- ✅ **Enhanced**: nvim-dap debugging integration
+> 仓库全名是 `qt-assistant.nvim`（lazy.nvim 自动识别 `.nvim` 后缀）。
 
-## Installation
-
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+[folke/lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-    "2774326573/qt-assistant",
+    "2774326573/qt-assistant.nvim",
+    cmd = { "QtAssistant", "QtNewProject", "QtDesigner", "QtBuild", "QtRun" }, -- 按需加载
     config = function()
         require('qt-assistant').setup({
-            -- Optional configuration
-            auto_update_cmake = true,
-            enable_default_keymaps = true,
-            -- vcpkg support (optional)
-            vcpkg = {
-                enabled = false,           -- Enable vcpkg support
-                vcpkg_root = nil,          -- vcpkg root directory (auto-detected)
-                toolchain_file = nil       -- vcpkg toolchain file path (auto-inferred)
-            }
+            enable_default_keymaps = true,  -- <leader>q* 快捷键
+            build_system = "auto",          -- CMake -> qmake -> xmake 自动探测
         })
     end
 }
 ```
 
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+[wbomason/packer.nvim](https://github.com/wbthomason/packer.nvim):
 
 ```lua
-use {
-    '2774326573/qt-assistant',
-    config = function()
-        require('qt-assistant').setup()
-    end
-}
+use { '2774326573/qt-assistant.nvim', config = function() require('qt-assistant').setup() end }
 ```
 
-### vcpkg Integration
-
-The plugin supports integration with [vcpkg](https://github.com/microsoft/vcpkg) package manager for managing C++ dependencies.
-
-#### Enable vcpkg
-
-```lua
-require('qt-assistant').setup({
-    vcpkg = {
-        enabled = true,                               -- Enable vcpkg
-        vcpkg_root = "C:/vcpkg",                     -- Optional: specify vcpkg root directory
-        toolchain_file = "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"  -- Optional: specify toolchain file
-    }
-})
-```
-
-**Auto-detection:** The plugin automatically detects vcpkg installation by checking:
-- Environment variable `VCPKG_ROOT`
-- `~/vcpkg`, `~/.vcpkg`
-- `C:/vcpkg`, `C:/dev/vcpkg`, `C:/Tools/vcpkg` (Windows)
-- `/usr/local/vcpkg`, `/opt/vcpkg` (Linux/macOS)
-
-**Usage:**
-1. When vcpkg is enabled, CMake configuration will automatically include the vcpkg toolchain file
-2. Use `vcpkg.json` in your project or install dependencies via `vcpkg install`
-3. CMake will automatically find packages installed by vcpkg
-
-**Qt tools via vcpkg:** If Qt is installed through vcpkg, the plugin will also try to locate Qt tools (e.g. `designer`, `uic`, `qmake`) under `VCPKG_ROOT/installed/*/tools/*` when they are not found in PATH or common Qt install locations.
-
-**CMake template behavior:** vcpkg is a fallback option. New project templates will not enable vcpkg automatically just because `VCPKG_ROOT` is set. Enable it explicitly via the plugin config (`vcpkg.enabled = true`) or by passing `-DQT_ASSISTANT_USE_VCPKG=ON` when configuring with CMake.
-
-```bash
-# Example: Install dependencies
-vcpkg install qt5-base qt5-tools
-```
-
-## Dependencies
-
-### System Requirements
-
-- **Neovim**: 0.8+ (required)
-- **Qt**: 5.15+ or 6.x (required)
-- **Build Tools**: CMake 3.16+ (recommended), qmake, or [xmake](https://xmake.io)
-- **Compiler**: GCC, Clang, or MSVC with C++11+ support
-
-### Optional Dependencies
-
-- **nvim-dap**: For debugging support
-
-### Qt Installation Guide
-
-#### Linux (Ubuntu/Debian)
-
-```bash
-# Qt 6 (recommended)
-sudo apt update
-sudo apt install qt6-base-dev qt6-tools-dev qtcreator
-
-# Qt 5 (alternative)
-sudo apt install qtbase5-dev qttools5-dev-tools qtcreator
-
-# Verify installation
-which designer uic qmake cmake
-```
-
-#### Linux (Arch/Manjaro)
-
-```bash
-# Qt 6
-sudo pacman -S qt6-base qt6-tools qt-creator
-
-# Qt 5
-sudo pacman -S qt5-base qt5-tools
-
-# Verify
-which designer uic qmake cmake
-```
-
-#### macOS
-
-```bash
-# Using Homebrew (recommended)
-brew install qt@6
-brew install cmake
-
-# Or Qt 5
-brew install qt@5
-
-# Add to PATH (add to your shell profile)
-echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
-
-# Using official installer
-# Download from: https://www.qt.io/download-qt-installer
-```
-
-#### Windows (Future Support)
-
-```powershell
-# Download Qt installer from https://www.qt.io/download-qt-installer
-# Choose: Qt 6.x with MinGW or MSVC compiler
-# Add Qt/bin to system PATH
-```
-
-## Usage
-
-### Essential Commands
-
-| Command                             | Description                     | Example                                      |
-| ----------------------------------- | ------------------------------- | -------------------------------------------- |
-| `:QtNewProject <name> <type> [cxx_standard] [tests\|gtest] [xmake]` | Create new Qt project | `:QtNewProject MyApp widget_app 17 gtest xmake` |
-| `:QtOpenProject [path]`             | Open existing Qt project        | `:QtOpenProject ~/MyProject`                 |
-| `:QtAddModule <name> <type> [tests_or_gtest]` | Add module to project            | `:QtAddModule core shared_lib gtest`               |
-| `:QtNewUi <filename>`               | Create new UI file              | `:QtNewUi mainwindow`                        |
-| `:QtEditUi [filename]`              | Edit existing UI file           | `:QtEditUi mainwindow.ui`                    |
-| `:QtDesigner [file]`                | Open Qt Designer                | `:QtDesigner`                                |
-| `:QtCreateClass <name> <type>`      | Create Qt class                 | `:QtCreateClass MyWidget widget`             |
-| `:QtCreateClass <name> <type> <ui>` | Create class from UI            | `:QtCreateClass MainWin main_window main.ui` |
-| `:QtBuild`                          | Build project (CMake, qmake, or xmake) | `:QtBuild`                            |
-| `:QtRun`                            | Run project                     | `:QtRun`                                     |
-| `:QtClean`                          | Clean project                   | `:QtClean`                                   |
-| `:QtInstall [prefix]`               | Install (CMake or xmake)        | `:QtInstall /opt/myapp`                      |
-| `:QtScripts`                        | Project script manager          | `:QtScripts`                                 |
-| `:QtCMakePresets`                   | Generate CMakePresets.json      | `:QtCMakePresets`                            |
-| `:QtBuildPreset [preset]`           | Build with CMake preset         | `:QtBuildPreset debug`                       |
-| `:QtCMakeFormat`                    | Format CMakeLists.txt           | `:QtCMakeFormat`                             |
-| `:QtCMakeBackup`                    | Backup CMakeLists.txt           | `:QtCMakeBackup`                             |
-| `:QtDebugSetup`                     | Setup debugging environment     | `:QtDebugSetup`                              |
-| `:QtDebug`                          | Debug Qt application            | `:QtDebug`                                   |
-| `:QtDebugAttach`                    | Attach to running process       | `:QtDebugAttach`                             |
-| `:QtDebugStatus`                    | Show debug configuration        | `:QtDebugStatus`                             |
-
-### Project Types
-
-**Single Module Projects:**
-- `widget_app` - Qt Widgets desktop application
-- `quick_app` - Qt Quick/QML application
-- `console_app` - Console application
-
-**Multi-Module Projects:**
-- `multi_project` - Multi-module workspace (root project)
-- `shared_lib` - Qt shared library module
-- `static_lib` - Qt static library module
-- `plugin` - Qt plugin module
-
-### Class Types
-
-- `main_window` - QMainWindow-based class
-- `dialog` - QDialog-based class
-- `widget` - QWidget-based class
-- `model` - QAbstractItemModel-based class
-
-### Optimized Keymaps for Quick Development
-
-By default, the plugin uses a **minimal** keymap preset (matches the tables below). You can enable extra/legacy shortcuts by setting `keymaps.preset = "full"`.
-
-#### Essential Workflow Keymaps
-
-| Keymap       | Command      | Description                      |
-| ------------ | ------------ | -------------------------------- |
-| `<leader>qa` | QtAssistant  | Open main interface              |
-| `<leader>qh` | QtHelp       | Show help and commands           |
-| `<leader>qp` | New Project  | Create new project (interactive) |
-| `<leader>qo` | Open Project | Open project (interactive)       |
-
-#### UI Development Keymaps
-
-| Keymap       | Command     | Description                    |
-| ------------ | ----------- | ------------------------------ |
-| `<leader>qu` | New UI      | Create UI file (interactive)   |
-| `<leader>qe` | Edit UI     | Edit current or select UI file |
-| `<leader>qd` | Qt Designer | Open Qt Designer               |
-| `<leader>qf` | From UI     | Create class from current UI   |
-
-#### Build & Run Keymaps
-
-| Keymap       | Command | Description                |
-| ------------ | ------- | -------------------------- |
-| `<leader>qb` | Build   | Build project (async)      |
-| `<leader>qr` | Run     | Run project                |
-
-Quick build & run is available in the **full** keymap preset as `<leader>qA` (avoids the common `<leader>qq` quit mapping).
-
-#### Debug Keymaps (requires nvim-dap)
-
-| Keymap        | Command    | Description                    |
-| ------------- | ---------- | ------------------------------ |
-| `<leader>qdb` | Debug      | Start debugging Qt application |
-| `<leader>qda` | Attach     | Attach to running Qt process   |
-| `<F5>`        | Continue   | Debug continue/start           |
-| `<F10>`       | Step Over  | Debug step over                |
-| `<F11>`       | Step Into  | Debug step into                |
-| `<F12>`       | Step Out   | Debug step out                 |
-| `<leader>db`  | Breakpoint | Toggle breakpoint              |
-
-#### Context-Aware Keymaps (File-Specific)
-
-| Keymap       | Available In    | Description                    |
-| ------------ | --------------- | ------------------------------ |
-| `<leader>gd` | `.ui` files     | Open current UI in Designer    |
-| `<leader>gc` | `.ui` files     | Generate class from current UI |
-| `<leader>gu` | `.h/.cpp` files | Find & open corresponding UI   |
-
-## Debugging Integration
-
-The plugin integrates with [nvim-dap](https://github.com/mfussenegger/nvim-dap) to provide seamless Qt application debugging.
-
-### Debug Setup
-
-#### 1. Install nvim-dap
-
-```lua
--- Lazy.nvim
-{'mfussenegger/nvim-dap'}
-
--- Packer
-use 'mfussenegger/nvim-dap'
-```
-
-#### 2. Install Debug Adapter
-
-**Linux:**
-
-```bash
-# GDB (usually pre-installed)
-sudo apt install gdb                    # Ubuntu/Debian
-sudo pacman -S gdb                      # Arch
-
-# CodeLLDB (recommended)
-# Install via Mason or download from GitHub releases
-```
-
-**macOS:**
-
-```bash
-# LLDB (comes with Xcode)
-xcode-select --install
-
-# CodeLLDB (recommended)
-brew install lldb
-```
-
-#### 3. Start Debugging
+## 🚀 30 秒上手
 
 ```vim
-:QtDebugSetup               " One-time setup and verification
-:QtDebug                    " Start debugging current project
-:QtDebugAttach              " Attach to running Qt process
-:QtDebugStatus              " Check debug configuration
+:QtNewProject MyApp widget_app    " 创建工程
+:QtNewUi mainwindow               " 新建 UI 并唤起 Designer
+:QtCreateClass MainWin main_window mainwindow.ui   " 从 .ui 生成类
+:QtBuild                          " 构建
+:QtRun                            " 运行
 ```
 
-### Debug Features
+快捷键（Leader + q）：`qa` 主界面 · `qp/qo` 工程 · `qu/qe/qd` UI · `qb/qr` 构建/运行。
 
-- **Auto-detection**: Detects the build system (CMake, qmake, or xmake) and the executable
-- **Debug builds**: Builds the Debug configuration when the executable is not there yet, then starts the session
-- **Adapters**: GDB 14+ DAP (Linux default), LLDB (`lldb-dap` / `lldb-vscode`), and CodeLLDB. On Windows, CodeLLDB is preferred, then the C/C++ `OpenDebugAD7` (`cppvsdbg`) adapter, then LLDB, then GDB
-- **cdb**: Detected on Windows. nvim-dap cannot drive the cdb console protocol; if cdb is the only debugger, `:QtDebug` opens it in a terminal
-- **Missing nvim-dap**: `:QtDebug`, `:QtDebugAttach`, `:QtDebugStatus`, and `:QtDebugSetup` report that `mfussenegger/nvim-dap` is required instead of failing on a missing module
-- **Qt pretty printing**: GDB sessions enable `-enable-pretty-printing`
-- **Process attachment**: Prompts for a pid and attaches when a DAP adapter is available
+## 📚 文档
 
-`:QtDebugSetup` registers the adapter and, where those keys are free, `<F5>` / `<F10>` / `<F11>` / `<F12>` / `<leader>db`. Set `debug.keymaps = true` to install those keys during `setup()` as well.
-
-## xmake
-
-`:QtBuild`, `:QtRun`, `:QtClean`, and `:QtInstall` detect `xmake.lua` when the project has no `CMakeLists.txt` and no `*.pro`. Auto-detection order stays CMake, then qmake, then xmake, so an existing CMake or qmake project is unchanged. Force a system with:
-
-```lua
-require('qt-assistant').setup({
-    build_system = "auto", -- or "cmake", "qmake", "xmake"
-})
-```
-
-`:QtDoctor` prints the detected build system and the `xmake` executable path.
-
-Generate `xmake.lua` next to the CMake project (CMake remains the default build unless `build_system` is `"xmake"`):
-
-```vim
-:QtNewProject MyApp widget_app 17 xmake
-:QtNewProject MyApp console_app 20 tests xmake
-```
-
-```lua
-require('qt-assistant').setup({
-    project = { generate_xmake = true },
-})
-```
-
-The generated file uses xmake's Qt rules (`qt.widgetapp`, `qt.quickapp`, `qt.console`, `qt.static`, `qt.shared`). Build mode follows the usual Debug/Release request (`debug`, `release`, `releasedbg`, `minsizerel`).
-
-## Script manager
-
-`:QtScripts` opens the project script menu. Built-in actions call the plugin:
-
-| Name | Action |
+| 文档 | 内容 |
 | --- | --- |
-| `build` | `:QtBuild` |
-| `clean` | `:QtClean` |
-| `run` | `:QtRun` |
-| `debug` | `:QtDebug` |
-| `test` | `ctest` for CMake, `xmake run <project>_tests` for xmake |
+| [docs/USAGE.md](docs/USAGE.md) | 全部命令、Keymaps、工作流、调试、xmake、vcpkg、CMake Presets、故障排查 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 分层架构与模块地图（app / core / ui / templates） |
+| [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) | Qt 工具链自动探测、广播、宿主选择与持久化 |
+| [docs/TEMPLATES.md](docs/TEMPLATES.md) | 模板目录、占位符语法、宿主自定义接口 |
+| [docs/NEW_FEATURES.md](docs/NEW_FEATURES.md) | 特性迭代记录 |
 
-`i` in that window creates `<project>/scripts/`. A file there whose name (without extension) matches a built-in replaces that built-in. The same window can run a script in a terminal or in the background, or edit it.
-
-## Configuration
+## 🔧 最小配置参考
 
 ```lua
 require('qt-assistant').setup({
-    -- Auto-update CMakeLists.txt when creating files
-   auto_update_cmake = true,
+    build_system = "auto",                    -- "cmake" | "qmake" | "xmake" | "auto"
 
-    -- Project directory structure
-    directories = {
-        source = "src",
-        include = "include",
-        ui = "ui",
-        resource = "resources"
+    qt_tools = {                              -- 不填则自动探测; 显式路径优先
+        -- designer_path = "E:/install/Qt5.12/5.12.12/msvc2017_64/bin/designer.exe",
+        -- uic_path = "...",
+        -- qmake_path = "...",
     },
 
-    -- Qt tool paths (auto-detected by default)
-    qt_tools = {
-        designer_path = "designer",
-        uic_path = "uic",
-        qmake_path = "qmake",
-        cmake_path = "cmake"
+    qt_discovery = {                          -- 工具链自动广播 (详见 docs/TOOLCHAIN.md)
+        enabled = true,
+        auto_broadcast = true,
     },
 
-    -- Enable default keymaps
-    enable_default_keymaps = true
+    templates = {                             -- 模板宿主自定义 (详见 docs/TEMPLATES.md)
+        custom_dir = nil,                     -- 宿主模板目录 (覆盖同名内置)
+        override = {},                        -- 单模板文件级覆盖
+    },
+
+    vcpkg = { enabled = false },              -- vcpkg 支持
 })
 ```
 
-## Example Workflow
-
-1. **Create a new Qt project:**
-
-   ```vim
-   :QtNewProject MyApp widget_app
-   ```
-
-2. **Create UI file:**
-
-   ```vim
-   :QtNewUi mainwindow
-   ```
-
-   _This creates `ui/mainwindow.ui` and opens Qt Designer_
-
-3. **Design your interface in Qt Designer**
-
-4. **Generate C++ class from UI:**
-
-   ```vim
-   :QtCreateClass MainWindow main_window mainwindow.ui
-   ```
-
-   _This runs uic and creates properly integrated C++ files_
-
-5. **Build and run:**
-
-   ```vim
-   :QtBuild
-   :QtRun
-   ```
-
-6. **Debug (optional):**
-
-   ```vim
-   :QtDebug                    " Start debugging session
-   " Or use keymaps: <leader>qdb for debug, <F5> to continue
-   ```
-
-## Cross-Platform Support
-
-- **Linux**: Full support with system Qt packages
-- **macOS**: Full support with Homebrew Qt or official Qt installer
-- **Windows**: Full support with official Qt installer (MinGW or MSVC)
-   - qmake: requires `mingw32-make` (MinGW) or `nmake` (MSVC). clangd compile_commands uses platform-aware flags; `bear` is skipped when only `nmake` is available.
-
-The plugin automatically detects Qt tool locations across all platforms.
-
-## Project Structure
-
-Generated projects follow Qt best practices:
-
-```
-MyProject/
-├── CMakeLists.txt       # Build configuration
-├── src/                 # Source files (.cpp)
-│   ├── main.cpp
-│   └── mainwindow.cpp
-├── include/             # Header files (.h)
-│   ├── mainwindow.h
-│   └── ui_mainwindow.h  # Generated by uic
-├── ui/                  # UI files (.ui)
-│   └── mainwindow.ui
-└── build/               # Build output
-    ├── debug/           # Debug build artifacts
-    └── release/         # Release build artifacts
-```
-
-## Modern CMake Development
-
-The Qt Assistant now supports modern CMake workflows with presets and improved project management.
-
-### CMake Presets Support
-
-Generate standardized build configurations:
-
-```vim
-:QtCMakePresets
-```
-
-You can also override the generator when creating the presets:
-
-```vim
-:QtCMakePresets Ninja
-:QtCMakePresets "Visual Studio 17 2022"
-:QtCMakePresets "MinGW Makefiles"
-```
-
-Or set a default generator in your plugin config:
-
-```lua
-require('qt-assistant').setup({
-   cmake_presets = {
-      generator = "Ninja" -- or "Visual Studio 17 2022", "MinGW Makefiles", ...
-   }
-})
-```
-
-Note: one build directory can only use one generator. If you switch generators, delete the old build folder (e.g. `build/debug`) or change the preset `binaryDir`.
-
-This creates a `CMakePresets.json` file with:
-- **debug**: Debug configuration with symbols
-- **release**: Optimized release build
-- **relwithdebinfo**: Release with debug information
-
-### Building with Presets
-
-Use presets for consistent builds:
-
-```vim
-:QtBuildPreset debug      " Build debug configuration
-:QtBuildPreset release    " Build release configuration
-:QtBuildPreset            " Interactive preset selection
-```
-
-### CMake File Management
-
-- **Format**: `:QtCMakeFormat` - Clean up CMakeLists.txt formatting
-- **Backup**: `:QtCMakeBackup` - Create timestamped backup before changes
-- **Auto-update**: Automatically adds new files to CMakeLists.txt
-
-### Improved Qt Version Detection
-
-The assistant now intelligently detects and configures:
-- **Qt6**: Automatically uses C++17 standard
-- **Qt5**: Falls back to C++11 minimum
-- **Cross-platform**: Handles MSVC, GCC, and Clang compilers
-- **Standards**: Supports C++11, 14, 17, 20, and 23
-
-### Streamlined Development Experience
-
-The Qt Assistant focuses on essential project files only - no additional scripts or boilerplate:
-
-- **Clean Project Structure**: Creates only necessary CMake, source, and UI files
-- **Modern CMake**: Uses contemporary CMake practices and presets
-- **Cross-Platform**: Works consistently across Linux, macOS, and Windows
-- **Minimal Dependencies**: No external scripts or complex setup required
-
-### Export Build Outputs
-
-By default, after a successful build (`:QtBuild`) the plugin exports build outputs into:
-
-- `export/<project>/bin/` (executables, including tests/demo when present)
-- `export/<project>/lib/` (libraries when present)
-
-On Windows, if `windeployqt` is available, it will also deploy required Qt DLLs/plugins into `export/<project>/bin/`.
-
-On macOS, if `macdeployqt` is available, deployment requires an `.app` bundle (e.g. `export/<project>/bin/<project>.app`).
-
-On Linux, if `linuxdeployqt` is available it will be used; otherwise export only (Qt runtime is expected from the system).
-
-Configure it via:
-
-```lua
-require('qt-assistant').setup({
-   export = {
-      enabled = true,
-      deploy_qt = true,
-      include_tests = true,
-      include_demo = true,
-   }
-})
-```
-
-### Example CMake Workflow
-
-1. **Create project with modern standards:**
-   ```vim
-   :QtNewProject MyApp widget_app
-   " Choose C++17 for Qt6 compatibility
-   ```
-
-2. **Generate build presets:**
-   ```vim
-   :QtCMakePresets
-   ```
-
-3. **Build specific configuration:**
-   ```vim
-   :QtBuildPreset debug
-   ```
-
-4. **Format and backup CMake files:**
-   ```vim
-   :QtCMakeFormat
-   :QtCMakeBackup
-   ```
-
-### Multi-Module Project Workflow
-
-1. **Create multi-module workspace:**
-   ```vim
-   :QtNewProject MyProject multi_project
-   ```
-
-2. **Add core library module:**
-   ```vim
-   :QtAddModule core shared_lib
-   ```
-
-   Optional (generate tests scaffolding):
-   ```vim
-   :QtAddModule core shared_lib tests
-   :QtAddModule core shared_lib gtest
-   ```
-
-3. **Add UI library module:**
-   ```vim
-   :QtAddModule ui shared_lib
-   ```
-
-4. **Add plugin module:**
-   ```vim
-   :QtAddModule myplugin plugin
-   ```
-
-5. **Add main application:**
-   ```vim
-   :QtAddModule app widget_app
-   ```
-
-This creates a structure like:
-```
-MyProject/
-├── CMakeLists.txt           # Root configuration
-├── core/                    # Shared library
-│   ├── CMakeLists.txt
-│   ├── src/core.cpp
-│   └── include/core/core.h
-├── ui/                      # UI library
-│   ├── CMakeLists.txt
-│   ├── src/ui.cpp
-│   └── include/ui/ui.h
-├── myplugin/                # Plugin
-│   ├── CMakeLists.txt
-│   ├── src/myplugin.cpp
-│   └── include/myplugin/myplugin.h
-└── app/                     # Main application
-    ├── CMakeLists.txt
-    ├── src/main.cpp
-    └── include/mainwindow.h
-```
-```
-
-## Non-Functional Requirements Compliance
-
-### ✅ NF1: Performance
-
-- **Lazy Loading**: Plugin modules load only when first command is used
-- **Async Operations**: All build and tool operations run asynchronously
-- **Non-blocking**: File generation and external tool calls don't block editor
-- **Fast Startup**: Zero impact on Neovim startup time
-
-### ✅ NF2: Qt Version Compatibility
-
-- **Qt 5.15+**: Full support with automatic C++11 standard
-- **Qt 6.x**: Full support with C++17 standard
-- **Auto-detection**: Automatic Qt version detection and configuration
-- **CMake Priority**: CMake preferred, qmake supported
-- **Version-aware templates**: Different templates for Qt5/Qt6
-
-### ✅ NF3: Platform Support
-
-- **Linux**: Full support (Ubuntu, Debian, Arch, CentOS, RHEL)
-- **macOS**: Full support (Homebrew, official installer, both Intel & Apple Silicon)
-- **Windows**: Basic support (future enhancement target)
-- **Cross-platform paths**: Automatic path detection for all platforms
-
-### ✅ NF4: Error Handling
-
-- **Clear Error Messages**: Descriptive error messages with helpful hints
-- **Installation Guidance**: Platform-specific installation instructions in errors
-- **Validation**: Input validation for all commands and file operations
-- **Graceful Degradation**: Fallback options when tools are missing
-- **Permission Checks**: Write permission validation before file operations
-
-### ✅ NF5: Quick Development Keymaps
-
-- **11 Core Keymaps**: Essential Qt development workflow
-- **Context-aware**: File-type specific keymaps (UI/C++ files)
-- **Quick Build & Run**: One-command build and execute
-- **Smart UI Integration**: Automatic UI-to-class generation
-
-## Troubleshooting
-
-### 🔧 Qt Designer not found
-
-```bash
-# Check if designer is installed
-which designer
-
-# Linux: Install Qt tools
-sudo apt install qt6-tools-dev qtcreator  # Ubuntu/Debian
-sudo pacman -S qt6-tools                   # Arch
-
-# macOS: Install with Homebrew
-brew install qt@6
-echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
-```
-
-### 🔧 uic not found
-
-```bash
-# Check if uic is available
-which uic
-
-# Usually installed with Qt development packages
-# Same installation commands as Qt Designer above
-```
-
-### 🔧 Build fails
-
-1. **Check Qt installation**: Run `:QtHelp` and verify system info
-2. **Verify CMakeLists.txt**: Ensure proper Qt version detection
-3. **Check permissions**: Ensure write access to build directory
-4. **Dependencies**: Install required Qt components for your project type
-
-### 🔧 Performance Issues
-
-- Plugin uses lazy loading - no startup impact
-- All operations are async - editor remains responsive
-- Large projects: build operations run in background
-
-### 🔧 Debug Issues
-
-#### nvim-dap not found
-
-```bash
-# Install nvim-dap with your plugin manager
-# Lazy.nvim
-{'mfussenegger/nvim-dap'}
-
-# Check installation
-:lua print(vim.fn.stdpath('data') .. '/lazy/nvim-dap')
-```
-
-#### Debugger not found
-
-```bash
-# Linux - Install GDB
-sudo apt install gdb build-essential     # Ubuntu/Debian
-sudo pacman -S gdb base-devel            # Arch
-
-# macOS - Install Xcode tools
-xcode-select --install
-
-# Check debugger
-which gdb           # Linux
-which lldb          # macOS
-```
-
-#### No debug symbols
-
-```bash
-# Project will auto-build in debug mode, but you can force it:
-cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
-
-# Or for qmake projects:
-cd build && qmake CONFIG+=debug .. && make debug
-```
-
-### 🔧 Platform-Specific Issues
-
-#### Linux
-
-- Install development packages: `*-dev` or `*-devel`
-- Check Qt version: `qmake --version` or `cmake --find-package Qt6`
-
-#### macOS
-
-- Use Homebrew for easy installation and PATH management
-- Both Intel (`/usr/local`) and Apple Silicon (`/opt/homebrew`) supported
-- Official Qt installer also works
-
-## Performance Benchmarks
-
-- **Startup Impact**: 0ms (lazy loading)
-- **Command Response**: <50ms (most commands)
-- **Build Process**: Async, non-blocking
-- **Memory Usage**: <5MB additional to Neovim
-
-## Feature Matrix
-
-| Feature                | Status      | Requirements        | Commands                               |
-| ---------------------- | ----------- | ------------------- | -------------------------------------- |
-| **Project Management** | ✅ Core     | Qt tools            | `:QtNewProject`, `:QtOpenProject`      |
-| **UI Designer**        | ✅ Core     | Qt Designer         | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
-| **Class Generation**   | ✅ Core     | uic tool            | `:QtCreateClass`                       |
-| **Build System**       | ✅ Core     | CMake, qmake, xmake | `:QtBuild`, `:QtRun`, `:QtClean`       |
-| **Debugging**          | ✅ Enhanced | nvim-dap + debugger | `:QtDebug`, `:QtDebugAttach`           |
-| **Quick Keymaps**      | ✅ Core     | None                | `<leader>q*` shortcuts                 |
-| **Cross-Platform**     | ✅ Core     | Platform Qt         | Linux, macOS, Windows                  |
-
-## Tests
-
-Headless checks live in `tests/run.lua`. They load every bundled module, resolve every `:Qt*` command to a real function, resolve keymap and UI callbacks, and cover CMake/qmake/xmake detection.
+## 🤝 贡献与测试
 
 ```bash
 nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.lua')"
 ```
 
-GitHub Actions runs the same command on Neovim stable (`.github/workflows/tests.yml`).
+欢迎 Issue / PR。提交前请跑一遍上面的 headless 测试。
 
-## License
+## 📄 License
 
-MIT License - see LICENSE file for details.
-
+[MIT](LICENSE) © [2774326573](https://github.com/2774326573)
