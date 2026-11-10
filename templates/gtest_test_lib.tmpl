@@ -1,0 +1,9 @@
+
+#include <gtest/gtest.h>
+
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+
+TEST(LibrarySmokeTest, Add) {
+    {{CLASS_NAME}} api;
+    EXPECT_EQ(api.add(1, 2), 3);
+}

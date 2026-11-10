@@ -1,0 +1,13 @@
+
+#include <iostream>
+
+#include "calculator.h"
+
+int main()
+{
+    const int a = 12;
+    const int b = 30;
+    std::cout << "Calculator demo: " << a << " + " << b << " = " << Calculator::add(a, b) << "\n";
+    std::cout << "Calculator demo: " << a << " - " << b << " = " << Calculator::sub(a, b) << "\n";
+    return 0;
+}

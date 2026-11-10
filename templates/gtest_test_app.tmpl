@@ -1,0 +1,12 @@
+
+#include <gtest/gtest.h>
+
+#include "calculator.h"
+
+TEST(CalculatorTest, Add) {
+    EXPECT_EQ(Calculator::add(1, 2), 3);
+}
+
+TEST(CalculatorTest, Sub) {
+    EXPECT_EQ(Calculator::sub(10, 3), 7);
+}

@@ -114,7 +114,9 @@ local COMMAND_TARGETS = {
     QtAddThirdParty = { { 'qt-assistant', 'add_third_party_library' } },
     QtCreateThirdPartyCMake = { { 'qt-assistant', 'create_third_party_cmake' } },
     QtThirdPartyDoc = { { 'qt-assistant', 'generate_third_party_doc' } },
-    QtDoctor = {
+    QtTemplatesReload = { { 'qt-assistant.core.templates', 'load_builtin_templates' } },
+	QtTemplatesOpenCustomDir = { { 'qt-assistant.core.config', 'get' } },
+QtDoctor = {
         { 'qt-assistant.core.system', 'get_os' },
         { 'qt-assistant.core.system', 'find_executable' },
         { 'qt-assistant.core.config', 'get_vcpkg_toolchain_file' },

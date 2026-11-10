@@ -1,0 +1,14 @@
+
+#include "{{FILE_NAME}}.h"
+#include <QDebug>
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QThread(parent)
+{
+}
+
+void {{CLASS_NAME}}::run()
+{
+    // TODO: implement thread workload
+    qDebug() << "{{CLASS_NAME}} thread running";
+}

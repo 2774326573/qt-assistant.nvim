@@ -1,0 +1,19 @@
+
+#ifndef {{PROJECT_NAME_UPPER}}_EXPORT_H
+#define {{PROJECT_NAME_UPPER}}_EXPORT_H
+
+#include <QtGlobal>
+
+#if defined({{PROJECT_NAME_UPPER}}_STATIC)
+#  define {{PROJECT_NAME_UPPER}}_EXPORT
+#elif defined(Q_OS_WIN)
+#  if defined({{PROJECT_NAME_UPPER}}_EXPORTS)
+#    define {{PROJECT_NAME_UPPER}}_EXPORT __declspec(dllexport)
+#  else
+#    define {{PROJECT_NAME_UPPER}}_EXPORT __declspec(dllimport)
+#  endif
+#else
+#  define {{PROJECT_NAME_UPPER}}_EXPORT __attribute__((visibility("default")))
+#endif
+
+#endif // {{PROJECT_NAME_UPPER}}_EXPORT_H

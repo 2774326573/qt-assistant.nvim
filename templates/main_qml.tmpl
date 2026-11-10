@@ -1,0 +1,49 @@
+
+import QtQuick 2.15
+import QtQuick.Window 2.15
+import QtQuick.Controls 2.15
+
+ApplicationWindow {
+    id: window
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("{{PROJECT_NAME}}")
+
+    Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#4CAF50" }
+            GradientStop { position: 1.0; color: "#2E7D32" }
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Welcome to {{PROJECT_NAME}}")
+                font.pointSize: 24
+                font.bold: true
+                color: "white"
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Click me!")
+                onClicked: {
+                    messageText.text = qsTr("Hello from Qt Quick!")
+                }
+            }
+
+            Text {
+                id: messageText
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: qsTr("Qt Quick Application")
+                font.pointSize: 16
+                color: "white"
+            }
+        }
+    }
+}

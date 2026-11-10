@@ -1,0 +1,201 @@
+
+cmake_minimum_required(VERSION 3.16)
+
+# vcpkg toolchain (optional, fallback): OFF by default.
+# Note: toolchain must be set before the first project() call.
+option(QT_ASSISTANT_USE_VCPKG "Use vcpkg toolchain (fallback option)" OFF)
+if(QT_ASSISTANT_USE_VCPKG AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{VCPKG_ROOT})
+    set(_vcpkg_toolchain "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    if(EXISTS "${_vcpkg_toolchain}")
+        set(CMAKE_TOOLCHAIN_FILE "${_vcpkg_toolchain}" CACHE STRING "vcpkg toolchain file")
+        message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
+    else()
+        message(WARNING "QT_ASSISTANT_USE_VCPKG is ON but vcpkg toolchain not found under VCPKG_ROOT")
+    endif()
+endif()
+
+# Prevent CMake from mixing MinGW and MSVC toolchains on Windows  
+if(WIN32)
+    # Ensure we use the correct compiler when MSVC is detected
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR MSVC)
+        # Force MSVC toolchain settings
+        set(CMAKE_SYSTEM_NAME Windows)
+        
+        # Remove any potential MinGW paths that could cause library conflicts
+        if(CMAKE_PREFIX_PATH)
+            string(REPLACE "C:/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "C:/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/mingw64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+            string(REPLACE "/msys64" "" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+        endif()
+        
+        # Force MSVC runtime library selection to avoid MinGW conflicts
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+        
+        # Clear any potential MinGW library paths from linker  
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:mingw32")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libmingw32.a")
+    endif()
+endif()
+
+project({{PROJECT_NAME}} VERSION 1.0 LANGUAGES CXX)
+
+include(GNUInstallDirs)
+
+# C++ Standard Configuration
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD {{CXX_STANDARD}})  # Default from template
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Validate C++ standard based on Qt version requirements
+if(CMAKE_CXX_STANDARD LESS 11)
+    message(FATAL_ERROR "Qt requires at least C++11. Please set CMAKE_CXX_STANDARD to 11 or higher.")
+endif()
+
+# Qt version specific C++ standard requirements
+if(CMAKE_CXX_STANDARD LESS 17)
+    message(STATUS "Using C++${CMAKE_CXX_STANDARD} - Qt6 requires C++17, will prefer Qt5 if both available")
+    set(PREFER_QT5 TRUE)
+else()
+    set(PREFER_QT5 FALSE)
+endif()
+
+# MSVC specific settings for different C++ standards
+if(MSVC)
+    # Check MSVC version and apply appropriate flags
+    if(MSVC_VERSION GREATER_EQUAL 1910)  # VS2017 (15.0) and later
+        # VS2017+ supports modern C++ standards
+        if(CMAKE_CXX_STANDARD GREATER_EQUAL 17)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Zc:__cplusplus")
+        elseif(CMAKE_CXX_STANDARD EQUAL 14)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++14")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++11")
+        endif()
+        
+        if(MSVC_VERSION GREATER_EQUAL 1914)  # VS2017 15.7+
+            # /permissive- available from VS2017 15.7+
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-")
+        endif()
+    elseif(MSVC_VERSION GREATER_EQUAL 1800)  # VS2013
+        # VS2013+ has partial C++11/14 support
+        if(CMAKE_CXX_STANDARD GREATER_EQUAL 14)
+            message(WARNING "MSVC ${MSVC_VERSION} has limited C++14 support. Consider upgrading to VS2017+.")
+        endif()
+    else()
+        # Very old MSVC versions
+        message(WARNING "MSVC version ${MSVC_VERSION} has limited modern C++ support. Consider upgrading.")
+    endif()
+    
+    # Additional MSVC optimizations and warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /EHsc")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi /Od")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /DNDEBUG")
+elseif(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # GCC/Clang specific flags for different standards
+    if(CMAKE_CXX_STANDARD GREATER_EQUAL 20)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+    elseif(CMAKE_CXX_STANDARD GREATER_EQUAL 17)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    elseif(CMAKE_CXX_STANDARD EQUAL 14)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    endif()
+endif()
+
+# Find Qt (prioritize Qt6, fallback to Qt5.15+)
+find_package(Qt6 COMPONENTS Core QUIET)
+if(Qt6_FOUND)
+    message(STATUS "Using Qt6: ${Qt6_VERSION}")
+    set(QT_VERSION_MAJOR 6)
+else()
+    find_package(Qt5 5.15 COMPONENTS Core QUIET)
+    if(Qt5_FOUND)
+        message(STATUS "Using Qt5: ${Qt5_VERSION}")
+        set(QT_VERSION_MAJOR 5)
+        set(CMAKE_CXX_STANDARD 11)
+    else()
+        message(FATAL_ERROR "Qt5 (5.15+) or Qt6 is required")
+    endif()
+endif()
+
+# Build output directories (keep build artifacts under the build tree)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# Source files
+set(SOURCES
+    src/main.cpp
+)
+
+# Optional: core library for tests/demos (created by Qt Assistant when tests enabled)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/src/calculator.cpp")
+    add_library(${PROJECT_NAME}_core STATIC
+        src/calculator.cpp
+        include/calculator.h
+    )
+    target_include_directories(${PROJECT_NAME}_core PUBLIC
+        ${CMAKE_CURRENT_LIST_DIR}/include
+    )
+endif()
+
+# Create executable
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    DEBUG_POSTFIX "d"
+)
+
+# Link Qt libraries
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core)
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core)
+endif()
+
+if(TARGET ${PROJECT_NAME}_core)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_core)
+endif()
+
+# Optional: runnable demo program
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/examples/demo.cpp")
+    add_executable(${PROJECT_NAME}_demo examples/demo.cpp)
+    set_target_properties(${PROJECT_NAME}_demo PROPERTIES DEBUG_POSTFIX "d")
+    if(TARGET ${PROJECT_NAME}_core)
+        target_link_libraries(${PROJECT_NAME}_demo PRIVATE ${PROJECT_NAME}_core)
+    endif()
+    target_include_directories(${PROJECT_NAME}_demo PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/include
+    )
+endif()
+
+# 字符集设置，避免中文路径/源码乱码
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /wd4399)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -finput-charset=UTF-8 -fexec-charset=UTF-8)
+endif()
+
+
+# Install rules
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+if(TARGET ${PROJECT_NAME}_demo)
+    install(TARGETS ${PROJECT_NAME}_demo
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
+# Packaging (default: ZIP)
+set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_GENERATOR "ZIP")
+include(CPack)

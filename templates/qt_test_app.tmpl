@@ -1,0 +1,20 @@
+
+#include <QtTest/QtTest>
+#include "calculator.h"
+
+class CalculatorTest : public QObject {
+    Q_OBJECT
+
+private slots:
+    void add_works() {
+        QCOMPARE(Calculator::add(1, 2), 3);
+        QCOMPARE(Calculator::add(-1, 1), 0);
+    }
+
+    void sub_works() {
+        QCOMPARE(Calculator::sub(10, 3), 7);
+    }
+};
+
+QTEST_MAIN(CalculatorTest)
+#include "test_basic.moc"

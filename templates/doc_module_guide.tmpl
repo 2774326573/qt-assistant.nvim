@@ -1,0 +1,111 @@
+
+# {{PROJECT_NAME}} Module Guide
+
+## 概览
+- 模块名称：{{PROJECT_NAME}}
+- 模块类型：{{MODULE_TYPE}}
+- 目录：源码 `src/`，头文件 `include/`，文档 `doc/`
+
+## 构建方式（推荐：在根项目构建）
+在 multi-module 根目录创建构建目录并生成后，模块会通过 `add_subdirectory({{PROJECT_NAME}})` 自动参与构建。
+
+## 在根工程中添加模块（可直接复制）
+将下列片段加入根工程的 `CMakeLists.txt`（通常放在其它 `add_subdirectory(...)` 附近，按依赖顺序排列）：
+
+```cmake
+add_subdirectory({{PROJECT_NAME}})
+```
+
+> 若根工程已由 Qt Assistant 自动插入 `add_subdirectory({{PROJECT_NAME}})`，无需重复添加。
+
+### 仅构建此模块
+```bash
+cmake --build <root-build-dir> --target {{PROJECT_NAME}}
+```
+
+## 在其它目标中使用本模块（可直接复制）
+下面示例演示：在另一个目标（例如 `app`）里链接本模块，并确保包含路径正确。
+
+```cmake
+# 假设你的可执行/库目标名为 MyAppTarget
+target_link_libraries(MyAppTarget PRIVATE {{PROJECT_NAME}})
+```
+
+## 第三方依赖（建议在根工程统一管理）
+- 推荐做法：在根工程统一 `find_package(...)`/`FetchContent(...)`/`add_subdirectory(external/...)`，然后在需要的模块里用 `target_link_libraries(...)` 连接。
+- 这样能避免每个模块各自配置依赖导致的重复、冲突（尤其是 Windows 上 MSVC/MinGW/clang-cl 与 vcpkg triplet 的匹配问题）。
+
+通常无需手动 `target_include_directories(MyAppTarget ...)`，因为本模块模板会把 `include/` 作为 `PUBLIC` 导出（可通过查看本模块 `CMakeLists.txt` 的 `target_include_directories` 验证）。
+
+{{#IS_LIBRARY}}
+### 库模块（shared/static）使用示例
+
+```cmake
+# 1) 根工程包含该模块
+add_subdirectory({{PROJECT_NAME}})
+
+# 2) 在应用/其它库中链接
+target_link_libraries(MyAppTarget PRIVATE {{PROJECT_NAME}})
+```
+
+头文件包含方式（示例）：
+
+```cpp
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+```
+{{/IS_LIBRARY}}
+
+{{#IS_PLUGIN}}
+### 插件模块使用示例
+
+本模板的插件目标是 `{{PROJECT_NAME}}`（使用 `SHARED` 生成，既可被 Qt 插件机制加载，也能用于 demo/tests 直接链接）。
+
+```cmake
+add_subdirectory({{PROJECT_NAME}})
+target_link_libraries(MyAppTarget PRIVATE {{PROJECT_NAME}})
+```
+
+头文件包含方式（示例）：
+
+```cpp
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+```
+
+如果你希望“纯插件（不参与链接）”的形式，也可以把模块 `CMakeLists.txt` 的 `add_library(... SHARED ...)` 改回 `MODULE`；此时 demo/tests 将不能再直接链接该插件目标（但仍可通过运行时加载验证）。
+{{/IS_PLUGIN}}
+
+{{#IS_APP}}
+### 应用模块（widget/quick/console）使用示例
+
+应用模块通常是可执行文件目标。根工程引用：
+
+```cmake
+add_subdirectory({{PROJECT_NAME}})
+```
+
+如果应用要链接其它模块（例如 `mylib`），在应用模块的 `CMakeLists.txt` 中追加：
+
+```cmake
+target_link_libraries({{PROJECT_NAME}} PRIVATE mylib)
+```
+
+若出现找不到头文件：
+- 优先确认被链接模块是否导出了 `include/`（`PUBLIC` include dirs）。
+- 或在应用目标上临时添加（不推荐长期依赖）：
+
+```cmake
+target_include_directories({{PROJECT_NAME}} PRIVATE ${CMAKE_SOURCE_DIR}/mylib/include)
+```
+{{/IS_APP}}
+
+## 目标（Targets）
+- 主目标：`{{PROJECT_NAME}}`
+- 可选示例：`{{PROJECT_NAME}}_demo`（如生成 `examples/demo.cpp`）
+- 可选测试：`{{PROJECT_NAME}}_tests`（如生成 `tests/` 并开启 CTest）
+
+## 依赖与包含
+- 本模块头文件默认从 `include/` 导出；使用时在上层目标 `target_link_libraries(...)` 并添加 include 路径即可。
+
+## 常见问题
+- 若根项目未包含该模块：检查根 `CMakeLists.txt` 是否已有 `add_subdirectory({{PROJECT_NAME}})`。
+- Windows 多配置生成器：使用 `--config Debug/Release` 指定配置。

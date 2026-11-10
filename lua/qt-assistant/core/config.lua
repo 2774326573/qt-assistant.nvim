@@ -54,6 +54,13 @@ function M.setup(user_config)
             vcpkg_root = M._detect_vcpkg_root(),
             toolchain_file = nil -- 自动从 vcpkg_root 推断
         },
+        -- 模板宿主自定义 (templates/ 目录为内置, 解析顺序: register → override → custom_dir → 内置)
+        templates = {
+            -- 宿主模板目录: 其内 <模板名>.tmpl 覆盖同名内置模板
+            custom_dir = nil,
+            -- 单模板覆盖: { [模板名] = '文件路径' }
+            override = {},
+        },
         -- Third-party libraries configuration
         third_party = {
             enabled = false,

@@ -1,0 +1,45 @@
+
+# Tests for {{PROJECT_NAME}} (Qt Test) - app template
+
+set(CMAKE_AUTOMOC ON)
+
+# Prefer using the same Qt major as the main project if available
+if(NOT DEFINED QT_VERSION_MAJOR)
+    find_package(Qt6 COMPONENTS Core Test QUIET)
+    if(Qt6_FOUND)
+        set(QT_VERSION_MAJOR 6)
+    else()
+        find_package(Qt5 5.15 COMPONENTS Core Test REQUIRED)
+        set(QT_VERSION_MAJOR 5)
+    endif()
+endif()
+
+if(QT_VERSION_MAJOR EQUAL 6)
+    find_package(Qt6 COMPONENTS Core Test REQUIRED)
+else()
+    find_package(Qt5 5.15 COMPONENTS Core Test REQUIRED)
+endif()
+
+add_executable({{PROJECT_NAME}}_tests
+    test_basic.cpp
+)
+
+target_include_directories({{PROJECT_NAME}}_tests PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/../include
+)
+
+if(TARGET {{PROJECT_NAME}}_core)
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE {{PROJECT_NAME}}_core)
+endif()
+
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE Qt6::Core Qt6::Test)
+else()
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE Qt5::Core Qt5::Test)
+endif()
+
+add_test(NAME {{PROJECT_NAME}}_tests COMMAND {{PROJECT_NAME}}_tests)
+
+install(TARGETS {{PROJECT_NAME}}_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)

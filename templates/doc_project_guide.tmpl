@@ -1,0 +1,203 @@
+
+# 项目使用说明
+
+## 概览
+- 名称：{{PROJECT_NAME}}
+- 类型：Qt 项目
+- 主要源码：`src/`，头文件：`include/`
+- 依赖：Qt5/Qt6（优先检测 Qt6）
+
+## 构建指引（跨平台）
+请选择适合当前操作系统的生成器，并为不同生成器使用不同的构建目录。
+
+### Windows（MSVC / MinGW(GCC) / Clang / Ninja）
+```pwsh
+# 0) 提示：MSVC/clang-cl 通常需要先进入“开发者命令提示符(Developer Command Prompt)”
+# 或手动执行 vcvars64.bat，确保 cl.exe/link.exe 在 PATH。
+
+# 1) MSVC（IDE/调试友好；生成器名可替换为 VS2019/VS2022）
+cmake -S . -B build-msvc -G "Visual Studio 15 2017" -A x64 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-msvc --config Debug
+
+# 2) MinGW（GCC）
+# 适用于安装了“Qt + MinGW”或 MSYS2/MinGW-w64 的环境；确保 gcc/g++/mingw32-make 在 PATH
+cmake -S . -B build-mingw -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-mingw
+
+# 3) Clang（两种常见方式）
+# 3.1 clang-cl（走 MSVC ABI，适合 Windows 平台；通常也需要 vcvars 环境）
+cmake -S . -B build-clangcl -G "Ninja" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-clangcl
+
+# 3.2 clang++（GNU 风格；配合 MinGW/LLVM 工具链时可用）
+cmake -S . -B build-clang -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-clang
+
+# 4) Ninja（轻量、适合 clangd；编译器随当前环境/CC/CXX 或 CMAKE_*_COMPILER 决定）
+cmake -S . -B build-ninja -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-ninja
+```
+
+### Linux / macOS（GCC / Clang + Ninja / Makefiles）
+```bash
+# GCC（默认；若系统默认不是 GCC，可显式指定）
+cmake -S . -B build-gcc -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-gcc
+
+# Clang（推荐搭配 clangd）
+cmake -S . -B build-clang -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-clang
+
+# 或 Unix Makefiles
+cmake -S . -B build-make -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-make
+```
+
+> 重要：同一构建目录只能使用同一种生成器。切换生成器请改用新的目录（如 build-msvc、build-ninja、build-make）。
+
+### 可选：使用 CMakePresets（推荐）
+你可以在项目根目录创建 `CMakePresets.json`，把“生成器/编译器/构建目录”固化下来：
+
+- 用 Qt Assistant：`:QtCMakePresets`，然后 `:QtBuildPreset debug`
+- 或手动命令：`cmake --preset=debug`，再 `cmake --build --preset=debug`
+
+> 说明：默认 presets 使用 Ninja。若你要用 MSVC/MinGW/Clang，请在 presets 的 `generator`/`cacheVariables` 中调整。
+
+### （若使用 vcpkg 安装依赖）
+当你用 vcpkg 安装 Qt/依赖时，构建成功的关键是：**编译器/生成器 与 vcpkg triplet 必须匹配**。
+
+1) 确保已设置 vcpkg 工具链（两种方式二选一）：
+- Qt Assistant 插件配置里启用 `vcpkg.enabled = true`（会自动追加 `-DCMAKE_TOOLCHAIN_FILE=.../vcpkg.cmake`）
+- 或手动 CMake：`-DCMAKE_TOOLCHAIN_FILE=<VCPKG_ROOT>/scripts/buildsystems/vcpkg.cmake`
+
+2) 显式指定 triplet（推荐；避免默认 triplet 与当前工具链不一致）：
+- 环境变量：`VCPKG_DEFAULT_TRIPLET=x64-windows`（示例）
+- 或 CMake 参数：`-DVCPKG_TARGET_TRIPLET=x64-windows`
+
+常见 triplet 示例：
+- Windows + MSVC：`x64-windows` / `x64-windows-static`
+- Windows + MinGW：`x64-mingw-dynamic` / `x64-mingw-static`
+- Windows + clang-cl：`x64-windows-clang`（以及对应 static 变体）
+
+示例（Windows + Ninja + MSVC triplet）：
+```pwsh
+cmake -S . -B build -G Ninja -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build
+```
+
+> 注意：不要用 `x64-windows` 的 Qt 去配 MinGW 构建，也不要反过来混用；切换工具链请换新的构建目录。
+
+{{#IS_APP}}
+## 添加第三方库/依赖（指南）
+下面给出两类最常见的接入方式：vcpkg（推荐）与手动/源码接入。你可以把它们用于任何库（例如 spdlog / fmt / boost / opencv 等）。
+
+> 另：本项目同时生成了 `doc/ThirdParty.md`，里面有更集中、可复制的第三方库接入示例。
+
+### 方式 A：vcpkg（推荐）
+1) 安装依赖
+- 经典模式（命令行安装）：
+    - Windows 示例：`vcpkg install spdlog:x64-windows`
+    - MinGW 示例：`vcpkg install spdlog:x64-mingw-dynamic`
+- Manifest 模式（推荐，项目根目录放 `vcpkg.json`）：
+    - 在项目根目录执行：`vcpkg install`
+
+2) 让 CMake 使用 vcpkg
+- 你已经在上面配置了 `-DCMAKE_TOOLCHAIN_FILE=<VCPKG_ROOT>/scripts/buildsystems/vcpkg.cmake` 或启用了 Qt Assistant 的 `vcpkg.enabled = true`。
+- 确保 triplet 与编译器匹配（MSVC/MinGW/clang-cl 不要混）。
+
+3) 在 CMakeLists.txt 里 `find_package` 并链接
+```cmake
+# 例：spdlog（vcpkg 通常提供 CONFIG 包）
+find_package(spdlog CONFIG REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+```
+
+> 如果依赖的 CMake target 名称不确定：查看 vcpkg 安装输出、或在库的文档里搜索 “CMake target”。
+
+### 方式 B：手动/源码接入（不使用 vcpkg）
+根据第三方库的交付形式选择其一：
+
+1) 该库提供 CMake 安装包（有 `FooConfig.cmake`）
+- 把库安装到某个前缀（例如 `C:/3rd/install/foo`），然后二选一：
+    - 设置 `CMAKE_PREFIX_PATH`：`-DCMAKE_PREFIX_PATH=C:/3rd/install/foo`
+    - 或设置 `Foo_DIR`：`-DFoo_DIR=C:/3rd/install/foo/lib/cmake/Foo`
+- 在项目中：
+```cmake
+find_package(Foo CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Foo::Foo)
+```
+
+2) 该库以源码形式提供（可被 `add_subdirectory`）
+- 建议放到 `external/Foo/` 或作为 git submodule：
+```cmake
+add_subdirectory(external/Foo)
+target_link_libraries(${PROJECT_NAME} PRIVATE Foo)
+```
+
+3) 只有头文件/只有二进制库（.lib/.a/.dll）
+- 头文件：用 `target_include_directories`
+- 库文件：用 `target_link_libraries` 指向 `.lib/.a`，或提供 import library
+- Windows 运行时：把 `.dll` 放到可执行文件同目录（例如 `export/{{PROJECT_NAME}}/bin/`）或加入 `PATH`
+
+> 建议优先使用“方式 A(vcpkg)”或“方式 B-1/2”，能最大化 CMake 可移植性。
+
+{{/IS_APP}}
+
+### （若使用 qmake 工程）
+如果你的工程是 `*.pro`（qmake），构建通常是：
+
+- 生成：`qmake -o build/Makefile <your>.pro`
+- 编译：MinGW 用 `mingw32-make`；MSVC 用 `nmake`；Linux/macOS 用 `make`
+
+## 运行主程序
+### 推荐：使用 Qt Assistant 一键构建并导出
+- 构建：`:QtBuild`
+- 导出目录（默认）：`export/{{PROJECT_NAME}}/`
+    - 主程序：`export/{{PROJECT_NAME}}/bin/`
+    - 动态库：`export/{{PROJECT_NAME}}/lib/`（若有）
+    - 测试程序（若启用 tests/gtest）：`export/{{PROJECT_NAME}}/bin/{{PROJECT_NAME}}_tests[.exe]`
+
+> Windows：若系统能找到 `windeployqt`，插件会在导出后自动拷贝 Qt 运行时 DLL/插件到 `export/{{PROJECT_NAME}}/bin/`，并尽量包含编译器运行库（`--compiler-runtime`）。
+
+> macOS：若系统能找到 `macdeployqt` 且安装导出了 `.app`（例如 `export/{{PROJECT_NAME}}/bin/{{PROJECT_NAME}}.app`），插件会尝试对该 `.app` 执行 `macdeployqt`。
+
+> Linux：默认依赖系统安装的 Qt 运行时（发行版包管理器/系统路径）。如果你安装了 `linuxdeployqt`，插件会尝试调用它做打包式部署。
+
+### 手动构建（不使用插件）
+- 生成：`cmake --build <build-dir> --target {{PROJECT_NAME}}`（VS 需加 `--config Debug/Release`）
+- 运行：若使用 `cmake --install` 导出，则可执行文件通常在 `export/{{PROJECT_NAME}}/bin/`；否则取决于生成器（常见为 `<build-dir>/bin/`）。
+
+## 运行示例程序（如存在）
+- 构建：`cmake --build <build-dir> --target {{PROJECT_NAME}}_demo`（VS 需加 `--config Debug/Release`）
+- 说明：示例源码位于 `examples/demo.cpp`。
+
+## 运行测试（如存在）
+- 构建：`cmake --build <build-dir> --target {{PROJECT_NAME}}_tests`（VS 需加 `--config Debug/Release`）
+- 执行：`ctest --test-dir <build-dir> --output-on-failure`（VS 加 `-C Debug/Release`）
+
+> 说明：本模板支持两种测试框架：Qt Test 与 GoogleTest（gtest）。
+> - Qt Test：随 Qt 提供，通常无需额外安装。
+> - gtest：需要你先安装 GTest（例如 vcpkg：`vcpkg install gtest:<triplet>`），然后 CMake 会通过 `find_package(GTest ...)` 找到它。
+>   - 交互创建项目时选择 `GoogleTest (gtest)`
+>   - 或命令行：`:QtNewProject <name> <template> <cxx_standard> gtest`
+
+## clangd / 编译数据库
+- 若根目录缺少 `compile_commands.json`，请把构建目录中的文件复制/链接到根目录，或在 clangd 参数中指定 `--compile-commands-dir=<build-dir>`。
+- 修改 CMakeLists 或新增源码后，重新运行生成步骤以刷新编译数据库。
+
+## 安装与打包
+- 安装（示例）：`cmake --install <build-dir> --prefix "${PWD}/install"`
+- 打包（ZIP，依赖 CPack）：进入构建目录后运行 `cpack -G ZIP -C Release`
+
+## 目录速览
+- 源码：`src/`
+- 头文件：`include/`
+- 示例程序：`examples/`（若存在，目标一般为 `{{PROJECT_NAME}}_demo`）
+- 单元测试：`tests/`（若存在，目标一般为 `{{PROJECT_NAME}}_tests`）
+- 文档：`doc/`
+
+## 常见问题
+- 生成器冲突：同一 build 目录只能用同一生成器，切换时请清空或改用新目录。
+- 未找到 Qt：检查 Qt5/Qt6 安装，必要时设置 `Qt5_DIR`/`Qt6_DIR`。
+- clangd 无法解析：确保根目录存在 `compile_commands.json`，或显式传入 `--compile-commands-dir`。

@@ -317,6 +317,30 @@ vim.api.nvim_create_user_command('QtDebugSetup', function()
     require('qt-assistant.core.debug').setup_debugging()
 end, { desc = 'Setup complete Qt debugging environment' })
 
+vim.api.nvim_create_user_command('QtTemplatesReload', function()
+    local ok, templates = pcall(require, 'qt-assistant.core.templates')
+    if ok then
+        templates.load_builtin_templates()
+        vim.notify('Qt助手: 内置模板已重新加载 (templates/ 目录)', vim.log.levels.INFO)
+    end
+end, { desc = 'Reload built-in Qt templates from templates/ directory' })
+
+vim.api.nvim_create_user_command('QtTemplatesOpenCustomDir', function()
+    local config = require('qt-assistant.core.config').get()
+    local dir = config.templates and config.templates.custom_dir
+    if not dir then
+        vim.notify('Qt助手: 未配置 templates.custom_dir (在 setup 中设置宿主自定义模板目录)', vim.log.levels.WARN)
+        return
+    end
+    if vim.fn.isdirectory(dir) == 1 then
+        if vim.fn.has('win32') == 1 then
+            vim.fn.system('explorer.exe ' .. vim.fn.shellescape(dir))
+        end
+    else
+        vim.notify('Qt助手: 目录不存在: ' .. dir, vim.log.levels.ERROR)
+    end
+end, { desc = 'Open the host custom template directory' })
+
 -- ==================== Help ====================
 
 vim.api.nvim_create_user_command('QtScripts', function()

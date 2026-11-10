@@ -1,0 +1,110 @@
+
+# 第三方库导入指南（{{PROJECT_NAME}}）
+
+本文件专门汇总第三方库接入方式，适合在新项目里直接复制粘贴。
+
+## 推荐目录结构（相对路径）
+
+```
+{{PROJECT_NAME}}/
+├── CMakeLists.txt
+├── src/
+├── include/
+├── external/               # 建议：源码依赖 / submodule / FetchContent
+└── third_party/            # 建议：二进制预编译包（include/lib/bin）
+        └── <libname>/
+                ├── include/
+                ├── lib/
+                └── bin/            # Windows 下常见：dll
+```
+
+> 建议优先用 vcpkg 或 FetchContent；仅在必须时再用“手动 include/lib 目录”。
+
+## 方式 A：vcpkg（推荐）
+
+### 1) 工具链接入
+
+配置 CMake 工具链（二选一）：
+
+- 命令行：
+```bash
+cmake -S . -B build \
+    -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+```
+
+- 或在 `CMakePresets.json` 的 `cacheVariables` 里设置 `CMAKE_TOOLCHAIN_FILE`。
+
+### 2) 安装依赖
+
+（示例）
+```bash
+vcpkg install spdlog:x64-windows
+vcpkg install fmt:x64-windows
+```
+
+### 3) find_package + target_link_libraries
+
+```cmake
+find_package(spdlog CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog fmt::fmt)
+```
+
+## 方式 B：FetchContent（源码拉取，推荐）
+
+适合不想安装全局依赖、又希望 CMake 统一管理的场景。
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG 10.2.1
+)
+FetchContent_MakeAvailable(fmt)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+```
+
+## 方式 C：add_subdirectory（源码依赖 / git submodule）
+
+```cmake
+add_subdirectory(external/somelib)
+target_link_libraries(${PROJECT_NAME} PRIVATE somelib)
+```
+
+## 方式 D：手动接入（相对路径 include/lib）
+
+适合你已经有预编译包（例如 vendor 提供的 include/lib）。
+
+```cmake
+set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
+
+# 以 foo 为例
+set(FOO_ROOT "${THIRD_PARTY_DIR}/foo")
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${FOO_ROOT}/include"
+)
+
+# 1) 直接链接库文件（最明确）
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    "${FOO_ROOT}/lib/foo.lib"   # Windows MSVC 示例
+    # "${FOO_ROOT}/lib/libfoo.a" # MinGW/GCC 示例
+)
+```
+
+### Windows 运行时 DLL
+
+如果依赖需要 `.dll`：
+- 把 dll 放到可执行文件同目录（例如 `export/{{PROJECT_NAME}}/bin/` 或 build 输出目录）
+- 或把 `third_party/<lib>/bin` 加入 `PATH`
+
+## 小结
+
+- “想省事 + 可复现” → vcpkg（manifest 模式更佳）
+- “不想装依赖、直接 CMake 拉源码” → FetchContent
+- “已有源码仓库/子模块” → add_subdirectory
+- “只有预编译包” → 手动 include/lib（注意 dll 部署）

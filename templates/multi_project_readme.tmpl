@@ -1,0 +1,68 @@
+
+# {{PROJECT_NAME}}
+
+Multi-module Qt project with the following structure:
+
+## Project Structure
+
+```
+{{PROJECT_NAME}}/
+├── CMakeLists.txt           # Root CMake configuration
+├── README.md                # This file
+├── core/                    # Core library module
+│   ├── CMakeLists.txt
+│   ├── src/
+│   └── include/
+├── ui/                      # UI library module
+│   ├── CMakeLists.txt
+│   ├── src/
+│   └── include/
+├── plugins/                 # Plugin modules
+│   ├── CMakeLists.txt
+│   └── plugin1/
+├── app/                     # Main application
+│   ├── CMakeLists.txt
+│   ├── src/
+│   └── main.cpp
+└── build/                   # Build output
+    ├── bin/                 # Executables
+    ├── lib/                 # Libraries
+    └── plugins/             # Plugins
+```
+
+## Adding New Modules
+
+Use Qt Assistant commands to add new modules:
+
+```vim
+:QtAddModule core shared_lib         " Add a shared library module
+:QtAddModule utils static_lib        " Add a static library module
+:QtAddModule myplugin plugin         " Add a plugin module
+:QtAddModule myapp widget_app        " Add an application module
+```
+
+## Building
+
+```bash
+# Generate build configuration
+cmake -B build -S .
+
+# Build all modules
+cmake --build build
+
+# Or use Qt Assistant presets
+:QtCMakePresets
+:QtBuildPreset debug
+```
+
+## Module Dependencies
+
+Edit the root CMakeLists.txt to define module dependencies:
+
+```cmake
+# Add modules in dependency order
+add_subdirectory(core)      # Base library
+add_subdirectory(ui)        # UI library (depends on core)
+add_subdirectory(plugins)   # Plugins (depend on core)
+add_subdirectory(app)       # Application (depends on all)
+```

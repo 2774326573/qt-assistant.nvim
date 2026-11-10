@@ -1,0 +1,154 @@
+
+# {{MODULE_NAME}} 模块文档
+
+## 模块概述
+
+**模块名称：** {{MODULE_NAME}}
+**版本：** {{MODULE_VERSION}}
+**说明：** {{MODULE_DESCRIPTION}}
+
+## 模块结构
+
+```
+{{MODULE_NAME}}/
+├── include/             # 公共头文件
+│   └── {{MODULE_NAME}}/
+│       ├── api.h
+│       └── types.h
+├── src/                 # 源代码实现
+│   ├── impl.cpp
+│   └── utils.cpp
+├── ui/                  # UI文件（如果有）
+├── resources/           # 资源文件
+├── tests/               # 模块测试
+└── CMakeLists.txt       # 模块构建配置
+```
+
+## 主要组件
+
+### 类列表
+
+| 类名 | 说明 | 头文件 |
+|------|------|--------|
+| {{CLASS_1}} | {{CLASS_1_DESC}} | {{CLASS_1_HEADER}} |
+| {{CLASS_2}} | {{CLASS_2_DESC}} | {{CLASS_2_HEADER}} |
+| {{CLASS_3}} | {{CLASS_3_DESC}} | {{CLASS_3_HEADER}} |
+
+### 功能说明
+
+1. **核心功能**
+   - {{CORE_FEATURE_1}}
+   - {{CORE_FEATURE_2}}
+
+2. **辅助功能**
+   - {{HELPER_FEATURE_1}}
+   - {{HELPER_FEATURE_2}}
+
+## 依赖关系
+
+### 内部依赖
+{{INTERNAL_DEPS}}
+
+### 外部依赖
+{{EXTERNAL_DEPS}}
+
+### Qt模块依赖
+```cmake
+find_package(Qt6 COMPONENTS
+    {{QT_COMPONENTS}}
+    REQUIRED
+)
+```
+
+### 第三方库依赖
+```cmake
+# 第三方库配置
+{{THIRD_PARTY_CONFIG}}
+```
+
+## 编译选项
+
+```cmake
+# 模块编译选项
+add_library({{MODULE_NAME}} SHARED
+    ${SOURCES}
+)
+
+target_compile_definitions({{MODULE_NAME}} PRIVATE
+    {{COMPILE_DEFINITIONS}}
+)
+
+target_include_directories({{MODULE_NAME}} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+```
+
+## 使用方法
+
+### 在CMakeLists.txt中添加模块
+
+```cmake
+# 添加模块
+add_subdirectory({{MODULE_NAME}})
+
+# 链接模块
+target_link_libraries(your_app PRIVATE {{MODULE_NAME}})
+```
+
+### 在代码中使用
+
+```cpp
+#include <{{MODULE_NAME}}/api.h>
+
+// 使用模块功能
+{{MODULE_NAME}}::initialize();
+```
+
+## API参考
+
+详见各类的API文档：
+{{API_DOC_LINKS}}
+
+## 配置选项
+
+### 编译时配置
+
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| {{OPTION_1}} | {{TYPE_1}} | {{DEFAULT_1}} | {{DESC_1}} |
+| {{OPTION_2}} | {{TYPE_2}} | {{DEFAULT_2}} | {{DESC_2}} |
+
+### 运行时配置
+
+{{RUNTIME_CONFIG}}
+
+## 测试
+
+### 运行模块测试
+
+```bash
+cd build
+ctest -R {{MODULE_NAME}}
+```
+
+### 测试覆盖
+
+{{TEST_COVERAGE}}
+
+## 性能考虑
+
+{{PERFORMANCE_NOTES}}
+
+## 已知问题
+
+{{KNOWN_ISSUES}}
+
+## 更新日志
+
+### {{MODULE_VERSION}}
+- {{CHANGELOG_ITEMS}}
+
+## 维护者
+
+{{MAINTAINER_INFO}}

@@ -1,0 +1,16 @@
+
+#include <QCoreApplication>
+#include <QDebug>
+
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication app(argc, argv);
+
+    {{CLASS_NAME}} api;
+    qDebug() << "Library demo: 12 + 30 =" << api.add(12, 30);
+    qDebug() << "Library demo: echo =" << api.echo(QStringLiteral("Hello from {{PROJECT_NAME}}"));
+
+    return 0;
+}

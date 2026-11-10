@@ -1,0 +1,135 @@
+
+# {{PROJECT_NAME}} API 文档
+
+## 类：{{CLASS_NAME}}
+
+### 继承关系
+```
+{{BASE_CLASS}}
+  └── {{CLASS_NAME}}
+```
+
+### 类说明
+
+{{CLASS_DESCRIPTION}}
+
+## 构造函数
+
+### {{CLASS_NAME}}::{{CLASS_NAME}}
+
+```cpp
+explicit {{CLASS_NAME}}(QWidget *parent = nullptr);
+```
+
+**参数：**
+- `parent`: 父窗口指针，默认为nullptr
+
+**说明：**
+构造一个新的{{CLASS_NAME}}对象。
+
+## 公共方法
+
+### 方法名称
+
+```cpp
+ReturnType methodName(ParamType param);
+```
+
+**参数：**
+- `param`: 参数说明
+
+**返回值：**
+返回值说明
+
+**示例：**
+```cpp
+{{CLASS_NAME}} obj;
+obj.methodName(value);
+```
+
+## 信号（Signals）
+
+### signalName
+
+```cpp
+void signalName(ParamType param);
+```
+
+**参数：**
+- `param`: 参数说明
+
+**说明：**
+信号触发条件和用途说明。
+
+## 槽函数（Slots）
+
+### slotName
+
+```cpp
+void slotName();
+```
+
+**说明：**
+槽函数功能说明。
+
+## 属性
+
+### propertyName
+
+```cpp
+Q_PROPERTY(Type propertyName READ getPropertyName WRITE setPropertyName NOTIFY propertyNameChanged)
+```
+
+**类型：** Type
+**访问：** 读/写
+**说明：** 属性用途说明
+
+## 枚举类型
+
+### EnumName
+
+```cpp
+enum EnumName {
+    Value1,
+    Value2,
+    Value3
+};
+```
+
+**值说明：**
+- `Value1`: 值1说明
+- `Value2`: 值2说明
+- `Value3`: 值3说明
+
+## 使用示例
+
+### 基本用法
+
+```cpp
+#include "{{FILE_NAME}}.h"
+
+{{CLASS_NAME}} *widget = new {{CLASS_NAME}}();
+// 使用示例代码
+widget->show();
+```
+
+### 信号槽连接
+
+```cpp
+connect(widget, &{{CLASS_NAME}}::signalName,
+        this, &MyClass::slotName);
+```
+
+## 注意事项
+
+{{NOTES}}
+
+## 相关类
+
+- {{RELATED_CLASS_1}}
+- {{RELATED_CLASS_2}}
+
+## 参考资料
+
+- [Qt官方文档](https://doc.qt.io/)
+- {{REFERENCE_LINKS}}

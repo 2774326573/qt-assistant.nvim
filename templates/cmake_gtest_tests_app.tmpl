@@ -1,0 +1,34 @@
+
+# Tests for {{PROJECT_NAME}} (GoogleTest)
+
+# vcpkg typically provides a CMake config package for GTest
+find_package(GTest CONFIG QUIET)
+if(NOT GTest_FOUND)
+    find_package(GTest REQUIRED)
+endif()
+
+add_executable({{PROJECT_NAME}}_tests
+    test_basic.cpp
+)
+
+target_include_directories({{PROJECT_NAME}}_tests PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/../include
+)
+
+if(TARGET {{PROJECT_NAME}}_core)
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE {{PROJECT_NAME}}_core)
+endif()
+
+if(TARGET GTest::gtest_main)
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE GTest::gtest GTest::gtest_main)
+elseif(TARGET GTest::Main)
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE GTest::GTest GTest::Main)
+else()
+    target_link_libraries({{PROJECT_NAME}}_tests PRIVATE GTest::GTest)
+endif()
+
+add_test(NAME {{PROJECT_NAME}}_tests COMMAND {{PROJECT_NAME}}_tests)
+
+install(TARGETS {{PROJECT_NAME}}_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)

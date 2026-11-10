@@ -1,0 +1,16 @@
+
+#include <QtTest/QtTest>
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+
+class LibrarySmokeTest : public QObject {
+    Q_OBJECT
+
+private slots:
+    void add_works() {
+        {{CLASS_NAME}} api;
+        QCOMPARE(api.add(1, 2), 3);
+    }
+};
+
+QTEST_MAIN(LibrarySmokeTest)
+#include "test_basic.moc"

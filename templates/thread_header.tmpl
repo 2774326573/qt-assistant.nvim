@@ -1,0 +1,19 @@
+
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QThread>
+
+class {{CLASS_NAME}} : public QThread
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QObject *parent = nullptr);
+    ~{{CLASS_NAME}}() override = default;
+
+protected:
+    void run() override;
+};
+
+#endif // {{HEADER_GUARD}}

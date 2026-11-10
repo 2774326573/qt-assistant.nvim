@@ -1,0 +1,36 @@
+
+#include "{{FILE_NAME}}.h"
+{{#HAS_UI_FILE}}
+#include "{{UI_HEADER}}"
+{{/HAS_UI_FILE}}
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QWidget *parent)
+    : QMainWindow(parent)
+{{#HAS_UI_FILE}}
+    , ui(new Ui_{{UI_CLASS_NAME}})
+{{/HAS_UI_FILE}}
+{
+    setupUI();
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+{{#HAS_UI_FILE}}
+    delete ui;
+{{/HAS_UI_FILE}}
+}
+
+void {{CLASS_NAME}}::setupUI()
+{
+{{#HAS_UI_FILE}}
+    ui->setupUi(this);
+{{/HAS_UI_FILE}}
+{{^HAS_UI_FILE}}
+    // TODO: Setup UI manually
+{{/HAS_UI_FILE}}
+}
+
+void {{CLASS_NAME}}::onActionTriggered()
+{
+    // TODO: Handle action
+}

@@ -1,0 +1,31 @@
+
+#ifndef {{HEADER_GUARD}}
+#define {{HEADER_GUARD}}
+
+#include <QMainWindow>
+{{#HAS_UI_FILE}}
+
+QT_BEGIN_NAMESPACE
+class Ui_{{UI_CLASS_NAME}};
+QT_END_NAMESPACE
+{{/HAS_UI_FILE}}
+
+class {{CLASS_NAME}} : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit {{CLASS_NAME}}(QWidget *parent = nullptr);
+    ~{{CLASS_NAME}}();
+
+private slots:
+    void onActionTriggered();
+
+private:
+    void setupUI();
+{{#HAS_UI_FILE}}
+    Ui_{{UI_CLASS_NAME}} *ui;
+{{/HAS_UI_FILE}}
+};
+
+#endif // {{HEADER_GUARD}}

@@ -1,0 +1,13 @@
+
+#include "{{FILE_NAME}}.h"
+
+{{CLASS_NAME}} &{{CLASS_NAME}}::instance()
+{
+    static {{CLASS_NAME}} instance;
+    return instance;
+}
+
+{{CLASS_NAME}}::{{CLASS_NAME}}()
+{
+    // TODO: initialize singleton state
+}

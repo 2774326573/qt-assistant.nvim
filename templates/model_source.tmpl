@@ -1,0 +1,45 @@
+
+#include "{{FILE_NAME}}.h"
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QAbstractItemModel(parent)
+{
+}
+
+QModelIndex {{CLASS_NAME}}::index(int row, int column, const QModelIndex &parent) const
+{
+    // TODO: Implement
+    Q_UNUSED(row)
+    Q_UNUSED(column)
+    Q_UNUSED(parent)
+    return QModelIndex();
+}
+
+QModelIndex {{CLASS_NAME}}::parent(const QModelIndex &child) const
+{
+    // TODO: Implement
+    Q_UNUSED(child)
+    return QModelIndex();
+}
+
+int {{CLASS_NAME}}::rowCount(const QModelIndex &parent) const
+{
+    // TODO: Implement
+    Q_UNUSED(parent)
+    return 0;
+}
+
+int {{CLASS_NAME}}::columnCount(const QModelIndex &parent) const
+{
+    // TODO: Implement
+    Q_UNUSED(parent)
+    return 0;
+}
+
+QVariant {{CLASS_NAME}}::data(const QModelIndex &index, int role) const
+{
+    // TODO: Implement
+    Q_UNUSED(index)
+    Q_UNUSED(role)
+    return QVariant();
+}

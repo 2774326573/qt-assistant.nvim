@@ -1,0 +1,75 @@
+
+# {{PROJECT_NAME}} Shared Library Guide
+
+本项目生成动态库（含插件模式），下面说明导出宏、构建与使用要点。
+
+## 导出宏与静态守护
+- 头文件：`include/{{PROJECT_NAME}}/{{PROJECT_NAME}}_export.h`
+- 宏：`{{PROJECT_NAME_UPPER}}_EXPORT` 用于导出/导入符号。
+- 静态构建：在 `CMakeLists.txt` 会定义 `{{PROJECT_NAME_UPPER}}_STATIC`，可在需要时自行添加，避免导入导出宏导致的符号冲突。
+
+## 构建示例
+### Windows（MSVC / MinGW / Clang / Ninja）
+```pwsh
+cmake -S . -B build-msvc -G "Visual Studio 15 2017" -A x64 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-msvc --config Debug
+
+cmake -S . -B build-mingw -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-mingw
+
+cmake -S . -B build-clangcl -G "Ninja" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-clangcl
+
+cmake -S . -B build-ninja -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+ninja -C build-ninja
+```
+
+### Linux / macOS（GCC / Clang + Ninja / Makefiles）
+```bash
+cmake -S . -B build-gcc -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-gcc
+
+cmake -S . -B build-clang -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-clang
+
+cmake -S . -B build-make -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-make
+```
+
+> 生成器不可混用同一 build 目录，切换生成器请改用新目录。
+
+## 使用动态库
+- 头文件：`include/`
+- 库文件：构建后位于对应 build 目录（例如 `build-ninja/`）。
+- CMake 使用：
+```cmake
+find_package({{PROJECT_NAME}} CONFIG REQUIRED)
+target_link_libraries(MyApp PRIVATE {{PROJECT_NAME}})
+```
+- 运行时：确保可执行文件能找到动态库（Windows 需把 dll 放到运行目录或设置 PATH；Linux/macOS 确保 rpath/LD_LIBRARY_PATH）。
+
+## 安装与打包
+- 安装（示例）：`cmake --install build-ninja --prefix "${PWD}/install"`，头文件、库、插件按 `GNUInstallDirs` 安装到标准目录。
+- 打包（ZIP，使用 CPack）：在构建目录执行 `cpack -G ZIP -C Release`，生成的压缩包包含安装产物。
+
+## 插件（如适用）
+- 插件目标与导出宏一致，只是通过插件 IID 暴露。
+- 部署时将插件放入 Qt 插件搜索路径或自行加载插件目录。
+
+## 调试提示
+- 若发现符号未导出，检查类/函数是否标注 `{{PROJECT_NAME_UPPER}}_EXPORT`。
+- 若静态链接报错，确认 `{{PROJECT_NAME_UPPER}}_STATIC` 是否按需定义。
+
+## 示例程序与测试（若启用）
+- 示例程序：`examples/demo.cpp`（目标通常为 `{{PROJECT_NAME}}_demo`）
+- 测试：`tests/test_basic.cpp`（目标通常为 `{{PROJECT_NAME}}_tests`，通过 `ctest` 运行）
+
+### 构建示例程序
+```bash
+cmake --build <build-dir> --target {{PROJECT_NAME}}_demo
+```
+
+### 运行测试
+```bash
+ctest --test-dir <build-dir> --output-on-failure
+```

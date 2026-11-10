@@ -1,0 +1,138 @@
+
+# {{PROJECT_NAME}} 项目文档
+
+## 项目概述
+
+**项目名称：** {{PROJECT_NAME}}
+**版本：** {{VERSION}}
+**作者：** {{AUTHOR}}
+**创建日期：** {{DATE}}
+**描述：** {{DESCRIPTION}}
+
+## 项目结构
+
+```
+{{PROJECT_NAME}}/
+├── src/                 # 源代码目录
+├── include/             # 头文件目录
+├── ui/                  # UI文件目录
+├── resources/           # 资源文件目录
+├── tests/               # 测试代码目录
+├── docs/                # 文档目录
+├── CMakeLists.txt       # CMake配置文件
+└── README.md            # 项目说明
+```
+
+## 主要功能
+
+1. 功能模块A：{{FEATURE_A}}
+2. 功能模块B：{{FEATURE_B}}
+3. 功能模块C：{{FEATURE_C}}
+
+## 技术栈
+
+- **框架：** Qt {{QT_VERSION}}
+- **构建工具：** CMake
+- **编译器：** {{COMPILER}}
+- **C++标准：** {{CXX_STANDARD}}
+
+## 依赖项
+
+### Qt模块
+{{QT_MODULES}}
+
+### 第三方库
+{{THIRD_PARTY_LIBS}}
+
+## 编译说明
+
+### 环境要求
+- Qt {{QT_VERSION}} 或更高版本
+- CMake 3.16 或更高版本
+- {{COMPILER}} 编译器
+
+### 编译步骤
+
+```bash
+# 1. 克隆项目
+git clone {{REPO_URL}}
+cd {{PROJECT_NAME}}
+
+# 2. 创建构建目录
+mkdir build
+cd build
+
+# 3. 配置项目
+cmake ..
+
+# 4. 编译
+cmake --build .
+
+# 5. 运行
+./{{PROJECT_NAME}}
+```
+
+## 使用说明
+
+### 基本用法
+
+```cpp
+// 示例代码
+{{EXAMPLE_CODE}}
+```
+
+### 配置选项
+
+{{CONFIG_OPTIONS}}
+
+## API文档
+
+详见 [API文档](docs/API.md)
+
+## 开发指南
+
+### 代码风格
+- 遵循 Qt 编码规范
+- 使用4个空格缩进
+- 类名使用大驼峰命名
+- 函数和变量使用小驼峰命名
+
+### 提交规范
+- feat: 新功能
+- fix: 错误修复
+- docs: 文档更新
+- style: 代码格式调整
+- refactor: 代码重构
+- test: 测试相关
+- chore: 构建/工具变更
+
+## 测试
+
+```bash
+# 运行测试
+cd build
+ctest
+```
+
+## 常见问题
+
+### Q: 如何配置Qt环境？
+A: {{QT_SETUP_HELP}}
+
+### Q: 编译失败怎么办？
+A: {{BUILD_ERROR_HELP}}
+
+## 更新日志
+
+### {{VERSION}} ({{DATE}})
+- 初始版本发布
+
+## 许可证
+
+{{LICENSE}}
+
+## 联系方式
+
+- 作者：{{AUTHOR}}
+- 邮箱：{{EMAIL}}
+- 项目主页：{{REPO_URL}}

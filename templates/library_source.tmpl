@@ -1,0 +1,27 @@
+
+#include "{{PROJECT_NAME}}/{{PROJECT_NAME}}.h"
+
+{{CLASS_NAME}}::{{CLASS_NAME}}(QObject *parent)
+    : QObject(parent)
+{
+}
+
+{{CLASS_NAME}}::~{{CLASS_NAME}}()
+{
+}
+
+int {{CLASS_NAME}}::add(int a, int b) const
+{
+    return a + b;
+}
+
+QString {{CLASS_NAME}}::echo(const QString& text) const
+{
+    return text;
+}
+
+void {{CLASS_NAME}}::doSomething()
+{
+    // TODO: Implement functionality
+    emit somethingDone();
+}

@@ -1,0 +1,296 @@
+
+# 第三方库集成文档
+
+## 概述
+
+本文档说明如何在 {{PROJECT_NAME}} 项目中集成和使用第三方库。
+
+## 支持的集成方式
+
+### 1. vcpkg（推荐）
+
+vcpkg是Microsoft的C++包管理器，可以轻松管理第三方库。
+
+**配置方法：**
+
+```cmake
+# 在CMakeLists.txt中设置vcpkg工具链
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+```
+
+**安装库：**
+
+```bash
+# 安装库
+vcpkg install boost
+vcpkg install nlohmann-json
+```
+
+**在CMake中使用：**
+
+```cmake
+find_package(Boost REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+target_link_libraries({{PROJECT_NAME}} PRIVATE
+    Boost::boost
+    nlohmann_json::nlohmann_json
+)
+```
+
+### 2. 相对路径引用
+
+对于手动编译或下载的第三方库，可以使用相对路径引用。
+
+**目录结构：**
+
+```
+{{PROJECT_NAME}}/
+├── CMakeLists.txt
+├── src/
+├── include/
+└── third_party/          # 第三方库目录
+    ├── boost/
+    │   ├── include/
+    │   └── lib/
+    ├── opencv/
+    │   ├── include/
+    │   └── lib/
+    └── custom_lib/
+        ├── include/
+        └── lib/
+```
+
+**CMake配置示例：**
+
+```cmake
+# 设置第三方库根目录
+set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
+
+# 方式1：直接指定路径
+include_directories("${THIRD_PARTY_DIR}/boost/include")
+link_directories("${THIRD_PARTY_DIR}/boost/lib")
+
+# 方式2：使用find_package
+set(Boost_ROOT "${THIRD_PARTY_DIR}/boost")
+find_package(Boost REQUIRED)
+
+# 方式3：手动添加
+add_library(custom_lib SHARED IMPORTED)
+set_target_properties(custom_lib PROPERTIES
+    IMPORTED_LOCATION "${THIRD_PARTY_DIR}/custom_lib/lib/libcustom.so"
+    INTERFACE_INCLUDE_DIRECTORIES "${THIRD_PARTY_DIR}/custom_lib/include"
+)
+
+# 链接库
+target_link_libraries({{PROJECT_NAME}} PRIVATE
+    Boost::boost
+    custom_lib
+)
+```
+
+### 3. 子模块（Git Submodule）
+
+使用git submodule管理第三方库源码。
+
+```bash
+# 添加子模块
+git submodule add https://github.com/nlohmann/json.git third_party/json
+
+# 在CMakeLists.txt中
+add_subdirectory(third_party/json)
+target_link_libraries({{PROJECT_NAME}} PRIVATE nlohmann_json::nlohmann_json)
+```
+
+### 4. FetchContent（CMake 3.11+）
+
+使用CMake的FetchContent模块自动下载和构建第三方库。
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2
+)
+
+FetchContent_MakeAvailable(json)
+
+target_link_libraries({{PROJECT_NAME}} PRIVATE nlohmann_json::nlohmann_json)
+```
+
+## 常用第三方库集成示例
+
+### Boost
+
+```cmake
+# vcpkg方式
+find_package(Boost REQUIRED COMPONENTS filesystem system)
+target_link_libraries({{PROJECT_NAME}} PRIVATE Boost::filesystem Boost::system)
+
+# 相对路径方式
+set(BOOST_ROOT "${CMAKE_SOURCE_DIR}/third_party/boost")
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost REQUIRED COMPONENTS filesystem system)
+```
+
+### OpenCV
+
+```cmake
+# vcpkg方式
+find_package(OpenCV CONFIG REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE opencv_core opencv_imgproc)
+
+# 相对路径方式
+set(OpenCV_DIR "${CMAKE_SOURCE_DIR}/third_party/opencv")
+find_package(OpenCV REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE ${OpenCV_LIBS})
+```
+
+### JSON (nlohmann/json)
+
+```cmake
+# vcpkg方式
+find_package(nlohmann_json CONFIG REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE nlohmann_json::nlohmann_json)
+
+# header-only库直接包含
+include_directories("${CMAKE_SOURCE_DIR}/third_party/json/include")
+```
+
+### spdlog (日志库)
+
+```cmake
+# vcpkg方式
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries({{PROJECT_NAME}} PRIVATE spdlog::spdlog)
+
+# 相对路径方式
+set(spdlog_DIR "${CMAKE_SOURCE_DIR}/third_party/spdlog")
+find_package(spdlog REQUIRED)
+```
+
+## Qt Assistant 插件配置
+
+在使用Qt Assistant插件时，可以在配置中设置第三方库路径：
+
+```lua
+require('qt-assistant').setup({
+    third_party = {
+        -- 启用第三方库管理
+        enabled = true,
+        
+        -- 第三方库根目录（相对于项目根目录）
+        root_dir = "third_party",
+        
+        -- 库配置
+        libraries = {
+            boost = {
+                path = "third_party/boost",
+                include_dir = "include",
+                lib_dir = "lib"
+            },
+            opencv = {
+                path = "third_party/opencv",
+                include_dir = "include",
+                lib_dir = "lib"
+            }
+        }
+    }
+})
+```
+
+## 编译配置
+
+### Windows
+
+```cmake
+# MSVC配置
+if(MSVC)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/third_party/qt")
+    set(Boost_ROOT "${CMAKE_SOURCE_DIR}/third_party/boost")
+endif()
+```
+
+### Linux
+
+```cmake
+# Linux配置
+if(UNIX)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/third_party/qt")
+    set(CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/third_party/lib")
+endif()
+```
+
+## 部署注意事项
+
+### DLL/SO依赖
+
+确保运行时能找到第三方库的动态库：
+
+```cmake
+# Windows: 复制DLL到输出目录
+if(WIN32)
+    add_custom_command(TARGET {{PROJECT_NAME}} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${THIRD_PARTY_DIR}/lib"
+        $<TARGET_FILE_DIR:{{PROJECT_NAME}}>
+    )
+endif()
+
+# Linux: 设置RPATH
+if(UNIX)
+    set_target_properties({{PROJECT_NAME}} PROPERTIES
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
+endif()
+```
+
+## 故障排查
+
+### 常见问题
+
+1. **找不到库文件**
+   - 检查CMAKE_PREFIX_PATH设置
+   - 确认库文件路径正确
+   - 使用绝对路径测试
+
+2. **版本不兼容**
+   - 检查库版本要求
+   - 更新CMake最低版本
+   - 使用find_package的版本参数
+
+3. **链接错误**
+   - 检查库文件是否存在
+   - 确认debug/release配置匹配
+   - 查看详细的链接器输出
+
+### 调试方法
+
+```cmake
+# 启用详细输出
+set(CMAKE_FIND_DEBUG_MODE ON)
+find_package(SomeLib)
+set(CMAKE_FIND_DEBUG_MODE OFF)
+
+# 打印变量
+message(STATUS "Boost_FOUND: ${Boost_FOUND}")
+message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
+```
+
+## 最佳实践
+
+1. **使用vcpkg管理常用库**（推荐）
+2. **将第三方库放在独立目录中**
+3. **使用相对路径便于移植**
+4. **在README中记录依赖项**
+5. **提供依赖安装脚本**
+6. **使用版本锁定确保兼容性**
+
+## 参考资源
+
+- [vcpkg官方文档](https://vcpkg.io/)
+- [CMake FetchContent文档](https://cmake.org/cmake/help/latest/module/FetchContent.html)
+- [Qt官方文档](https://doc.qt.io/)
