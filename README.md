@@ -9,7 +9,7 @@ A streamlined Neovim plugin for Qt development that provides essential Qt projec
 - **Project Management**: Create and open Qt projects with standard structure
 - **UI Designer Integration**: Create, edit UI files and launch Qt Designer seamlessly
 - **Class Generation**: Generate C++ classes from UI files with proper uic integration
-- **Build System**: Support for both CMake and qmake build systems
+- **Build System**: CMake, qmake, and xmake (`xmake.lua`)
 - **Make Tool Selection**: qmake builds auto-pick `mingw32-make` / `nmake` / `make` based on platform (nmake runs without `-j`)
 - **Debugging**: Full nvim-dap integration for Qt application debugging
 - **Cross-Platform**: Works on Linux, macOS, and Windows
@@ -103,7 +103,7 @@ vcpkg install qt5-base qt5-tools
 
 - **Neovim**: 0.8+ (required)
 - **Qt**: 5.15+ or 6.x (required)
-- **Build Tools**: CMake 3.16+ (recommended) or qmake
+- **Build Tools**: CMake 3.16+ (recommended), qmake, or [xmake](https://xmake.io)
 - **Compiler**: GCC, Clang, or MSVC with C++11+ support
 
 ### Optional Dependencies
@@ -170,7 +170,7 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 
 | Command                             | Description                     | Example                                      |
 | ----------------------------------- | ------------------------------- | -------------------------------------------- |
-| `:QtNewProject <name> <type> [cxx_standard] [tests_or_gtest]` | Create new Qt project           | `:QtNewProject MyApp widget_app 17 gtest`             |
+| `:QtNewProject <name> <type> [cxx_standard] [tests\|gtest] [xmake]` | Create new Qt project | `:QtNewProject MyApp widget_app 17 gtest xmake` |
 | `:QtOpenProject [path]`             | Open existing Qt project        | `:QtOpenProject ~/MyProject`                 |
 | `:QtAddModule <name> <type> [tests_or_gtest]` | Add module to project            | `:QtAddModule core shared_lib gtest`               |
 | `:QtNewUi <filename>`               | Create new UI file              | `:QtNewUi mainwindow`                        |
@@ -178,8 +178,11 @@ echo 'export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"' >> ~/.zshrc
 | `:QtDesigner [file]`                | Open Qt Designer                | `:QtDesigner`                                |
 | `:QtCreateClass <name> <type>`      | Create Qt class                 | `:QtCreateClass MyWidget widget`             |
 | `:QtCreateClass <name> <type> <ui>` | Create class from UI            | `:QtCreateClass MainWin main_window main.ui` |
-| `:QtBuild`                          | Build project                   | `:QtBuild`                                   |
+| `:QtBuild`                          | Build project (CMake, qmake, or xmake) | `:QtBuild`                            |
 | `:QtRun`                            | Run project                     | `:QtRun`                                     |
+| `:QtClean`                          | Clean project                   | `:QtClean`                                   |
+| `:QtInstall [prefix]`               | Install (CMake or xmake)        | `:QtInstall /opt/myapp`                      |
+| `:QtScripts`                        | Project script manager          | `:QtScripts`                                 |
 | `:QtCMakePresets`                   | Generate CMakePresets.json      | `:QtCMakePresets`                            |
 | `:QtBuildPreset [preset]`           | Build with CMake preset         | `:QtBuildPreset debug`                       |
 | `:QtCMakeFormat`                    | Format CMakeLists.txt           | `:QtCMakeFormat`                             |
@@ -310,11 +313,56 @@ brew install lldb
 
 ### Debug Features
 
-- **Auto-detection**: Automatically detects build system (CMake/qmake) and executable
-- **Debug builds**: Automatically builds project in debug mode if needed
-- **Cross-platform**: Supports GDB (Linux), LLDB (macOS), and Visual Studio debugger (Windows)
-- **Qt-specific**: Includes Qt pretty-printing and environment setup
-- **Process attachment**: Can attach to already running Qt applications
+- **Auto-detection**: Detects the build system (CMake, qmake, or xmake) and the executable
+- **Debug builds**: Builds the Debug configuration when the executable is not there yet, then starts the session
+- **Adapters**: GDB 14+ DAP (Linux default), LLDB (`lldb-dap` / `lldb-vscode`), and CodeLLDB. On Windows, CodeLLDB is preferred, then the C/C++ `OpenDebugAD7` (`cppvsdbg`) adapter, then LLDB, then GDB
+- **cdb**: Detected on Windows. nvim-dap cannot drive the cdb console protocol; if cdb is the only debugger, `:QtDebug` opens it in a terminal
+- **Missing nvim-dap**: `:QtDebug`, `:QtDebugAttach`, `:QtDebugStatus`, and `:QtDebugSetup` report that `mfussenegger/nvim-dap` is required instead of failing on a missing module
+- **Qt pretty printing**: GDB sessions enable `-enable-pretty-printing`
+- **Process attachment**: Prompts for a pid and attaches when a DAP adapter is available
+
+`:QtDebugSetup` registers the adapter and, where those keys are free, `<F5>` / `<F10>` / `<F11>` / `<F12>` / `<leader>db`. Set `debug.keymaps = true` to install those keys during `setup()` as well.
+
+## xmake
+
+`:QtBuild`, `:QtRun`, `:QtClean`, and `:QtInstall` detect `xmake.lua` when the project has no `CMakeLists.txt` and no `*.pro`. Auto-detection order stays CMake, then qmake, then xmake, so an existing CMake or qmake project is unchanged. Force a system with:
+
+```lua
+require('qt-assistant').setup({
+    build_system = "auto", -- or "cmake", "qmake", "xmake"
+})
+```
+
+`:QtDoctor` prints the detected build system and the `xmake` executable path.
+
+Generate `xmake.lua` next to the CMake project (CMake remains the default build unless `build_system` is `"xmake"`):
+
+```vim
+:QtNewProject MyApp widget_app 17 xmake
+:QtNewProject MyApp console_app 20 tests xmake
+```
+
+```lua
+require('qt-assistant').setup({
+    project = { generate_xmake = true },
+})
+```
+
+The generated file uses xmake's Qt rules (`qt.widgetapp`, `qt.quickapp`, `qt.console`, `qt.static`, `qt.shared`). Build mode follows the usual Debug/Release request (`debug`, `release`, `releasedbg`, `minsizerel`).
+
+## Script manager
+
+`:QtScripts` opens the project script menu. Built-in actions call the plugin:
+
+| Name | Action |
+| --- | --- |
+| `build` | `:QtBuild` |
+| `clean` | `:QtClean` |
+| `run` | `:QtRun` |
+| `debug` | `:QtDebug` |
+| `test` | `ctest` for CMake, `xmake run <project>_tests` for xmake |
+
+`i` in that window creates `<project>/scripts/`. A file there whose name (without extension) matches a built-in replaces that built-in. The same window can run a script in a terminal or in the background, or edit it.
 
 ## Configuration
 
@@ -733,10 +781,20 @@ cd build && qmake CONFIG+=debug .. && make debug
 | **Project Management** | ✅ Core     | Qt tools            | `:QtNewProject`, `:QtOpenProject`      |
 | **UI Designer**        | ✅ Core     | Qt Designer         | `:QtNewUi`, `:QtEditUi`, `:QtDesigner` |
 | **Class Generation**   | ✅ Core     | uic tool            | `:QtCreateClass`                       |
-| **Build System**       | ✅ Core     | CMake/qmake         | `:QtBuild`, `:QtRun`                   |
+| **Build System**       | ✅ Core     | CMake, qmake, xmake | `:QtBuild`, `:QtRun`, `:QtClean`       |
 | **Debugging**          | ✅ Enhanced | nvim-dap + debugger | `:QtDebug`, `:QtDebugAttach`           |
 | **Quick Keymaps**      | ✅ Core     | None                | `<leader>q*` shortcuts                 |
 | **Cross-Platform**     | ✅ Core     | Platform Qt         | Linux, macOS, Windows                  |
+
+## Tests
+
+Headless checks live in `tests/run.lua`. They load every bundled module, resolve every `:Qt*` command to a real function, resolve keymap and UI callbacks, and cover CMake/qmake/xmake detection.
+
+```bash
+nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.lua')"
+```
+
+GitHub Actions runs the same command on Neovim stable (`.github/workflows/tests.yml`).
 
 ## License
 

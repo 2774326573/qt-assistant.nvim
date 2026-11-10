@@ -1,0 +1,22 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Neovim stable (headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim stable
+        run: |
+          curl -fsSL -o /tmp/nvim-linux-x86_64.tar.gz \
+            https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz
+          sudo tar -C /usr/local --strip-components=1 -xzf /tmp/nvim-linux-x86_64.tar.gz
+          nvim --version
+
+      - name: Run headless tests
+        run: nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.lua')"

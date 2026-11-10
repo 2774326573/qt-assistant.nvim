@@ -8,6 +8,61 @@ local function get_config()
     return require('qt-assistant.config').get()
 end
 
+-- 获取类类型信息。声明在使用它的界面函数之前，避免被当成全局查找。
+local function get_class_type_info(class_type)
+    local class_info = {
+        main_window = {
+            name = "Main Window",
+            description = "继承自QMainWindow的主窗口类",
+            base_class = "QMainWindow",
+            files = {"header", "source", "ui"}
+        },
+        dialog = {
+            name = "Dialog",
+            description = "继承自QDialog的对话框类",
+            base_class = "QDialog",
+            files = {"header", "source", "ui"}
+        },
+        widget = {
+            name = "Widget",
+            description = "继承自QWidget的自定义控件类",
+            base_class = "QWidget",
+            files = {"header", "source"}
+        },
+        model = {
+            name = "Data Model",
+            description = "继承自QAbstractItemModel的数据模型类",
+            base_class = "QAbstractItemModel",
+            files = {"header", "source"}
+        },
+        delegate = {
+            name = "Item Delegate",
+            description = "继承自QStyledItemDelegate的代理类",
+            base_class = "QStyledItemDelegate",
+            files = {"header", "source"}
+        },
+        thread = {
+            name = "Thread",
+            description = "继承自QThread的线程类",
+            base_class = "QThread",
+            files = {"header", "source"}
+        },
+        utility = {
+            name = "Utility",
+            description = "实用工具类",
+            base_class = "QObject",
+            files = {"header", "source"}
+        },
+        singleton = {
+            name = "Singleton",
+            description = "单例模式类",
+            base_class = "QObject",
+            files = {"header", "source"}
+        }
+    }
+    return class_info[class_type] or {}
+end
+
 -- 显示主界面
 function M.show_main_interface()
     local menu_items = {
@@ -247,61 +302,6 @@ function M.show_class_creator()
             silent = true
         })
     end
-end
-
--- 获取类类型信息的本地函数
-local function get_class_type_info(class_type)
-    local class_info = {
-        main_window = {
-            name = "Main Window",
-            description = "继承自QMainWindow的主窗口类",
-            base_class = "QMainWindow",
-            files = {"header", "source", "ui"}
-        },
-        dialog = {
-            name = "Dialog",
-            description = "继承自QDialog的对话框类",
-            base_class = "QDialog", 
-            files = {"header", "source", "ui"}
-        },
-        widget = {
-            name = "Widget",
-            description = "继承自QWidget的自定义控件类",
-            base_class = "QWidget",
-            files = {"header", "source"}
-        },
-        model = {
-            name = "Data Model",
-            description = "继承自QAbstractItemModel的数据模型类",
-            base_class = "QAbstractItemModel",
-            files = {"header", "source"}
-        },
-        delegate = {
-            name = "Item Delegate", 
-            description = "继承自QStyledItemDelegate的代理类",
-            base_class = "QStyledItemDelegate",
-            files = {"header", "source"}
-        },
-        thread = {
-            name = "Thread",
-            description = "继承自QThread的线程类",
-            base_class = "QThread",
-            files = {"header", "source"}
-        },
-        utility = {
-            name = "Utility",
-            description = "实用工具类",
-            base_class = "QObject",
-            files = {"header", "source"}
-        },
-        singleton = {
-            name = "Singleton",
-            description = "单例模式类",
-            base_class = "QObject",
-            files = {"header", "source"}
-        }
-    }
-    return class_info[class_type] or {}
 end
 
 -- 显示类名输入界面
@@ -910,6 +910,10 @@ end
 
 -- 显示插件帮助信息
 function M.show_info_window(info_lines)
+    if #vim.api.nvim_list_uis() == 0 then
+        vim.notify(table.concat(info_lines or {}, '\n'), vim.log.levels.INFO)
+        return
+    end
     local buf = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, info_lines)
     
@@ -946,23 +950,21 @@ function M.show_help()
         "",
         "Commands:",
         "  :QtCreateClass <name> <type>  - Create Qt class",
-        "  :QtCreateUI <name> <type>     - Create UI file", 
-        "  :QtCreateModel <name>         - Create data model",
+        "  :QtNewUi <name>               - Create UI file",
         "  :QtAssistant                  - Interactive interface",
-        "  :QtScript <name>              - Run project script",
+        "  :QtScripts                    - Project script manager",
         "",
         "Project Management:",
         "  :QtOpenProject [path]         - Open Qt project",
         "  :QtNewProject <name> <type>   - Create new project",
-        "  :QtBuildProject [type]        - Build project",
-        "  :QtRunProject                 - Run project",
-        "  :QtCleanProject               - Clean project",
+        "  :QtBuild                      - Build project (CMake, qmake, or xmake)",
+        "  :QtRun                        - Run project",
+        "  :QtClean                      - Clean project",
         "",
         "UI Designer:",
-        "  :QtOpenDesigner [file]        - Open Qt Designer",
-        "  :QtOpenDesignerCurrent        - Open Designer with current file",
-        "  :QtPreviewUI [file]           - Preview UI file",
-        "  :QtSyncUI [file]              - Sync UI file",
+        "  :QtDesigner [file]            - Open Qt Designer",
+        "  :QtEditUi [file]              - Edit an existing UI file",
+        "  Designer manager: d/p/s       - Open current, preview, or sync UI",
         "",
         "Supported Class Types:",
         "  main_window  - Main window class",

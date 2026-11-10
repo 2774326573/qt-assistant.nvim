@@ -298,6 +298,36 @@ require('qt-assistant').setup({
 :QtBuild
 ```
 
+## 调试、脚本与 xmake
+
+### 调试模块
+
+`:QtDebug`、`:QtDebugAttach`、`:QtDebugStatus`、`:QtDebugSetup` 由 `qt-assistant.debug` 实现。已安装 [nvim-dap](https://github.com/mfussenegger/nvim-dap) 时会注册 GDB（14+ DAP）、LLDB（`lldb-dap` / `lldb-vscode`）或 CodeLLDB。Windows 上优先 CodeLLDB，其次 C/C++ 的 `OpenDebugAD7`（`cppvsdbg`）。只找到 `cdb` 时，`:QtDebug` 在终端里启动 cdb。未安装 nvim-dap 时命令会给出明确错误，而不是因为模块缺失而崩溃。
+
+### 脚本管理器
+
+`:QtScripts` 打开脚本菜单。内置 `build` / `clean` / `run` / `debug` / `test` 分别调用插件的构建、清理、运行、调试和测试。在工程的 `scripts/` 目录放同名文件即可覆盖内置动作。
+
+### xmake
+
+没有 `CMakeLists.txt` 和 `*.pro`、但有 `xmake.lua` 时，`:QtBuild`、`:QtRun`、`:QtClean`、`:QtInstall` 走 xmake。自动检测顺序仍是 CMake、qmake、xmake。`:QtDoctor` 会报告检测到的构建系统和 `xmake` 是否在 PATH 中。
+
+创建工程时可选生成 `xmake.lua`（默认仍生成 CMake 工程）：
+
+```vim
+:QtNewProject MyApp widget_app 17 xmake
+```
+
+或在配置里设置 `project.generate_xmake = true`。需要让已有 CMake 工程改用 xmake 时，设置 `build_system = "xmake"`。
+
+### 测试
+
+```bash
+nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.lua')"
+```
+
+GitHub Actions（`.github/workflows/tests.yml`）在 Neovim stable 上无界面运行同一套测试。
+
 ## 更多信息
 
 详细使用指南请参考：

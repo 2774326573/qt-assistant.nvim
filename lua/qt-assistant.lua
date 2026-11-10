@@ -424,11 +424,14 @@ function M.create_class_from_ui(ui_file, class_name)
 	local designer = require("qt-assistant.designer")
 	
 	-- Find UI file
-	local project_root = M._config.project_root
+	local project_root = M.get_config().project_root
 	local system = require('qt-assistant.system')
 	
 	local ui_file_path = nil
-	if ui_file:match("^/") then
+	local is_direct = ui_file:match("^%a:[/\\]")
+		or ui_file:match("^[/\\]")
+		or vim.fn.filereadable(ui_file) == 1
+	if is_direct then
 		ui_file_path = ui_file
 	else
 		local possible_paths = {
@@ -479,7 +482,7 @@ function M.create_class_from_ui(ui_file, class_name)
 		vim.notify(string.format("Successfully created %s class from UI file: %s", class_type, class_name), vim.log.levels.INFO)
 		
 		-- Update CMakeLists.txt if enabled
-		if M._config.auto_update_cmake then
+		if M.get_config().auto_update_cmake then
 			local cmake = require("qt-assistant.cmake")
 			cmake.add_ui_file(ui_file_path)
 		end
@@ -488,6 +491,14 @@ function M.create_class_from_ui(ui_file, class_name)
 	end
 	
 	return success
+end
+
+-- Context keymap for .ui buffers. Accepts an absolute path from the current buffer.
+function M.create_class_from_ui_file(ui_file)
+	if not ui_file or ui_file == "" then
+		return M.create_class_from_current_ui()
+	end
+	return M.create_class_from_ui(ui_file)
 end
 
 -- Build Management
@@ -509,6 +520,11 @@ end
 function M.package_project()
 	local build_manager = require("qt-assistant.build_manager")
 	build_manager.package_project()
+end
+
+function M.clean_project()
+	local build_manager = require("qt-assistant.build_manager")
+	build_manager.clean_project()
 end
 
 -- Debug Management
@@ -595,7 +611,7 @@ function M.compile_ui_file(ui_file_path)
 	end
 	
 	-- Determine output path
-	local project_root = M._config.project_root
+	local project_root = M.get_config().project_root
 	local ui_filename = vim.fn.fnamemodify(ui_file_path, ":t:r")
 	local output_file = system.join_path(project_root, "include", "ui_" .. ui_filename .. ".h")
 	
@@ -699,11 +715,13 @@ function M.show_help()
 		"  :QtCreateClass <name> <type> - Create Qt class",
 		"  :QtCreateClass <name> <type> <ui> - Create class from UI file",
 		"",
-		"Build System:",
+		"Build System (CMake, qmake, or xmake):",
 		"  :QtBuild                     - Build project",
 		"  :QtRun                       - Run project",
-		"  :QtInstall [prefix]           - Install (CMake only)",
-		"  :QtPackage                    - Package ZIP (CMake: CPack, qmake: zip build dir)",
+		"  :QtClean                     - Clean project",
+		"  :QtInstall [prefix]           - Install (CMake or xmake)",
+		"  :QtPackage                    - Package (CMake: CPack, qmake: zip build dir)",
+		"  :QtScripts                    - Project script manager",
 		"",
 		"CMake Management:",
 		"  :QtCMakePresets              - Generate CMakePresets.json",
@@ -859,24 +877,11 @@ function M.show_current_config()
 		table.insert(lines, "Run build command to configure project")
 	end
 	
+	local build_manager = require("qt-assistant.build_manager")
+	table.insert(lines, "Build system: " .. (build_manager.detect_build_system() or "none"))
 	table.insert(lines, "")
 	table.insert(lines, "Project Root: " .. vim.fn.getcwd())
-	
-	local height = #lines + 2
-	local win = vim.api.nvim_open_win(buf, true, {
-		relative = 'editor',
-		width = width,
-		height = height,
-		col = (vim.o.columns - width) / 2,
-		row = (vim.o.lines - height) / 2,
-		style = 'minimal',
-		border = 'rounded',
-		title = " Qt Configuration "
-	})
-	
-	-- Close on any key
-	vim.keymap.set('n', '<Esc>', '<cmd>close<cr>', {buffer = buf})
-	vim.keymap.set('n', 'q', '<cmd>close<cr>', {buffer = buf})
+	require("qt-assistant.ui").show_info_window(lines)
 end
 
 -- Select C++ standard interactively
