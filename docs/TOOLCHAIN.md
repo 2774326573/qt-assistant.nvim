@@ -1,35 +1,40 @@
-# Qt 工具链：探测 · 广播 · 宿主选择
+# Qt toolchain: discovery · broadcast · host selection
 
-> 插件会在启动时**自动探测**本机 Qt 工具链并广播结果；宿主（你）通过命令自主选择使用哪一套，选择会被持久化，下次启动自动沿用。
+> **English** | [简体中文](TOOLCHAIN.zh-CN.md)
 
-## 快速使用
+> On startup the plugin **auto-discovers** local Qt toolchains and broadcasts the result.
+> The host (you) picks which one to use via a command; the choice persists and is re-applied
+> on every start.
+
+## Quick usage
 
 ```vim
-:QtSelectKit     " 弹出工具链选择器 (vim.ui.select, LazyVim 下由 snacks 接管)
-:QtKitList       " 以通知列出全部探测结果
-:QtDoctor        " 打印构建系统/Qt 工具/vcpkg/调试器诊断
+:QtSelectKit     " toolchain picker (vim.ui.select; snacks UI in LazyVim)
+:QtKitList       " list all discovered toolchains as a notification
+:QtDoctor        " build system / Qt tools / vcpkg / debugger diagnostics
 ```
 
-自动广播通知形如：
+The auto-broadcast notification looks like:
 
 ```
-Qt助手 自动广播: 发现 1 个 Qt 工具链 (当前配置的工具链完好)。
-当前生效: bin  @  E:/install/Qt5.12/5.12.12/msvc2017_64/bin
-用 :QtSelectKit 选择, :QtKitList 列详情。
+QtAssistant broadcast: found 1 Qt toolchain (current config is healthy).
+Active: bin  @  E:/install/Qt5.12/5.12.12/msvc2017_64/bin
+Use :QtSelectKit to choose, :QtKitList for details.
 ```
 
-## 探测逻辑 (`core/toolchain.lua`)
+## Discovery logic (`core/toolchain.lua`)
 
-- 扫描根目录（可在配置中增删），按限定深度寻找**含 `qmake` 或 `uic` 的 bin 目录**；
-- 对每个 kit 记录：bin 路径、kit 名、可用工具表（qmake/uic/designer/moc/rcc/windeployqt）；
-- 探测是纯只读操作，不会写你的 Qt 安装目录。
+- Scans the configured roots (limited depth) for **bin directories containing `qmake` or `uic`**;
+- Records per kit: bin path, kit name and an availability table
+  (qmake/uic/designer/moc/rcc/windeployqt);
+- Discovery is strictly read-only — it never writes into your Qt installation.
 
-默认探测根：
+Default roots:
 
 ```lua
 qt_discovery = {
-    enabled = true,        -- false: 关闭探测/广播/命令
-    auto_broadcast = true, -- 即使工具链完好也广播一次 (仅通知, 不打断输入)
+    enabled = true,        -- false: disable discovery/broadcast/commands
+    auto_broadcast = true, -- broadcast once even when healthy (notify only, non-blocking)
     roots = {
         'C:/Qt', 'D:/Qt', 'E:/Qt', 'E:/Dev/Qt', 'C:/Program Files/Qt',
         'C:/install', 'D:/install', 'E:/install',
@@ -37,22 +42,23 @@ qt_discovery = {
 },
 ```
 
-## 选择与持久化
+## Selection & persistence
 
-- `:QtSelectKit` 选择后立即应用（写入运行中的 `qt_tools.*`）并把 `{ bin, kit }` 存入
-  `stdpath('data')/qt-assistant/selected_kit.json`；
-- 下次启动：**仅当显式配置的工具链不可用时**才会自动沿用上次选择（并通知）；
-- 显式 `qt_tools` 配置永远优先于自动选择——两者冲突时以你写的为准。
+- `:QtSelectKit` applies immediately (updates the running `qt_tools.*`) and stores
+  `{ bin, kit }` into `stdpath('data')/qt-assistant/selected_kit.json`;
+- On the next start the saved choice is **only re-applied when the explicitly configured
+  toolchain is unavailable** (with a notification);
+- Explicit `qt_tools` always beats auto-selection — if both exist, yours wins.
 
-优先级（高 → 低）：
+Priority (high → low):
 
-1. `setup()` 中显式给出的 `qt_tools.*`（有效时）
-2. 上次 `:QtSelectKit` 的持久化选择（显式配置失效时自动沿用）
-3. 内置 PATH/常见路径探测
+1. Explicit `qt_tools.*` from `setup()` (when valid)
+2. Persisted `:QtSelectKit` choice (auto re-applied when explicit config fails)
+3. Built-in PATH / common-path probing
 
-## 设计动机
+## Design motivation
 
-- Qt 在 Windows 上可能同时存在多套安装（官方安装器多版本、vcpkg、绿解包），
-  硬编码路径容易过期；
-- "助手广播、宿主自选"：插件只负责发现与呈现，**配置决定权始终在宿主手里**，
-  每台机器/每个项目都可不同。
+- On Windows several Qt installations often coexist (multi-version installers, vcpkg,
+  portable archives) and hardcoded paths rot quickly;
+- "Assistant broadcasts, host decides": the plugin only discovers and presents —
+  **configuration authority always stays with the host**, and can differ per machine/project.

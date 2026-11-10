@@ -1,7 +1,11 @@
 <h1 align="center">Qt Assistant for Neovim</h1>
 
 <p align="center">
-  <b>在 Neovim 里完成 Qt C++ 开发闭环 —— 工程管理 · UI Designer · 类生成 · 构建 · 调试</b>
+  <b>Complete Qt C++ development loop inside Neovim — project management · UI Designer · class generation · build · debug</b>
+</p>
+
+<p align="center">
+  **English** | [简体中文](README.zh-CN.md)
 </p>
 
 <p align="center">
@@ -14,92 +18,94 @@
 
 ---
 
-## ✨ 特性速览
+## ✨ Features
 
-| 功能 | 说明 | 入口 |
+| Feature | Description | Entry |
 | --- | --- | --- |
-| 🗂 工程管理 | 标准结构创建/打开 Qt 工程，支持多模块工作区 | `:QtNewProject` |
-| 🎨 UI Designer | 创建/编辑 `.ui` 并一键唤起 Qt Designer | `:QtDesigner` |
-| ⚙️ 类生成 | 基于 `uic` 从 `.ui` 生成配套 C++ 类 | `:QtCreateClass` |
-| 🔨 构建系统 | CMake / qmake / xmake 自动探测，CMake Presets | `:QtBuild` |
-| 🐞 调试 | nvim-dap 集成，自动定位可执行文件 | `:QtDebug` |
-| 🔌 工具链管理 | 自动探测本机 Qt 工具链，宿主自主选择并持久化 | `:QtSelectKit` |
-| 📝 模板自定义 | 模板数据目录化 + 宿主覆盖接口 | [docs/TEMPLATES.md](docs/TEMPLATES.md) |
+| 🗂 Project management | Create/open Qt projects with standard structure, multi-module workspaces | `:QtNewProject` |
+| 🎨 UI Designer | Create/edit `.ui` files and launch Qt Designer in one key | `:QtDesigner` |
+| ⚙️ Class generation | Generate paired C++ classes from `.ui` files via `uic` | `:QtCreateClass` |
+| 🔨 Build system | Auto-detects CMake / qmake / xmake, CMake Presets support | `:QtBuild` |
+| 🐞 Debugging | nvim-dap integration, auto-locates the executable | `:QtDebug` |
+| 🔌 Toolchain manager | Auto-discovers local Qt toolchains; the host picks and it persists | `:QtSelectKit` |
+| 📝 Custom templates | Template data lives in plain files + host override API | [docs/TEMPLATES.md](docs/TEMPLATES.md) |
 
-## 📦 安装
+## 📦 Installation
 
-> 仓库全名是 `qt-assistant.nvim`（lazy.nvim 自动识别 `.nvim` 后缀）。
+> The repo name is `qt-assistant.nvim` (lazy.nvim recognizes the `.nvim` suffix).
 
 [folke/lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
     "2774326573/qt-assistant.nvim",
-    cmd = { "QtAssistant", "QtNewProject", "QtDesigner", "QtBuild", "QtRun" }, -- 按需加载
+    cmd = { "QtAssistant", "QtNewProject", "QtDesigner", "QtBuild", "QtRun" }, -- lazy-load
     config = function()
         require('qt-assistant').setup({
-            enable_default_keymaps = true,  -- <leader>q* 快捷键
-            build_system = "auto",          -- CMake -> qmake -> xmake 自动探测
+            enable_default_keymaps = true,  -- <leader>q* keymaps
+            build_system = "auto",          -- CMake -> qmake -> xmake auto-detection
         })
     end
 }
 ```
 
-[wbomason/packer.nvim](https://github.com/wbthomason/packer.nvim):
+[wbthomason/packer.nvim](https://github.com/wbthomason/packer.nvim):
 
 ```lua
 use { '2774326573/qt-assistant.nvim', config = function() require('qt-assistant').setup() end }
 ```
 
-## 🚀 30 秒上手
+## 🚀 30-second quick start
 
 ```vim
-:QtNewProject MyApp widget_app    " 创建工程
-:QtNewUi mainwindow               " 新建 UI 并唤起 Designer
-:QtCreateClass MainWin main_window mainwindow.ui   " 从 .ui 生成类
-:QtBuild                          " 构建
-:QtRun                            " 运行
+:QtNewProject MyApp widget_app    " create a project
+:QtNewUi mainwindow               " new UI file, opens Designer
+:QtCreateClass MainWin main_window mainwindow.ui   " generate class from .ui
+:QtBuild                          " build
+:QtRun                            " run
 ```
 
-快捷键（Leader + q）：`qa` 主界面 · `qp/qo` 工程 · `qu/qe/qd` UI · `qb/qr` 构建/运行。
+Keymaps (Leader + q): `qa` main UI · `qp/qo` project · `qu/qe/qd` UI · `qb/qr` build/run.
 
-## 📚 文档
+## 📚 Documentation
 
-| 文档 | 内容 |
+| Document | Content |
 | --- | --- |
-| [docs/USAGE.md](docs/USAGE.md) | 全部命令、Keymaps、工作流、调试、xmake、vcpkg、CMake Presets、故障排查 |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 分层架构与模块地图（app / core / ui / templates） |
-| [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) | Qt 工具链自动探测、广播、宿主选择与持久化 |
-| [docs/TEMPLATES.md](docs/TEMPLATES.md) | 模板目录、占位符语法、宿主自定义接口 |
-| [docs/NEW_FEATURES.md](docs/NEW_FEATURES.md) | 特性迭代记录 |
+| [docs/USAGE.md](docs/USAGE.md) | Full command table, keymaps, workflows, debugging, xmake, vcpkg, CMake Presets, troubleshooting |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layered architecture & module map (app / core / ui / templates) |
+| [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) | Qt toolchain discovery, broadcast, host selection & persistence |
+| [docs/TEMPLATES.md](docs/TEMPLATES.md) | Template directory, placeholder syntax, host customization API |
+| [docs/NEW_FEATURES.md](docs/NEW_FEATURES.md) | Feature iteration log |
 
-## 🔧 最小配置参考
+> 简体中文文档：每个专题都有 `docs/*.zh-CN.md` 版本，README 中文版见 [README.zh-CN.md](README.zh-CN.md)。
+
+## 🔧 Minimal configuration
 
 ```lua
 require('qt-assistant').setup({
     build_system = "auto",                    -- "cmake" | "qmake" | "xmake" | "auto"
 
-    qt_tools = {                              -- 不填则自动探测; 显式路径优先
+    qt_tools = {                              -- omit for auto-detection; explicit paths win
         -- designer_path = "E:/install/Qt5.12/5.12.12/msvc2017_64/bin/designer.exe",
         -- uic_path = "...",
         -- qmake_path = "...",
     },
 
-    qt_discovery = {                          -- 工具链自动广播 (详见 docs/TOOLCHAIN.md)
+    qt_discovery = {                          -- toolchain auto-broadcast (see docs/TOOLCHAIN.md)
         enabled = true,
         auto_broadcast = true,
     },
 
-    templates = {                             -- 模板宿主自定义 (详见 docs/TEMPLATES.md)
-        custom_dir = nil,                     -- 宿主模板目录 (覆盖同名内置)
-        override = {},                        -- 单模板文件级覆盖
+    templates = {                             -- host template overrides (see docs/TEMPLATES.md)
+        custom_dir = nil,                     -- host template dir (overrides same-name built-ins)
+        override = {},                        -- per-template file override
     },
 
-    vcpkg = { enabled = false },              -- vcpkg 支持
+    vcpkg = { enabled = false },              -- vcpkg support
 })
 ```
 
-## 🧪 测试
+## 🧪 Tests
 
 ```bash
 nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.lua')"
