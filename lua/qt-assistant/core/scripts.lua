@@ -38,7 +38,7 @@ local BUILTINS = {
 }
 
 local function project_root()
-    return require('qt-assistant.config').get().project_root
+    return require('qt-assistant.core.config').get().project_root
 end
 
 function M.scripts_directory()
@@ -132,7 +132,7 @@ function M.show_script_status()
 end
 
 function M.init_scripts_directory()
-    local file_manager = require('qt-assistant.file_manager')
+    local file_manager = require('qt-assistant.core.file_manager')
     local dir = M.scripts_directory()
     local ok, err = file_manager.ensure_directory_exists(dir)
     if not ok then
@@ -188,7 +188,7 @@ local function run_in_background(argv, cwd)
 end
 
 function M.test_argv(build_system, root, project_name)
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     if build_system == 'cmake' then
         local ctest = system.find_executable('ctest') or 'ctest'
         return { ctest, '--test-dir', root .. '/build', '--output-on-failure' }
@@ -201,19 +201,19 @@ end
 
 local function run_builtin(name, opts)
     if name == 'build' then
-        require('qt-assistant.build_manager').build_project()
+        require('qt-assistant.core.build_manager').build_project()
         return true
     elseif name == 'clean' then
-        require('qt-assistant.build_manager').clean_project()
+        require('qt-assistant.core.build_manager').clean_project()
         return true
     elseif name == 'run' then
-        require('qt-assistant.build_manager').run_project()
+        require('qt-assistant.core.build_manager').run_project()
         return true
     elseif name == 'debug' then
-        require('qt-assistant.debug').debug_application()
+        require('qt-assistant.core.debug').debug_application()
         return true
     elseif name == 'test' then
-        local build_manager = require('qt-assistant.build_manager')
+        local build_manager = require('qt-assistant.core.build_manager')
         local root = project_root()
         local build_system = build_manager.detect_build_system(root)
         local project_name = vim.fn.fnamemodify(root, ':t')
@@ -233,7 +233,7 @@ local function run_builtin(name, opts)
 end
 
 local function command_for_script(path)
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     if path:match('%.ps1$') then
         local pwsh = system.find_executable('pwsh') or system.find_executable('powershell') or 'powershell'
         return { pwsh, '-File', path }

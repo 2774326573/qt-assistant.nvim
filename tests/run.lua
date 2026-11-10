@@ -38,19 +38,19 @@ end
 
 local REQUIRED_MODULES = {
     'qt-assistant',
-    'qt-assistant.build_manager',
-    'qt-assistant.cmake',
-    'qt-assistant.config',
-    'qt-assistant.core',
-    'qt-assistant.debug',
-    'qt-assistant.designer',
-    'qt-assistant.file_manager',
-    'qt-assistant.history',
-    'qt-assistant.lsp',
-    'qt-assistant.project_manager',
-    'qt-assistant.scripts',
-    'qt-assistant.system',
-    'qt-assistant.templates',
+    'qt-assistant.core.build_manager',
+    'qt-assistant.core.cmake',
+    'qt-assistant.core.config',
+    'qt-assistant.core.class',
+    'qt-assistant.core.debug',
+    'qt-assistant.core.designer',
+    'qt-assistant.core.file_manager',
+    'qt-assistant.core.history',
+    'qt-assistant.core.lsp',
+    'qt-assistant.core.project_manager',
+    'qt-assistant.core.scripts',
+    'qt-assistant.core.system',
+    'qt-assistant.core.templates',
     'qt-assistant.ui',
 }
 
@@ -58,18 +58,18 @@ local REQUIRED_MODULES = {
 local COMMAND_TARGETS = {
     QtAssistant = { { 'qt-assistant', 'show_main_interface' } },
     QtNewProject = {
-        { 'qt-assistant.project_manager', 'new_project' },
-        { 'qt-assistant.project_manager', 'new_project_interactive' },
-        { 'qt-assistant.project_manager', 'new_project_interactive_preset' },
+        { 'qt-assistant.core.project_manager', 'new_project' },
+        { 'qt-assistant.core.project_manager', 'new_project_interactive' },
+        { 'qt-assistant.core.project_manager', 'new_project_interactive_preset' },
     },
     QtOpenProject = {
         { 'qt-assistant', 'open_project' },
         { 'qt-assistant', 'open_project_interactive' },
     },
     QtAddModule = {
-        { 'qt-assistant.project_manager', 'add_module' },
-        { 'qt-assistant.project_manager', 'add_module_interactive' },
-        { 'qt-assistant.project_manager', 'get_available_module_types' },
+        { 'qt-assistant.core.project_manager', 'add_module' },
+        { 'qt-assistant.core.project_manager', 'add_module_interactive' },
+        { 'qt-assistant.core.project_manager', 'get_available_module_types' },
     },
     QtNewUi = {
         { 'qt-assistant', 'create_new_ui' },
@@ -77,7 +77,7 @@ local COMMAND_TARGETS = {
     },
     QtEditUi = {
         { 'qt-assistant', 'edit_ui_file' },
-        { 'qt-assistant.designer', 'select_ui_file_to_open' },
+        { 'qt-assistant.core.designer', 'select_ui_file_to_open' },
     },
     QtDesigner = { { 'qt-assistant', 'open_designer' } },
     QtCreateClass = {
@@ -85,29 +85,29 @@ local COMMAND_TARGETS = {
         { 'qt-assistant', 'create_class_from_ui' },
         { 'qt-assistant', 'create_class_interactive' },
     },
-    QtBuild = { { 'qt-assistant', 'build_project' }, { 'qt-assistant.build_manager', 'build_project' } },
-    QtRun = { { 'qt-assistant', 'run_project' }, { 'qt-assistant.build_manager', 'run_project' } },
-    QtClean = { { 'qt-assistant', 'clean_project' }, { 'qt-assistant.build_manager', 'clean_project' } },
-    QtInstall = { { 'qt-assistant', 'install_project' }, { 'qt-assistant.build_manager', 'install_project' } },
-    QtPackage = { { 'qt-assistant', 'package_project' }, { 'qt-assistant.build_manager', 'package_project' } },
-    QtCMakePresets = { { 'qt-assistant.cmake', 'generate_cmake_presets' } },
+    QtBuild = { { 'qt-assistant', 'build_project' }, { 'qt-assistant.core.build_manager', 'build_project' } },
+    QtRun = { { 'qt-assistant', 'run_project' }, { 'qt-assistant.core.build_manager', 'run_project' } },
+    QtClean = { { 'qt-assistant', 'clean_project' }, { 'qt-assistant.core.build_manager', 'clean_project' } },
+    QtInstall = { { 'qt-assistant', 'install_project' }, { 'qt-assistant.core.build_manager', 'install_project' } },
+    QtPackage = { { 'qt-assistant', 'package_project' }, { 'qt-assistant.core.build_manager', 'package_project' } },
+    QtCMakePresets = { { 'qt-assistant.core.cmake', 'generate_cmake_presets' } },
     QtBuildPreset = {
-        { 'qt-assistant.cmake', 'build_with_preset' },
-        { 'qt-assistant.cmake', 'get_available_presets' },
+        { 'qt-assistant.core.cmake', 'build_with_preset' },
+        { 'qt-assistant.core.cmake', 'get_available_presets' },
     },
-    QtCMakeFormat = { { 'qt-assistant.cmake', 'format_cmake_file' } },
-    QtCMakeBackup = { { 'qt-assistant.cmake', 'backup_cmake_file' } },
-    QtDebug = { { 'qt-assistant', 'debug_application' }, { 'qt-assistant.debug', 'debug_application' } },
-    QtDebugAttach = { { 'qt-assistant', 'attach_to_process' }, { 'qt-assistant.debug', 'attach_to_process' } },
-    QtDebugStatus = { { 'qt-assistant', 'show_debug_status' }, { 'qt-assistant.debug', 'show_debug_status' } },
-    QtDebugSetup = { { 'qt-assistant.debug', 'setup_debugging' }, { 'qt-assistant.debug', 'init' } },
+    QtCMakeFormat = { { 'qt-assistant.core.cmake', 'format_cmake_file' } },
+    QtCMakeBackup = { { 'qt-assistant.core.cmake', 'backup_cmake_file' } },
+    QtDebug = { { 'qt-assistant', 'debug_application' }, { 'qt-assistant.core.debug', 'debug_application' } },
+    QtDebugAttach = { { 'qt-assistant', 'attach_to_process' }, { 'qt-assistant.core.debug', 'attach_to_process' } },
+    QtDebugStatus = { { 'qt-assistant', 'show_debug_status' }, { 'qt-assistant.core.debug', 'show_debug_status' } },
+    QtDebugSetup = { { 'qt-assistant.core.debug', 'setup_debugging' }, { 'qt-assistant.core.debug', 'init' } },
     QtScripts = {
         { 'qt-assistant.ui', 'show_script_manager' },
-        { 'qt-assistant.scripts', 'get_available_scripts' },
-        { 'qt-assistant.scripts', 'run_script' },
-        { 'qt-assistant.scripts', 'edit_script' },
-        { 'qt-assistant.scripts', 'init_scripts_directory' },
-        { 'qt-assistant.scripts', 'show_script_status' },
+        { 'qt-assistant.core.scripts', 'get_available_scripts' },
+        { 'qt-assistant.core.scripts', 'run_script' },
+        { 'qt-assistant.core.scripts', 'edit_script' },
+        { 'qt-assistant.core.scripts', 'init_scripts_directory' },
+        { 'qt-assistant.core.scripts', 'show_script_status' },
     },
     QtHelp = { { 'qt-assistant', 'show_help' } },
     QtGenerateDoc = { { 'qt-assistant', 'generate_documentation' } },
@@ -115,10 +115,10 @@ local COMMAND_TARGETS = {
     QtCreateThirdPartyCMake = { { 'qt-assistant', 'create_third_party_cmake' } },
     QtThirdPartyDoc = { { 'qt-assistant', 'generate_third_party_doc' } },
     QtDoctor = {
-        { 'qt-assistant.system', 'get_os' },
-        { 'qt-assistant.system', 'find_executable' },
-        { 'qt-assistant.config', 'get_vcpkg_toolchain_file' },
-        { 'qt-assistant.build_manager', 'detect_build_system' },
+        { 'qt-assistant.core.system', 'get_os' },
+        { 'qt-assistant.core.system', 'find_executable' },
+        { 'qt-assistant.core.config', 'get_vcpkg_toolchain_file' },
+        { 'qt-assistant.core.build_manager', 'detect_build_system' },
     },
 }
 
@@ -237,7 +237,7 @@ check('required modules exist', function()
 end)
 
 check('debug API is present', function()
-    local debug_mod = require('qt-assistant.debug')
+    local debug_mod = require('qt-assistant.core.debug')
     for _, fn_name in ipairs({ 'init', 'setup_debugging', 'debug_application', 'attach_to_process', 'show_debug_status', 'inspect_toolchain', 'launch_config' }) do
         eq(type(debug_mod[fn_name]), 'function', fn_name)
     end
@@ -246,7 +246,7 @@ check('debug API is present', function()
 end)
 
 check('debugger preference prefers codelldb then gdb on Windows', function()
-    local debug_mod = require('qt-assistant.debug')
+    local debug_mod = require('qt-assistant.core.debug')
     local report = debug_mod.inspect_toolchain('windows', function(name)
         if name == 'cdb' then
             return 'C:/cdb.exe'
@@ -273,7 +273,7 @@ check('debugger preference prefers codelldb then gdb on Windows', function()
 end)
 
 check('linux prefers gdb over codelldb', function()
-    local debug_mod = require('qt-assistant.debug')
+    local debug_mod = require('qt-assistant.core.debug')
     local report = debug_mod.inspect_toolchain('linux', function(name)
         if name == 'gdb' or name == 'codelldb' then
             return '/usr/bin/' .. name
@@ -315,7 +315,7 @@ end)
 check('command, keymap, and UI callbacks resolve', function()
     resolve_calls(read_source('plugin/qt-assistant.lua'), 'plugin')
     resolve_calls(read_source('lua/qt-assistant.lua'), 'qt-assistant')
-    resolve_calls(read_source('lua/qt-assistant/ui.lua'), 'ui')
+    resolve_calls(read_source('lua/qt-assistant/ui/init.lua'), 'ui')
 
     local qa = require('qt-assistant')
     local source = read_source('lua/qt-assistant.lua')
@@ -333,15 +333,15 @@ check('command, keymap, and UI callbacks resolve', function()
     end
 
     local ui = require('qt-assistant.ui')
-    local ui_source = read_source('lua/qt-assistant/ui.lua')
+    local ui_source = read_source('lua/qt-assistant/ui/init.lua')
     for fn_name in ui_source:gmatch('M%.([%w_]+)%s*%(') do
         eq(type(ui[fn_name]), 'function', 'ui callback missing qt-assistant.ui.' .. fn_name)
     end
 end)
 
 check('build system detection prefers cmake, then qmake, then xmake', function()
-    local config = require('qt-assistant.config')
-    local build_manager = require('qt-assistant.build_manager')
+    local config = require('qt-assistant.core.config')
+    local build_manager = require('qt-assistant.core.build_manager')
     local base = temp_dir('detect')
 
     local function detect(dir, preference)
@@ -379,14 +379,14 @@ check('build system detection prefers cmake, then qmake, then xmake', function()
     eq(detect(both, 'qmake'), 'qmake')
     eq(detect(cmake_dir, 'xmake'), 'cmake', 'missing xmake.lua falls back to the file that exists')
 
-    local project_manager = require('qt-assistant.project_manager')
+    local project_manager = require('qt-assistant.core.project_manager')
     eq(project_manager.detect_project_type(xmake_dir), 'xmake')
     eq(project_manager.detect_project_type(cmake_dir), 'cmake')
     eq(project_manager.detect_project_type(qmake_dir), 'qmake')
 end)
 
 check('xmake build, clean, install, and run argv', function()
-    local build_manager = require('qt-assistant.build_manager')
+    local build_manager = require('qt-assistant.core.build_manager')
     eq(build_manager.xmake_mode('Debug'), 'debug')
     eq(build_manager.xmake_mode('Release'), 'release')
     eq(build_manager.xmake_mode('RelWithDebInfo'), 'releasedbg')
@@ -409,14 +409,14 @@ check('xmake build is dispatched through Qt build_project', function()
         'target("demo")',
         '    add_rules("qt.console")',
     })
-    require('qt-assistant.config').setup({
+    require('qt-assistant.core.config').setup({
         project_root = dir,
         build_system = 'auto',
         enable_default_keymaps = false,
         vcpkg = { enabled = false },
     })
 
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     local original_find = system.find_executable
     local original_jobstart = vim.fn.jobstart
     local captured
@@ -437,7 +437,7 @@ check('xmake build is dispatched through Qt build_project', function()
     end
 
     local ok_call, err = pcall(function()
-        require('qt-assistant.build_manager').build_project('Debug')
+        require('qt-assistant.core.build_manager').build_project('Debug')
         local finished = vim.wait(1000, function()
             return captured ~= nil
         end)
@@ -462,7 +462,7 @@ check('xmake executable lookup and project generation', function()
     write_file(exe, { '' })
     vim.fn.setfperm(exe, 'rwxr-xr-x')
 
-    local project_manager = require('qt-assistant.project_manager')
+    local project_manager = require('qt-assistant.core.project_manager')
     local content = project_manager.generate_xmake_content('widget_app', 'WidgetDemo', '17', {
         enable_tests = true,
         test_framework = 'qt',
@@ -484,24 +484,24 @@ check('xmake executable lookup and project generation', function()
     local generated = table.concat(vim.fn.readfile(generated_root .. '/xmake.lua'), '\n')
     truthy(generated:find('qt%.widgetapp', 1), 'generated xmake.lua is not a Qt widget app')
 
-    require('qt-assistant.config').setup({
+    require('qt-assistant.core.config').setup({
         project_root = project_root,
         build_system = 'xmake',
         enable_default_keymaps = false,
     })
     write_file(project_root .. '/xmake.lua', content)
-    local found = require('qt-assistant.build_manager').find_project_executable('Debug')
+    local found = require('qt-assistant.core.build_manager').find_project_executable('Debug')
     eq(found, exe)
 end)
 
 check('scripts module serves builtins and file overrides', function()
     local dir = temp_dir('scripts')
-    require('qt-assistant.config').setup({
+    require('qt-assistant.core.config').setup({
         project_root = dir,
         enable_default_keymaps = false,
         vcpkg = { enabled = false },
     })
-    local scripts = require('qt-assistant.scripts')
+    local scripts = require('qt-assistant.core.scripts')
     local available = scripts.get_available_scripts()
     eq(#available, 5)
     eq(available[1].name, 'build')
@@ -617,7 +617,7 @@ check('every user command loads without error', function()
         'project(Smoke LANGUAGES CXX)',
     })
     vim.cmd('cd ' .. vim.fn.fnameescape(dir))
-    require('qt-assistant.config').setup({
+    require('qt-assistant.core.config').setup({
         project_root = dir,
         enable_default_keymaps = false,
         vcpkg = { enabled = false },

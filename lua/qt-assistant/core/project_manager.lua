@@ -2,9 +2,9 @@
 -- 项目管理模块
 
 local M = {}
-local file_manager = require('qt-assistant.file_manager')
-local history = require('qt-assistant.history')
-local system = require('qt-assistant.system')
+local file_manager = require('qt-assistant.core.file_manager')
+local history = require('qt-assistant.core.history')
+local system = require('qt-assistant.core.system')
 
 -- Project templates
 local project_templates = {
@@ -121,7 +121,7 @@ function M.discover_projects(opts)
             end
         end
     else
-        local config = require('qt-assistant.config').get()
+        local config = require('qt-assistant.core.config').get()
         if config and config.project_root then
             local normalized = normalize_path(config.project_root)
             if normalized then
@@ -213,7 +213,7 @@ function M.open_project(project_path)
     }
 
     -- Update configuration
-    local config = require('qt-assistant.config')
+    local config = require('qt-assistant.core.config')
     config.set_value('project_root', project_path)
 
     history.record_project(project_path)
@@ -227,7 +227,7 @@ end
 function M.new_project(project_name, template_type, cxx_standard, root_dir, opts)
     opts = opts or {}
     if opts.generate_xmake == nil then
-        local cfg = require('qt-assistant.config').get()
+        local cfg = require('qt-assistant.core.config').get()
         opts.generate_xmake = cfg.project and cfg.project.generate_xmake or false
     end
     if opts.enable_tests == nil then
@@ -347,7 +347,7 @@ end
 
 -- Create project files
 function M.create_project_files(project_path, template_type, project_name, cxx_standard, opts)
-    local templates = require('qt-assistant.templates')
+    local templates = require('qt-assistant.core.templates')
     templates.init()
 
     opts = opts or {}
@@ -477,7 +477,7 @@ end
 
 -- Generate template file content
 function M.generate_template_file(file_name, template_type, vars)
-    local templates = require('qt-assistant.templates')
+    local templates = require('qt-assistant.core.templates')
     
     local template_map = {
         ["main.cpp"] = template_type == "widget_app" and "main_widget_app" or
@@ -768,7 +768,7 @@ end
 
 -- Create module files
 function M.create_module_files(module_path, module_type, module_name, opts)
-    local templates = require('qt-assistant.templates')
+    local templates = require('qt-assistant.core.templates')
     templates.init()
 
     opts = opts or {}
@@ -891,7 +891,7 @@ end
 
 -- Generate library header template
 function M.generate_library_header(module_name, module_type, template_vars)
-    local templates = require('qt-assistant.templates')
+    local templates = require('qt-assistant.core.templates')
     local vars = vim.tbl_extend("force", template_vars or {}, {
         HEADER_GUARD = (template_vars and template_vars.HEADER_GUARD) or (string.upper(module_name) .. "_H"),
         PLUGIN_IID = "org.example." .. module_name,
@@ -907,7 +907,7 @@ end
 
 -- Generate library source template
 function M.generate_library_source(module_name, module_type, template_vars)
-    local templates = require('qt-assistant.templates')
+    local templates = require('qt-assistant.core.templates')
     local vars = vim.tbl_extend("force", template_vars or {}, {
         PLUGIN_IID = "org.example." .. module_name
     })
@@ -1011,7 +1011,7 @@ function M.get_current_project()
         return M._current_project
     end
 
-    local root = require('qt-assistant.config').get().project_root
+    local root = require('qt-assistant.core.config').get().project_root
     local project_type = M.detect_project_type(root)
     if not project_type then
         return nil

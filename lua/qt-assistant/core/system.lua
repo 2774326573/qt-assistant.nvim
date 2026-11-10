@@ -111,7 +111,7 @@ local function get_vcpkg_candidate_roots()
     end
 
     -- Also honor plugin configuration (useful when Neovim doesn't inherit env vars)
-    local ok_cfg, cfg_mod = pcall(require, 'qt-assistant.config')
+    local ok_cfg, cfg_mod = pcall(require, 'qt-assistant.core.config')
     if ok_cfg and cfg_mod then
         local cfg = cfg_mod.get()
         if cfg and cfg.vcpkg and cfg.vcpkg.vcpkg_root and cfg.vcpkg.vcpkg_root ~= '' then

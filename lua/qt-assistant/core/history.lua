@@ -16,7 +16,7 @@ end
 
 local function history_file_path()
   local data_dir = vim.fn.stdpath("data")
-  local system = require("qt-assistant.system")
+  local system = require("qt-assistant.core.system")
   return system.join_path(data_dir, "qt-assistant", "recent-projects.json")
 end
 

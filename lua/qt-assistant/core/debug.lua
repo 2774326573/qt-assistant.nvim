@@ -106,7 +106,7 @@ local function extra_candidate_paths(name)
 end
 
 function M.make_finder()
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     return function(name)
         local direct = system.find_executable(name)
         if direct then
@@ -122,7 +122,7 @@ function M.make_finder()
 end
 
 function M.toolchain()
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     return M.inspect_toolchain(system.get_os(), M.make_finder())
 end
 
@@ -135,11 +135,11 @@ function M.dap_status()
 end
 
 local function project_root()
-    return require('qt-assistant.config').get().project_root
+    return require('qt-assistant.core.config').get().project_root
 end
 
 function M.resolve_program(build_type)
-    local build_manager = require('qt-assistant.build_manager')
+    local build_manager = require('qt-assistant.core.build_manager')
     return build_manager.find_project_executable(build_type or 'Debug')
 end
 
@@ -297,7 +297,7 @@ function M.init()
         vim.notify('Qt debug init failed: ' .. tostring(err), vim.log.levels.WARN)
         return false
     end
-    local cfg = require('qt-assistant.config').get()
+    local cfg = require('qt-assistant.core.config').get()
     if cfg.debug and cfg.debug.keymaps then
         M.install_keymaps()
     end
@@ -328,7 +328,7 @@ local function report_lines(report, dap_ok, dap_err)
     if report.found.gdb then
         table.insert(lines, 'GDB is used through its DAP interpreter (GDB 14+).')
     end
-    local build_manager = require('qt-assistant.build_manager')
+    local build_manager = require('qt-assistant.core.build_manager')
     table.insert(lines, 'Build system: ' .. (build_manager.detect_build_system() or 'none'))
     local exe = M.resolve_program('Debug')
     table.insert(lines, 'Debug executable: ' .. (exe or 'not built yet'))
@@ -419,7 +419,7 @@ local function start_session(request, pid)
     local program = M.resolve_program('Debug')
     if not program then
         vim.notify('Debug executable not found. Building the Debug configuration, then starting the debugger.', vim.log.levels.INFO)
-        local build_manager = require('qt-assistant.build_manager')
+        local build_manager = require('qt-assistant.core.build_manager')
         build_manager.build_project('Debug', {
             on_success = function()
                 local built = M.resolve_program('Debug')

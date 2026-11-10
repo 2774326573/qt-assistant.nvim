@@ -2,11 +2,11 @@
 -- UI设计师集成模块
 
 local M = {}
-local file_manager = require('qt-assistant.file_manager')
+local file_manager = require('qt-assistant.core.file_manager')
 
 -- Get plugin configuration
 local function get_config()
-    return require('qt-assistant.config').get()
+    return require('qt-assistant.core.config').get()
 end
 
 -- Find UI files in project
@@ -71,7 +71,7 @@ end
 
 -- Open Qt Designer (with comprehensive error handling)
 function M.open_designer(ui_file)
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     
     -- Detailed Qt Designer detection with helpful error messages
     local designer_path = system.find_qt_tool(get_config().qt_tools.designer_path)
@@ -159,7 +159,7 @@ function M.create_new_ui(filename, target_dir)
     end
     
     local project_root = get_config().project_root
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
 
     local ui_dir = target_dir and target_dir ~= ''
         and vim.fs.normalize(target_dir)
@@ -211,7 +211,7 @@ end
 -- Edit existing UI file
 function M.edit_ui_file(filename)
     local project_root = get_config().project_root
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     
     if not filename:match("%.ui$") then
         filename = filename .. ".ui"
@@ -307,7 +307,7 @@ function M.get_ui_files_for_completion()
 end
 
 function M.get_editor_status()
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     local function entry(tool, label)
         local path = system.find_qt_tool(tool)
         return {

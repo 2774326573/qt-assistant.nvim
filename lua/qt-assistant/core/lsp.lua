@@ -2,8 +2,8 @@
 -- Clangd语言服务器集成模块
 
 local M = {}
-local file_manager = require('qt-assistant.file_manager')
-local system = require('qt-assistant.system')
+local file_manager = require('qt-assistant.core.file_manager')
+local system = require('qt-assistant.core.system')
 
 -- Get plugin configuration
 local function get_config()

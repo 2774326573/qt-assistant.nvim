@@ -5,7 +5,7 @@ local M = {}
 
 -- Get the project root directory
 function M.get_project_root()
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     local current_dir = system.normalize_path(vim.fn.getcwd())
     while current_dir ~= "" do
         local git_dir = system.join_path(current_dir, ".git")
@@ -25,7 +25,7 @@ end
 -- 获取插件配置
 local function get_config()
     -- 安全地获取配置，避免循环依赖
-    local ok, config_module = pcall(require, 'qt-assistant.config')
+    local ok, config_module = pcall(require, 'qt-assistant.core.config')
     if ok then
         return config_module.get()
     else
@@ -62,7 +62,7 @@ end
 -- 确定目标目录
 function M.determine_target_directories(class_type, opts)
     local config = get_config()
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     local project_root = config.project_root
     local dirs = config.directories
     local subdir = opts and opts.target_subdir
@@ -172,7 +172,7 @@ function M.create_files(files, target_dirs)
     for file_type, file_info in pairs(files) do
         local target_dir = target_dirs[file_type]
         if target_dir then
-            local system = require('qt-assistant.system')
+            local system = require('qt-assistant.core.system')
             local file_path = system.join_path(target_dir, file_info.name)
             
             -- 检查文件是否已存在
@@ -294,7 +294,7 @@ end
 
 -- 获取相对路径
 function M.get_relative_path(absolute_path, base_path)
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     local normalized_abs = system.normalize_path(absolute_path)
     local normalized_base = system.normalize_path(base_path or get_config().project_root)
 

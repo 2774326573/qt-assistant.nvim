@@ -2,9 +2,9 @@
 -- 核心功能模块
 
 local M = {}
-local file_manager = require('qt-assistant.file_manager')
-local templates = require('qt-assistant.templates')
-local cmake = require('qt-assistant.cmake')
+local file_manager = require('qt-assistant.core.file_manager')
+local templates = require('qt-assistant.core.templates')
+local cmake = require('qt-assistant.core.cmake')
 
 -- Validate class name format
 function M.validate_class_name(class_name)
@@ -29,7 +29,7 @@ function M.create_qt_class(class_name, class_type, options)
         return false, "Unknown class type: " .. class_type
     end
     
-    local system = require('qt-assistant.system')
+    local system = require('qt-assistant.core.system')
     local target_dirs = file_manager.determine_target_directories(class_type, options)
     
     -- Generate file content
@@ -49,7 +49,7 @@ function M.create_qt_class(class_name, class_type, options)
     end
     
     -- Update CMakeLists.txt if enabled
-    local config = require('qt-assistant.config').get()
+    local config = require('qt-assistant.core.config').get()
     if config.auto_update_cmake then
         cmake.add_source_files(files)
     end
