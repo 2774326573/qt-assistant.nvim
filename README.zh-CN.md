@@ -77,6 +77,30 @@ use { '2774326573/qt-assistant.nvim', config = function() require('qt-assistant'
 | [docs/TEMPLATES.zh-CN.md](docs/TEMPLATES.zh-CN.md) | 模板目录、占位符语法、宿主自定义接口 |
 | [docs/NEW_FEATURES.md](docs/NEW_FEATURES.md) | 特性迭代记录 |
 
+### 离线文档 :QtDocs（开箱即用）
+
+`setup()` 时自动 bootstrap（异步，不阻塞启动）：
+
+- 首次运行自动下载 Qt 6 离线文档集（~190MB，Kapeli 官方源）并解压到 `stdpath("data")/qt-docsets/`
+- 自动预克隆 [outline.nvim](https://github.com/hedyhli/outline.nvim)（直连失败自动切换 gh-proxy 镜像），打开文档时显示标题大纲侧边栏
+- 检查 markdown treesitter 解析器（缺失且有 nvim-treesitter 时自动 `:TSInstall markdown`）
+- 全部幂等：已就绪的项直接跳过；单项失败只提示，不影响其他功能
+
+```lua
+require('qt-assistant').setup({
+    docs = {
+        docset_path = nil,      -- 默认 stdpath("data")/qt-docsets/Qt.docset
+        docset_url = "https://kapeli.com/feeds/Qt.tgz",
+        auto_bootstrap = true,  -- false 则完全手动
+        keep_archive = false,   -- 解压后删除 .tgz 省空间
+        python = nil,           -- 自动探测 (标准库 sqlite3 查询索引)
+        limit = 50,
+    },
+})
+```
+
+使用：光标放在符号上按 `<leader>qh`，或 `:QtDocs <符号>`（Tab 补全）；页面在 nvim 内以 markdown 渲染（表格/代码围栏），大纲树可跳转。
+
 > 英文文档：每篇专题都有 `docs/*.md` 英文版；English README: [README.md](README.md)。
 
 ## 🔧 最小配置参考

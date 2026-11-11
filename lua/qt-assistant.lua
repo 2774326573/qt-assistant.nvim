@@ -24,7 +24,14 @@ function M.setup(user_config)
 			debug.init()
 		end
 	end)
-	
+
+	-- 离线文档 bootstrap: 首次使用自动装齐 docset/outline/解析器 (异步, 不阻塞)
+	vim.schedule(function()
+		pcall(function()
+			require('qt-assistant.core.docset').bootstrap()
+		end)
+	end)
+
 end
 
 -- Get configuration
@@ -45,7 +52,7 @@ function M.setup_keymaps()
 
 	-- Core Qt commands (essential workflow)
 	map("n", "<leader>qa", function() M.show_main_interface() end, { desc = "Qt Assistant" })
-	map("n", "<leader>qh", function() M.show_help() end, { desc = "Qt Help" })
+	map("n", "<leader>qh", function() require('qt-assistant.core.docset').show() end, { desc = "Qt Docs (offline, <cword>)" })
 	
 	-- Project management (quick access)
 	map("n", "<leader>qp", function() M.new_project_interactive() end, { desc = "New Qt Project (Interactive)" })

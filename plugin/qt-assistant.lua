@@ -355,6 +355,23 @@ end, { desc = 'Show Qt Assistant help' })
 
 -- ==================== Documentation ====================
 
+-- 离线文档查询 (docset: SQLite 索引 + HTML, 纯 nvim 内渲染, 无需外部程序)
+vim.api.nvim_create_user_command('QtDocs', function(opts)
+    if not ensure_loaded() then return end
+    require('qt-assistant.core.docset').show(opts.args)
+end, {
+    nargs = '?',
+    desc = 'Qt offline docs: search docset and render page in nvim (defaults to <cword>)',
+    complete = function(arg_lead)
+        pcall(ensure_loaded)
+        local ok, docset = pcall(require, 'qt-assistant.core.docset')
+        if ok then
+            return docset.complete(arg_lead)
+        end
+        return {}
+    end
+})
+
 vim.api.nvim_create_user_command('QtGenerateDoc', function(opts)
     if not ensure_loaded() then return end
     local args = {}

@@ -77,6 +77,30 @@ Keymaps (Leader + q): `qa` main UI · `qp/qo` project · `qu/qe/qd` UI · `qb/qr
 | [docs/TEMPLATES.md](docs/TEMPLATES.md) | Template directory, placeholder syntax, host customization API |
 | [docs/NEW_FEATURES.md](docs/NEW_FEATURES.md) | Feature iteration log |
 
+### Offline docs `:QtDocs` (zero-config)
+
+`setup()` runs an async bootstrap (never blocks startup):
+
+- First run auto-downloads the Qt 6 offline docset (~190MB, official Kapeli feed) and extracts it to `stdpath("data")/qt-docsets/`
+- Auto pre-clones [outline.nvim](https://github.com/hedyhli/outline.nvim) (falls back to a gh-proxy mirror), so opening a page shows a heading outline sidebar
+- Checks the markdown treesitter parser (auto `:TSInstall markdown` when nvim-treesitter is present)
+- Fully idempotent: ready items are skipped; a failed item only warns and never breaks other features
+
+```lua
+require('qt-assistant').setup({
+    docs = {
+        docset_path = nil,      -- default: stdpath("data")/qt-docsets/Qt.docset
+        docset_url = "https://kapeli.com/feeds/Qt.tgz",
+        auto_bootstrap = true,  -- set false for fully manual
+        keep_archive = false,   -- delete the .tgz after extraction
+        python = nil,           -- auto-detected (stdlib sqlite3 powers the index query)
+        limit = 50,
+    },
+})
+```
+
+Usage: put the cursor on a symbol and press `<leader>qh`, or run `:QtDocs <symbol>` (Tab-completed); pages render in-buffer as markdown (tables, fenced code) with a jumpable outline tree.
+
 > 简体中文文档：每个专题都有 `docs/*.zh-CN.md` 版本，README 中文版见 [README.zh-CN.md](README.zh-CN.md)。
 
 ## 🔧 Minimal configuration

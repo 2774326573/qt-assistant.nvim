@@ -105,6 +105,23 @@ function M.setup(user_config)
         debug = {
             -- :QtDebugSetup always offers DAP keymaps. Set true to install them during setup().
             keymaps = false,
+        },
+        docs = {
+            -- 离线文档 (Dash/Zeal docset): :QtDocs 使用
+            -- docset 路径; nil 时按候选列表自动探测, 仍无则由 bootstrap 自动下载
+            docset_path = nil,
+            -- docset 下载源 (Qt6 官方文档集, ~190MB, Kapeli 托管)
+            docset_url = "https://kapeli.com/feeds/Qt.tgz",
+            -- 首次 setup 自动装齐: 下载 docset / 预克隆 outline.nvim / 检查 markdown 解析器
+            auto_bootstrap = true,
+            -- 下载解压后是否保留 .tgz 原始包 (false = 删除省空间)
+            keep_archive = false,
+            -- Python 解释器; nil 时自动探测 (sqlite3 为标准库)
+            python = nil,
+            -- outline.nvim 安装目录; nil 时自动探测 stdpath("data")/lazy/outline.nvim
+            outline_dir = nil,
+            -- 搜索结果上限
+            limit = 50,
         }
     }
     

@@ -34,3 +34,6 @@ temp/
 # 本地配置
 local_config.lua
 EOF < /dev/null
+# Python
+__pycache__/
+*.pyc
