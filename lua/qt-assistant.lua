@@ -12,6 +12,26 @@ function M.setup(user_config)
 	local config = require('qt-assistant.core.config')
 	M._config = config.setup(user_config or {})
 
+	local function detect_project_root(buf)
+		if vim.bo[buf].buftype ~= "" or vim.api.nvim_buf_get_name(buf) == "" then
+			return
+		end
+		local root = vim.fs.root(buf, function(name)
+			return name == "xmake.lua" or name == "CMakeLists.txt" or name:match("%.pro$")
+		end)
+		if root then
+			config.update_project_root(root)
+		end
+	end
+
+	vim.api.nvim_create_autocmd({ "BufEnter", "BufFilePost" }, {
+		group = vim.api.nvim_create_augroup("QtAssistantProjectRoot", { clear = true }),
+		callback = function(event)
+			detect_project_root(event.buf)
+		end,
+	})
+	detect_project_root(vim.api.nvim_get_current_buf())
+
 	-- Setup keymaps if enabled
 	if M._config.enable_default_keymaps then
 		M.setup_keymaps()

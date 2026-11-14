@@ -56,16 +56,16 @@ function M.xmake_mode(build_type)
     return "debug"
 end
 
-function M.xmake_build_argv(xmake_path, project_root, build_type)
-    return { xmake_path, "-P", project_root, "-m", M.xmake_mode(build_type), "-y" }
+function M.xmake_build_argv(xmake_path, project_root)
+    return { xmake_path, "-P", project_root, "-y" }
 end
 
 function M.xmake_clean_argv(xmake_path, project_root)
-    return { xmake_path, "-P", project_root, "clean", "-y" }
+    return { xmake_path, "clean", "-P", project_root, "-y" }
 end
 
 function M.xmake_install_argv(xmake_path, project_root, prefix)
-    local cmd = { xmake_path, "-P", project_root, "install", "-y" }
+    local cmd = { xmake_path, "install", "-P", project_root, "-y" }
     if prefix and prefix ~= "" then
         table.insert(cmd, "-o")
         table.insert(cmd, prefix)
@@ -73,8 +73,8 @@ function M.xmake_install_argv(xmake_path, project_root, prefix)
     return cmd
 end
 
-function M.xmake_run_argv(xmake_path, project_root, build_type)
-    return { xmake_path, "-P", project_root, "-m", M.xmake_mode(build_type), "run", "-y" }
+function M.xmake_run_argv(xmake_path, project_root)
+    return { xmake_path, "run", "-P", project_root, "-y" }
 end
 
 function M.cmake_clean_argv(cmake_path, build_dir)
@@ -987,14 +987,6 @@ function M.run_project()
         local project_root = get_config().project_root
         local system = require('qt-assistant.core.system')
         local build_system = M.detect_build_system()
-        local exe_path = M.find_project_executable(M._last_build_type)
-
-        if exe_path then
-            vim.notify("▶️  Running: " .. vim.fn.fnamemodify(exe_path, ":t"), vim.log.levels.INFO)
-            run_in_terminal({ exe_path })
-            return
-        end
-
         if build_system == "xmake" then
             local xmake_path = system.find_executable("xmake")
             if not xmake_path then
@@ -1002,7 +994,15 @@ function M.run_project()
                 return
             end
             vim.notify("▶️  Running via xmake", vim.log.levels.INFO)
-            run_in_terminal(M.xmake_run_argv(xmake_path, project_root, M._last_build_type))
+            vim.cmd("new")
+            vim.fn.jobstart(M.xmake_run_argv(xmake_path, project_root), { cwd = project_root, term = true })
+            return
+        end
+
+        local exe_path = M.find_project_executable(M._last_build_type)
+        if exe_path then
+            vim.notify("▶️  Running: " .. vim.fn.fnamemodify(exe_path, ":t"), vim.log.levels.INFO)
+            run_in_terminal({ exe_path })
             return
         end
 
@@ -1102,8 +1102,8 @@ function M.build_with_xmake_async(project_root, build_type, opts)
         return
     end
 
-    local cmd = M.xmake_build_argv(xmake_path, project_root, build_type)
-    vim.notify("⚙️  Building with xmake (" .. M.xmake_mode(build_type) .. ")...", vim.log.levels.INFO)
+    local cmd = M.xmake_build_argv(xmake_path, project_root)
+    vim.notify("⚙️  Building with xmake using the project's configured mode...", vim.log.levels.INFO)
     vim.fn.jobstart(cmd, {
         cwd = project_root,
         on_stderr = function(_, data)
