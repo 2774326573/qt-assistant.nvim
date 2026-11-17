@@ -180,3 +180,10 @@ Qt 走 vcpkg 安装时，designer/uic/qmake 会在 `VCPKG_ROOT/installed/*/tools
 :QtOpenProject D:/Projects/MyQtApp
 ```
 
+
+### UI 文件查找
+
+`:QtEditUi` 不带参数、源码对应 UI 查找均使用异步扫描，不再阻塞 Neovim；
+UI 文件命令补全采用缓存和常见目录的浅层检查。首次补全可能先显示少量结果，
+异步索引完成后即可获得完整结果（最多 200 个，默认跳过构建与依赖目录）。
+

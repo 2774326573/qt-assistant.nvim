@@ -80,6 +80,7 @@ local COMMAND_TARGETS = {
         { 'qt-assistant.core.designer', 'select_ui_file_to_open' },
     },
     QtDesigner = { { 'qt-assistant', 'open_designer' } },
+    QtDocs = { { 'qt-assistant.core.docset', 'show' } },
     QtCreateClass = {
         { 'qt-assistant', 'create_class' },
         { 'qt-assistant', 'create_class_from_ui' },
@@ -126,7 +127,6 @@ QtDoctor = {
 
 local KEYMAP_FUNCTIONS = {
     'show_main_interface',
-    'show_help',
     'new_project_interactive',
     'new_project_quick',
     'open_project_interactive',
@@ -764,6 +764,29 @@ check('project picker opens without synchronous discovery', function()
     truthy(picker_items and #picker_items >= 2, 'picker was not opened immediately')
     eq(picker_items[#picker_items - 1].action, 'search')
     eq(picker_items[#picker_items].action, 'browse')
+end)
+
+check('UI picker scans asynchronously and ignores generated files', function()
+    local designer = require('qt-assistant.core.designer')
+    local base = temp_dir('async-ui-search')
+    write_file(base .. '/ui/controls/main.ui', {
+        '<?xml version="1.0"?><ui><class>MainView</class></ui>',
+    })
+    write_file(base .. '/build/generated.ui', {
+        '<?xml version="1.0"?><ui><class>Generated</class></ui>',
+    })
+    local files
+    designer.find_ui_files_async(base, function(found)
+        files = found
+    end, { refresh = true })
+    truthy(vim.wait(4000, function() return files ~= nil end, 10),
+        'async UI file search did not complete')
+    eq(#files, 1, 'unexpected UI files discovered')
+    eq(files[1].class_name, 'MainView')
+    truthy(files[1].relative_path:find('controls/main.ui', 1, true) ~= nil)
+
+    local cached = designer.find_ui_files(base)
+    eq(#cached, 1, 'synchronous compatibility lookup should use cached results')
 end)
 
 io.stdout:write(string.format('\n%d passed, %d failed\n', passed, #failures))

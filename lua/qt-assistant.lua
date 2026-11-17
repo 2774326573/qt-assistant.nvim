@@ -203,21 +203,20 @@ end
 
 -- Find and open corresponding UI file
 function M.find_and_open_ui()
-	local current_file = vim.fn.expand('%:p')
-	local base_name = vim.fn.fnamemodify(current_file, ":t:r")
-	
-	local designer = require("qt-assistant.core.designer")
-	local ui_files = designer.find_ui_files()
-	
-	-- Look for matching UI file
-	for _, ui_info in ipairs(ui_files) do
-		if ui_info.name == base_name or ui_info.class_name == base_name then
-			M.open_designer(ui_info.path)
-			return
-		end
-	end
-	
-	vim.notify("❌ No corresponding UI file found for: " .. base_name, vim.log.levels.WARN)
+    local current_file = vim.fn.expand('%:p')
+    local base_name = vim.fn.fnamemodify(current_file, ':t:r')
+    local designer = require('qt-assistant.core.designer')
+
+    designer.find_ui_files_async(nil, function(ui_files)
+        for _, ui_info in ipairs(ui_files) do
+            if ui_info.name == base_name or ui_info.class_name == base_name then
+                M.open_designer(ui_info.path)
+                return
+            end
+        end
+        vim.notify('No corresponding UI file found for: ' .. base_name,
+            vim.log.levels.WARN)
+    end)
 end
 
 -- ==================== Core Functions ====================
