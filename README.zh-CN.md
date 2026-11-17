@@ -42,7 +42,8 @@
     cmd = { "QtAssistant", "QtNewProject", "QtDesigner", "QtBuild", "QtRun" }, -- 按需加载
     config = function()
         require('qt-assistant').setup({
-            enable_default_keymaps = true,  -- <leader>q* 快捷键
+            enable_default_keymaps = true,
+            keymaps = { prefix = '<leader>Q' }, -- LazyVim 推荐，避免与退出/会话快捷键冲突
             build_system = "auto",          -- CMake -> qmake -> xmake 自动探测
         })
     end
@@ -138,3 +139,10 @@ nvim --headless -n -i NONE -u tests/minimal_init.lua -c "lua dofile('tests/run.l
 ## 📄 License
 
 [MIT](LICENSE) © [2774326573](https://github.com/2774326573)
+
+### LazyVim 快捷键冲突
+
+LazyVim 使用 `<leader>qq` 退出 Neovim，`<leader>qd` 等用于会话管理。
+Qt 助手历史默认前缀为 `<leader>q`；在 LazyVim 中请配置
+`keymaps = { prefix = '<leader>Q' }`，让 Qt 助手使用 `Space Q...`，
+避免覆盖 LazyVim 的退出和会话操作。原有默认前缀保持兼容。

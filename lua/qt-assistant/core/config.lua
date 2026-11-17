@@ -93,7 +93,9 @@ function M.setup(user_config)
         keymaps = {
             -- "minimal": only the documented essentials
             -- "full": includes extra convenience keymaps (legacy)
-            preset = "minimal"
+            preset = "minimal",
+            -- Use "<leader>Q" with LazyVim, whose "<leader>q" group controls exit/session.
+            prefix = "<leader>q"
         },
         -- "auto" keeps the historical order: CMake, then qmake, then xmake.
         -- Set to "cmake", "qmake", or "xmake" to force that system when its project file exists.

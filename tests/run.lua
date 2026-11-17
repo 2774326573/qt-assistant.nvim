@@ -789,6 +789,28 @@ check('UI picker scans asynchronously and ignores generated files', function()
     eq(#cached, 1, 'synchronous compatibility lookup should use cached results')
 end)
 
+check('custom Qt keymap prefix avoids LazyVim quit/session bindings', function()
+    local config = require('qt-assistant.core.config')
+    local qa = require('qt-assistant')
+    local old_set = vim.keymap.set
+    local captured = {}
+    vim.keymap.set = function(mode, lhs, rhs, opts)
+        captured[lhs] = { mode = mode, rhs = rhs, opts = opts }
+    end
+    local ok, err = pcall(function()
+        config.setup({ keymaps = { prefix = '<leader>Q', preset = 'minimal' },
+            enable_default_keymaps = false })
+        qa.setup_keymaps()
+    end)
+    vim.keymap.set = old_set
+    if not ok then error(err) end
+    truthy(captured['<leader>Qa'], 'Qt menu should use the chosen prefix')
+    truthy(captured['<leader>Qd'], 'Qt Designer should use the chosen prefix')
+    truthy(captured['<leader>Qo'], 'Qt project picker should use the chosen prefix')
+    eq(captured['<leader>qd'], nil, 'must not shadow LazyVim session shortcut')
+    eq(captured['<leader>qq'], nil, 'must not shadow LazyVim Quit All')
+end)
+
 io.stdout:write(string.format('\n%d passed, %d failed\n', passed, #failures))
 io.stdout:flush()
 if #failures > 0 then

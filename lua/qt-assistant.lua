@@ -69,22 +69,24 @@ function M.setup_keymaps()
 	local config = require('qt-assistant.core.config').get()
 	local preset = (config.keymaps and config.keymaps.preset) or 'minimal'
 	preset = tostring(preset):lower()
+    -- LazyVim reserves <leader>q for quit and session controls.
+    local prefix = (config.keymaps and config.keymaps.prefix) or '<leader>q'
 
 	-- Core Qt commands (essential workflow)
-	map("n", "<leader>qa", function() M.show_main_interface() end, { desc = "Qt Assistant" })
-	map("n", "<leader>qh", function() require('qt-assistant.core.docset').show() end, { desc = "Qt Docs (offline, <cword>)" })
+	map("n", prefix .. "a", function() M.show_main_interface() end, { desc = "Qt Assistant" })
+	map("n", prefix .. "h", function() require('qt-assistant.core.docset').show() end, { desc = "Qt Docs (offline, <cword>)" })
 	
 	-- Project management (quick access)
-	map("n", "<leader>qp", function() M.new_project_interactive() end, { desc = "New Qt Project (Interactive)" })
+	map("n", prefix .. "p", function() M.new_project_interactive() end, { desc = "New Qt Project (Interactive)" })
 	if preset == 'full' then
-		map("n", "<leader>qP", function() M.new_project_quick() end, { desc = "New Qt Project (Quick C++17)" })
+		map("n", prefix .. "P", function() M.new_project_quick() end, { desc = "New Qt Project (Quick C++17)" })
 	end
-	map("n", "<leader>qo", function() M.open_project_interactive() end, { desc = "Open Qt Project" })
+	map("n", prefix .. "o", function() M.open_project_interactive() end, { desc = "Open Qt Project" })
 	
 	-- UI Designer (rapid UI development)
-	map("n", "<leader>qd", function() M.open_designer() end, { desc = "Qt Designer" })
-	map("n", "<leader>qu", function() M.create_new_ui_interactive() end, { desc = "New UI File" })
-	map("n", "<leader>qe", function() 
+	map("n", prefix .. "d", function() M.open_designer() end, { desc = "Qt Designer" })
+	map("n", prefix .. "u", function() M.create_new_ui_interactive() end, { desc = "New UI File" })
+	map("n", prefix .. "e", function() 
 		local current_file = vim.fn.expand('%:p')
 		if current_file:match("%.ui$") then
 			M.open_designer(current_file)
@@ -95,34 +97,34 @@ function M.setup_keymaps()
 	end, { desc = "Edit Current/Select UI" })
 	
 	-- Class creation (smart class generation)
-	map("n", "<leader>qc", function() M.create_class_interactive() end, { desc = "Create Qt Class" })
-	map("n", "<leader>qf", function() M.create_class_from_current_ui() end, { desc = "Create Class from Current UI" })
+	map("n", prefix .. "c", function() M.create_class_interactive() end, { desc = "Create Qt Class" })
+	map("n", prefix .. "f", function() M.create_class_from_current_ui() end, { desc = "Create Class from Current UI" })
 	
 	-- Build system (fast build & run)
-	map("n", "<leader>qb", function() M.build_project() end, { desc = "Build Project" })
-	map("n", "<leader>qr", function() M.run_project() end, { desc = "Run Project" })
+	map("n", prefix .. "b", function() M.build_project() end, { desc = "Build Project" })
+	map("n", prefix .. "r", function() M.run_project() end, { desc = "Run Project" })
 	if preset == 'full' then
 		-- Quick build+run is convenient but <leader>qq is commonly mapped to quit; avoid conflicts.
-		map("n", "<leader>qA", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
+		map("n", prefix .. "A", function() M.quick_build_and_run() end, { desc = "Quick Build & Run" })
 	end
 	
 	-- C++ Standard specific builds (Windows)
 	if preset == 'full' then
-		map("n", "<leader>qb1", function() M.build_with_std("11") end, { desc = "Build with C++11" })
-		map("n", "<leader>qb4", function() M.build_with_std("14") end, { desc = "Build with C++14" })
-		map("n", "<leader>qb7", function() M.build_with_std("17") end, { desc = "Build with C++17" })
-		map("n", "<leader>qb20", function() M.build_with_std("20") end, { desc = "Build with C++20" })
+		map("n", prefix .. "b1", function() M.build_with_std("11") end, { desc = "Build with C++11" })
+		map("n", prefix .. "b4", function() M.build_with_std("14") end, { desc = "Build with C++14" })
+		map("n", prefix .. "b7", function() M.build_with_std("17") end, { desc = "Build with C++17" })
+		map("n", prefix .. "b20", function() M.build_with_std("20") end, { desc = "Build with C++20" })
 	end
 	
 	-- Debug system (integrated debugging) - conditional loading
-	map("n", "<leader>qdb", function() M.debug_application() end, { desc = "Debug Qt App" })
-	map("n", "<leader>qda", function() M.attach_to_process() end, { desc = "Attach to Qt Process" })
+	map("n", prefix .. "db", function() M.debug_application() end, { desc = "Debug Qt App" })
+	map("n", prefix .. "da", function() M.attach_to_process() end, { desc = "Attach to Qt Process" })
 	
 	-- Configuration and Standards
 	if preset == 'full' then
-		map("n", "<leader>qsc", function() M.show_current_config() end, { desc = "Show Current Config" })
-		map("n", "<leader>qss", function() M.select_cxx_standard() end, { desc = "Select C++ Standard" })
-		map("n", "<leader>qsr", function() M.reconfigure_project() end, { desc = "Reconfigure Project" })
+		map("n", prefix .. "sc", function() M.show_current_config() end, { desc = "Show Current Config" })
+		map("n", prefix .. "ss", function() M.select_cxx_standard() end, { desc = "Select C++ Standard" })
+		map("n", prefix .. "sr", function() M.reconfigure_project() end, { desc = "Reconfigure Project" })
 	end
 	
 	-- File-specific keymaps (context-aware)
