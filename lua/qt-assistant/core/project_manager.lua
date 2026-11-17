@@ -88,100 +88,176 @@ function M.detect_project_type(project_path)
     return nil
 end
 
--- Discover Qt project directories by scanning for key project files
----@param opts? { paths?: string[], limit?: number }
----@return string[]
+-- Project discovery: the interactive picker uses this async scanner.
+local async_scan = require('qt-assistant.core.async_scan')
+local discovery_cache = {}
+local active_discovery_cancel
+
+local function discovery_path(path)
+    if not path or path == "" then return nil end
+    local absolute = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+    if absolute ~= "/" and not absolute:match("^%a:[/\\]$") then
+        absolute = absolute:gsub("[/\\]+$", "")
+    end
+    return absolute
+end
+
+local function discovery_roots(opts)
+    local roots, seen = {}, {}
+    local config = require('qt-assistant.core.config').get()
+    local paths = (opts.paths and #opts.paths > 0)
+        and opts.paths or { config.project_root, vim.fn.getcwd() }
+    for _, path in ipairs(paths) do
+        local normalized = discovery_path(path)
+        if normalized and not seen[normalized:lower()] then
+            seen[normalized:lower()] = true
+            table.insert(roots, normalized)
+        end
+    end
+    return roots
+end
+
+local function is_project_file(name)
+    return name == "CMakeLists.txt" or name == "xmake.lua" or name:match("%.pro$") ~= nil
+end
+
+function M.cancel_project_discovery()
+    if active_discovery_cancel then
+        active_discovery_cancel()
+        active_discovery_cancel = nil
+    end
+end
+
+--- Discover projects on a bounded, asynchronous filesystem walk.
+--- @param opts? {paths?: string[], limit?: integer, depth?: integer, max_dirs?: integer, max_entries?: integer, refresh?: boolean}
+--- @param callback fun(projects: string[], stats: table)
+--- @return function cancel
+function M.discover_projects_async(opts, callback)
+    opts = opts or {}
+    assert(type(callback) == "function", "discover_projects_async requires callback")
+    local roots = discovery_roots(opts)
+    local limit = math.max(1, math.floor(tonumber(opts.limit) or 20))
+    local depth = math.max(0, math.floor(tonumber(opts.depth) or 3))
+    local max_dirs = math.max(1, math.floor(tonumber(opts.max_dirs) or 1200))
+    local max_entries = math.max(1, math.floor(tonumber(opts.max_entries) or 25000))
+    local cache_key = table.concat(roots, "\n") .. "|" .. limit .. "|" .. depth
+        .. "|" .. max_dirs .. "|" .. max_entries
+
+    M.cancel_project_discovery()
+    local cancelled, child_cancel = false, nil
+    local function cancel()
+        cancelled = true
+        if child_cancel then child_cancel() end
+    end
+    active_discovery_cancel = cancel
+
+    local cached = not opts.refresh and discovery_cache[cache_key]
+    if cached and os.time() - cached.timestamp < 120 then
+        vim.schedule(function()
+            if not cancelled then
+                callback(vim.deepcopy(cached.projects), {
+                    reason = "cached", directories = 0, entries = 0,
+                    truncated = cached.truncated, cached = true,
+                })
+            end
+        end)
+        return cancel
+    end
+
+    local projects, seen = {}, {}
+    local root_index, scanned_dirs, scanned_entries = 1, 0, 0
+    local truncated = false
+
+    local function finish()
+        if cancelled then return end
+        if active_discovery_cancel == cancel then active_discovery_cancel = nil end
+        discovery_cache[cache_key] = {
+            projects = vim.deepcopy(projects),
+            timestamp = os.time(),
+            truncated = truncated,
+        }
+        vim.schedule(function()
+            if not cancelled then
+                callback(projects, {
+                    reason = truncated and "limited" or "complete",
+                    directories = scanned_dirs,
+                    entries = scanned_entries,
+                    truncated = truncated,
+                    cached = false,
+                })
+            end
+        end)
+    end
+
+    local scan_next
+    scan_next = function()
+        if cancelled then return end
+        if root_index > #roots or #projects >= limit
+            or scanned_dirs >= max_dirs or scanned_entries >= max_entries then
+            if root_index <= #roots then truncated = true end
+            return finish()
+        end
+
+        local root = roots[root_index]
+        root_index = root_index + 1
+        if vim.fn.isdirectory(root) ~= 1 then
+            return scan_next()
+        end
+
+        child_cancel = async_scan.walk({
+            root = root,
+            depth = depth,
+            limit = limit - #projects,
+            max_dirs = max_dirs - scanned_dirs,
+            max_entries = max_entries - scanned_entries,
+            match = function(name, dir)
+                if is_project_file(name) then return dir end
+            end,
+        }, function(found, stats)
+            if cancelled then return end
+            scanned_dirs = scanned_dirs + stats.directories
+            scanned_entries = scanned_entries + stats.entries
+            if stats.truncated then truncated = true end
+            for _, path in ipairs(found) do
+                local normalized = discovery_path(path)
+                if normalized and not seen[normalized:lower()] then
+                    seen[normalized:lower()] = true
+                    table.insert(projects, normalized)
+                end
+            end
+            scan_next()
+        end)
+    end
+
+    vim.schedule(scan_next)
+    return cancel
+end
+
+-- Compatibility API: only a shallow synchronous lookup. Interactive selection
+-- must use discover_projects_async so no unbounded walk holds the UI thread.
 function M.discover_projects(opts)
     opts = opts or {}
-    local limit = opts.limit or 20
-    local results = {}
-    local seen = {}
-    local path_seen = {}
-
-    local function normalize_path(path)
-        if not path or path == "" then
-            return nil
-        end
-        local absolute = vim.fn.fnamemodify(path, ":p")
-        absolute = vim.fs.normalize(absolute)
-        absolute = absolute:gsub("[/\\]+$", "")
-        return absolute
-    end
-
-    local search_paths = {}
-    if opts.paths and #opts.paths > 0 then
-        for _, p in ipairs(opts.paths) do
-            local normalized = normalize_path(p)
-            if normalized then
-                local key = normalized:lower()
-                if not path_seen[key] then
-                    table.insert(search_paths, normalized)
-                    path_seen[key] = true
-                end
-            end
-        end
-    else
-        local config = require('qt-assistant.core.config').get()
-        if config and config.project_root then
-            local normalized = normalize_path(config.project_root)
-            if normalized then
-                local key = normalized:lower()
-                if not path_seen[key] then
-                    table.insert(search_paths, normalized)
-                    path_seen[key] = true
-                end
-            end
-        end
-        local cwd = normalize_path(vim.fn.getcwd())
-        if cwd then
-            local key = cwd:lower()
-            if not path_seen[key] then
-                table.insert(search_paths, cwd)
-                path_seen[key] = true
-            end
-        end
-    end
-
-    local function add_result(dir)
-        local normalized = normalize_path(dir)
-        if not normalized then
-            return
-        end
-        if vim.fn.isdirectory(normalized) ~= 1 then
-            return
-        end
-        local key = normalized:lower()
-        if not seen[key] then
-            table.insert(results, normalized)
-            seen[key] = true
-        end
-    end
-
-    for _, root in ipairs(search_paths) do
+    local limit = math.max(1, math.floor(tonumber(opts.limit) or 20))
+    local roots, projects, seen = discovery_roots(opts), {}, {}
+    for _, root in ipairs(roots) do
         if vim.fn.isdirectory(root) == 1 then
-            local remaining = limit - #results
-            if remaining <= 0 then
-                break
-            end
-            local matches = vim.fs.find(function(name)
-                return name == "CMakeLists.txt" or name == "xmake.lua" or name:match("%.pro$")
-            end, {
+            local matches = vim.fs.find(is_project_file, {
                 path = root,
-                limit = remaining * 4,
+                depth = math.max(1, math.min(tonumber(opts.depth) or 2, 2)),
+                limit = limit * 3,
                 type = "file",
             }) or {}
-
             for _, file_path in ipairs(matches) do
-                local dir = vim.fs.dirname(file_path)
-                add_result(dir)
-                if #results >= limit then
-                    break
+                local path = discovery_path(vim.fs.dirname(file_path))
+                if path and not seen[path:lower()] then
+                    seen[path:lower()] = true
+                    table.insert(projects, path)
+                    if #projects >= limit then return projects end
                 end
             end
         end
     end
-
-    return results
+    return projects
 end
 
 -- Open project

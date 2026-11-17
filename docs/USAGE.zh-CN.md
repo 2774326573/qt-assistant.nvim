@@ -164,3 +164,19 @@ Qt 走 vcpkg 安装时，designer/uic/qmake 会在 `VCPKG_ROOT/installed/*/tools
 
 - 启动影响 0ms（cmd/keys 懒加载 + `vim.schedule` 广播）
 - 命令响应 <50ms；构建/外部工具调用全部异步
+
+
+## 多项目目录下打开项目的性能
+
+不带参数的 `:QtOpenProject` 会立即显示最近项目、搜索目录和手动输入路径，
+不会自动扫描整个工作区。选择 **Search projects in a directory...** 后再输入项目根目录，
+插件使用异步文件系统扫描查找 `CMakeLists.txt`、`xmake.lua`、`*.pro`。
+
+自动搜索默认最多向下 3 层、1200 个目录、25000 个目录项和 20 个项目；
+跳过构建目录、版本控制目录和第三方依赖目录。连续发起搜索会取消前一次扫描，
+扫描结果在当前 Neovim 会话中缓存 120 秒。需要直接打开已知项目时使用：
+
+```vim
+:QtOpenProject D:/Projects/MyQtApp
+```
+

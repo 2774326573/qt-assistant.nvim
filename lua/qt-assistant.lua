@@ -263,83 +263,88 @@ function M.new_project_interactive()
 end
 
 function M.open_project_interactive()
-	local function prompt_for_path(default_path)
-		vim.ui.input({
-			prompt = 'Project path: ',
-			default = default_path or vim.fn.getcwd(),
-			completion = 'dir'
-		}, function(path)
-			if path and path ~= "" then
-				M.open_project(path)
-			end
-		end)
-	end
+    local history = require('qt-assistant.core.history')
+    local project_manager = require('qt-assistant.core.project_manager')
 
-	local history = require("qt-assistant.core.history")
-	local project_manager = require("qt-assistant.core.project_manager")
+    -- Re-opening the picker invalidates any older search callback.
+    project_manager.cancel_project_discovery()
 
-	local recent = history.get_recent_projects()
-	local discovered = project_manager.discover_projects({ limit = 20 })
+    local function prompt_for_path(default_path)
+        vim.ui.input({
+            prompt = 'Project path: ',
+            default = default_path or vim.fn.getcwd(),
+            completion = 'dir',
+        }, function(path)
+            if path and path ~= '' then M.open_project(path) end
+        end)
+    end
 
-	local items = {}
-	local seen = {}
+    local function normalize_path(path)
+        if not path or path == '' then return nil end
+        local absolute = vim.fs.normalize(vim.fn.fnamemodify(path, ':p'))
+        if absolute ~= '/' and not absolute:match('^%a:[/\\]$') then
+            absolute = absolute:gsub('[/\\]+$', '')
+        end
+        return absolute
+    end
 
-	local function normalize_path(path)
-		if not path or path == "" then
-			return nil
-		end
-		local absolute = vim.fn.fnamemodify(path, ":p")
-		absolute = absolute:gsub("[/\\]+$", "")
-		return absolute
-	end
+    local show_picker
+    show_picker = function(discovered)
+        local items, seen = {}, {}
+        local function add_item(path, source)
+            local absolute = normalize_path(path)
+            if not absolute then return end
+            local key = absolute:lower()
+            if seen[key] then return end
+            seen[key] = true
+            table.insert(items, {
+                label = absolute .. (source and ' (' .. source .. ')' or ''),
+                path = absolute,
+            })
+        end
 
-	local function add_item(path, source_label)
-		local normalized = normalize_path(path)
-		if not normalized then
-			return
-		end
-		local key = normalized:lower()
-		if seen[key] then
-			return
-		end
-		local label = normalized
-		if source_label then
-			label = string.format("%s (%s)", normalized, source_label)
-		end
-		table.insert(items, { label = label, path = normalized })
-		seen[key] = true
-	end
+        for _, path in ipairs(history.get_recent_projects()) do add_item(path) end
+        for _, path in ipairs(discovered or {}) do add_item(path, 'auto') end
 
-	for _, path in ipairs(recent) do
-		add_item(path)
-	end
+        table.insert(items, { label = '[Search projects in a directory...]', action = 'search' })
+        table.insert(items, { label = '[Browse for another project...]', action = 'browse' })
 
-	for _, path in ipairs(discovered) do
-		add_item(path, "auto")
-	end
+        -- The picker appears immediately. No directory walk runs on this path.
+        vim.ui.select(items, {
+            prompt = 'Open Qt project:',
+            format_item = function(item) return item.label end,
+        }, function(choice)
+            if not choice then return end
+            if choice.path then
+                M.open_project(choice.path)
+            elseif choice.action == 'browse' then
+                prompt_for_path()
+            elseif choice.action == 'search' then
+                vim.ui.input({
+                    prompt = 'Search projects under: ',
+                    default = vim.fn.getcwd(),
+                    completion = 'dir',
+                }, function(root)
+                    if not root or root == '' then return end
+                    vim.notify('Qt Assistant: scanning projects (you can keep editing)...',
+                        vim.log.levels.INFO)
+                    project_manager.discover_projects_async({
+                        paths = { root }, limit = 20, depth = 3,
+                    }, function(projects, stats)
+                        if #projects == 0 then
+                            vim.notify('No projects found under: ' .. root, vim.log.levels.WARN)
+                        elseif stats.truncated then
+                            vim.notify('Project search reached its limit; showing partial results.',
+                                vim.log.levels.INFO)
+                        end
+                        show_picker(projects)
+                    end)
+                end)
+            end
+        end)
+    end
 
-	if #items == 0 then
-		prompt_for_path()
-		return
-	end
-
-	table.insert(items, { label = "[Browse for another project...]", path = nil })
-
-	vim.ui.select(items, {
-		prompt = 'Open Qt project:',
-		format_item = function(item)
-			return item.label
-		end,
-	}, function(choice)
-		if not choice then
-			return
-		end
-		if choice.path then
-			M.open_project(choice.path)
-		else
-			prompt_for_path()
-		end
-	end)
+    show_picker()
 end
 
 function M.new_project(name, template_type, root_dir)

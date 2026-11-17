@@ -714,6 +714,58 @@ check('every user command loads without error', function()
     end
 end)
 
+check('async project search is bounded, ignores build folders, and can be cancelled', function()
+    local project_manager = require('qt-assistant.core.project_manager')
+    local base = temp_dir('async-project-search')
+    write_file(base .. '/App/CMakeLists.txt', { 'project(App)' })
+    write_file(base .. '/Nested/Tool/xmake.lua', { 'target("Tool")' })
+    write_file(base .. '/Ignored/build/generated.pro', { 'TARGET = generated' })
+    write_file(base .. '/Ignored/node_modules/vendor.pro', { 'TARGET = vendor' })
+    local projects, stats
+    project_manager.discover_projects_async({
+        paths = { base }, depth = 3, limit = 20, refresh = true,
+    }, function(found, info)
+        projects, stats = found, info
+    end)
+    truthy(vim.wait(4000, function() return projects ~= nil end, 10),
+        'asynchronous project scan did not complete')
+    local joined = table.concat(projects, '\n')
+    truthy(joined:find('/App', 1, true) ~= nil, 'CMake project not discovered')
+    truthy(joined:find('/Nested/Tool', 1, true) ~= nil, 'nested xmake project not discovered')
+    truthy(not joined:find('/build', 1, true), 'build directory should be ignored')
+    truthy(not joined:find('/node_modules', 1, true), 'node_modules should be ignored')
+    truthy(stats.directories <= 1200, 'directory budget exceeded')
+
+    local invoked = false
+    local cancel = project_manager.discover_projects_async({
+        paths = { base }, refresh = true,
+    }, function() invoked = true end)
+    cancel()
+    vim.wait(100)
+    eq(invoked, false, 'cancelled scan should not invoke callback')
+end)
+
+check('project picker opens without synchronous discovery', function()
+    local project_manager = require('qt-assistant.core.project_manager')
+    local qt_assistant = require('qt-assistant')
+    local original_discover = project_manager.discover_projects
+    local original_select = vim.ui.select
+    local picker_items
+    project_manager.discover_projects = function()
+        error('blocking discovery is forbidden in the interactive picker')
+    end
+    vim.ui.select = function(items, _opts, _callback)
+        picker_items = items
+    end
+    local ok, err = pcall(qt_assistant.open_project_interactive)
+    project_manager.discover_projects = original_discover
+    vim.ui.select = original_select
+    if not ok then error(err) end
+    truthy(picker_items and #picker_items >= 2, 'picker was not opened immediately')
+    eq(picker_items[#picker_items - 1].action, 'search')
+    eq(picker_items[#picker_items].action, 'browse')
+end)
+
 io.stdout:write(string.format('\n%d passed, %d failed\n', passed, #failures))
 io.stdout:flush()
 if #failures > 0 then
