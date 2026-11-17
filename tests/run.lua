@@ -811,6 +811,40 @@ check('custom Qt keymap prefix avoids LazyVim quit/session bindings', function()
     eq(captured['<leader>qq'], nil, 'must not shadow LazyVim Quit All')
 end)
 
+check('QtHelp discovers only real host Qt shortcuts', function()
+    local qt = require('qt-assistant')
+    local cfg = require('qt-assistant.core.config')
+    local old_g, old_b = vim.api.nvim_get_keymap, vim.api.nvim_buf_get_keymap
+    vim.api.nvim_get_keymap = function()
+        return {
+            { lhs = ' Qa', rhs = '<cmd>QtAssistant<cr>', desc = 'Qt 助手' },
+            { lhs = ' Qh', rhs = '<cmd>QtDocs<cr>', desc = 'Qt 离线文档' },
+            { lhs = ' QH', rhs = '<cmd>QtHelp<cr>', desc = 'Qt 命令速查' },
+            { lhs = ' qq', rhs = '<cmd>qa<cr>', desc = 'Quit All' },
+        }
+    end
+    vim.api.nvim_buf_get_keymap = function()
+        return { { lhs = ' gd', rhs = '', desc = 'Qt: 在 Designer 打开' } }
+    end
+    local ok, err = pcall(function()
+        cfg.setup({ enable_default_keymaps = false,
+            keymaps = { prefix = '<leader>Q', preset = 'minimal' } })
+        local mappings = qt.get_help_keymaps()
+        eq(#mappings, 4)
+        local actual = {}
+        for _, m in ipairs(mappings) do actual[m.key] = m.desc end
+        eq(actual['<leader>Qa'], 'Qt 助手')
+        eq(actual['<leader>Qh'], 'Qt 离线文档')
+        eq(actual['<leader>QH'], 'Qt 命令速查')
+        eq(actual['<leader>gd'], 'Qt: 在 Designer 打开')
+        eq(actual['<leader>qq'], nil)
+        eq(actual['<leader>qp'], nil)
+    end)
+    vim.api.nvim_get_keymap = old_g
+    vim.api.nvim_buf_get_keymap = old_b
+    if not ok then error(err) end
+end)
+
 io.stdout:write(string.format('\n%d passed, %d failed\n', passed, #failures))
 io.stdout:flush()
 if #failures > 0 then

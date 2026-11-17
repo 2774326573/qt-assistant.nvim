@@ -146,3 +146,10 @@ LazyVim 使用 `<leader>qq` 退出 Neovim，`<leader>qd` 等用于会话管理�
 Qt 助手历史默认前缀为 `<leader>q`；在 LazyVim 中请配置
 `keymaps = { prefix = '<leader>Q' }`，让 Qt 助手使用 `Space Q...`，
 避免覆盖 LazyVim 的退出和会话操作。原有默认前缀保持兼容。
+
+### QtHelp 快捷键帮助与宿主配置
+
+`:QtHelp` 现在读取 Neovim 实际注册的 Qt 快捷键及其描述，而非写死 `<leader>q`。
+因此在 `qt-cpp-nvim-config` 中会显示 `<leader>Q` 的真实绑定；
+`<leader>Qh` 显示为 Qt 离线文档，`<leader>QH` 才是命令帮助。
+当前缓冲区已生效的 Qt 局部快捷键也会显示，未注册的按键不会列入。

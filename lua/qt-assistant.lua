@@ -722,6 +722,71 @@ function M.compile_ui_file(ui_file_path)
 	return true
 end
 
+local qt_help_default_descriptions = {
+    ['Qt Assistant'] = true, ['Qt Docs (offline, <cword>)'] = true,
+    ['New Qt Project (Interactive)'] = true, ['New Qt Project (Quick C++17)'] = true,
+    ['Open Qt Project'] = true, ['Qt Designer'] = true,
+    ['New UI File'] = true, ['Edit Current/Select UI'] = true,
+    ['Create Qt Class'] = true, ['Create Class from Current UI'] = true,
+    ['Build Project'] = true, ['Run Project'] = true,
+    ['Quick Build & Run'] = true,
+    ['Build with C++11'] = true, ['Build with C++14'] = true,
+    ['Build with C++17'] = true, ['Build with C++20'] = true,
+    ['Debug Qt App'] = true, ['Attach to Qt Process'] = true,
+    ['Show Current Config'] = true, ['Select C++ Standard'] = true,
+    ['Reconfigure Project'] = true, ['Open in Designer'] = true,
+    ['Generate Class'] = true, ['Find & Open UI'] = true,
+}
+
+local function qt_help_key_display(lhs)
+    local translated = vim.fn.keytrans(lhs)
+    local leader = vim.g.mapleader or '\\'
+    if leader == ' ' then
+        if translated:sub(1, 7) == '<Space>' then
+            return '<leader>' .. translated:sub(8)
+        elseif translated:sub(1, 1) == ' ' then
+            return '<leader>' .. translated:sub(2)
+        end
+    elseif translated:sub(1, #leader) == leader then
+        return '<leader>' .. translated:sub(#leader + 1)
+    end
+    return translated
+end
+
+-- Return only shortcuts that are really mapped in the current Neovim instance.
+-- This avoids advertising the plugin's old <leader>q keys when the host uses Q.
+function M.get_help_keymaps()
+    local config = require('qt-assistant.core.config').get()
+    local result, seen = {}, {}
+
+    local function collect(mappings, scope)
+        for _, km in ipairs(mappings or {}) do
+            local rhs = (km.rhs or ''):lower()
+            local desc = km.desc or ''
+            local command_map = rhs:match('^<cmd>qt[%w_]+') or rhs:match('^:qt[%w_]+')
+            local qt_desc = desc:match('^Qt[%s:]') or desc:match('^Qt助手')
+            local built_in = config.enable_default_keymaps
+                and qt_help_default_descriptions[desc]
+            if desc ~= '' and (command_map or qt_desc or built_in) then
+                local key = qt_help_key_display(km.lhs or '')
+                local id = scope .. ':' .. key
+                if not seen[id] then
+                    seen[id] = true
+                    table.insert(result, { key = key, desc = desc, scope = scope })
+                end
+            end
+        end
+    end
+
+    collect(vim.api.nvim_get_keymap('n'), 'global')
+    collect(vim.api.nvim_buf_get_keymap(0, 'n'), 'buffer')
+    table.sort(result, function(a, b)
+        if a.scope ~= b.scope then return a.scope < b.scope end
+        return a.key < b.key
+    end)
+    return result
+end
+
 -- Show help
 function M.show_help()
 	local config = require('qt-assistant.core.config').get()
@@ -768,43 +833,28 @@ function M.show_help()
 		"  :QtDebugAttach               - Attach to running Qt process", 
 		"  :QtDebugStatus               - Show debug configuration",
 		"",
-		"Essential Keymaps (optimized for quick development):",
-		"  <leader>qa  - Qt Assistant main interface",
-		"  <leader>qh  - Show this help",
-		"  <leader>qp  - New project (interactive)",
-		"  <leader>qo  - Open project (interactive)",
-		"  <leader>qu  - New UI file (interactive)",
-		"  <leader>qe  - Edit current/select UI file",
-		"  <leader>qd  - Open Qt Designer",
-		"  <leader>qc  - Create class (interactive)",
-		"  <leader>qf  - Create class from current UI",
-		"  <leader>qb  - Build project",
-		"  <leader>qr  - Run project",
-		"  <leader>qdb - Debug application (nvim-dap)",
-		"  <leader>qda - Attach to Qt process",
-		"",
-		"Context-aware keymaps (in UI/C++ files):",
-		"  <leader>gd  - Open current UI in Designer",
-		"  <leader>gc  - Generate class from current UI",
-		"  <leader>gu  - Find & open corresponding UI",
-		"",
 		"Project Types: widget_app, quick_app, console_app, static_lib, shared_lib, plugin",
 		"Class Types: main_window, dialog, widget, model, delegate, thread, utility, singleton"
 	}
 
-	if preset == 'full' then
-		table.insert(help_text, 1, "(Keymaps preset: full)")
-		-- Mention optional/legacy keymaps at the end
-		table.insert(help_text, "")
-		table.insert(help_text, "Extra keymaps (full preset):")
-		table.insert(help_text, "  <leader>qP  - New project (quick widget_app + C++17)")
-		table.insert(help_text, "  <leader>qA  - Quick build & run")
-		table.insert(help_text, "  <leader>qb1/qb4/qb7/qb20 - Build with specific C++ standard (Windows)")
-		table.insert(help_text, "  <leader>qsc/qss/qsr - Config & reconfigure helpers")
-	else
-		table.insert(help_text, 1, "(Keymaps preset: minimal)")
-	end
-	
+    table.insert(help_text, 1, config.enable_default_keymaps
+        and '(Keymaps: built-in ' .. preset .. ')'
+        or '(Keymaps: host-defined; built-in shortcuts disabled)')
+    table.insert(help_text, '')
+    table.insert(help_text, 'Active Qt keymaps (read from Neovim):')
+    local mappings = M.get_help_keymaps()
+    if #mappings == 0 then
+        table.insert(help_text, '  No Qt shortcuts registered. Use the commands above.')
+    else
+        for _, item in ipairs(mappings) do
+            local scope = item.scope == 'buffer' and ' [current buffer]' or ''
+            table.insert(help_text,
+                string.format('  %-22s - %s%s', item.key, item.desc, scope))
+        end
+    end
+    table.insert(help_text, '')
+    table.insert(help_text, 'Press q or Esc to close. Scroll with j/k or Ctrl-d/Ctrl-u.')
+
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, help_text)
 	
